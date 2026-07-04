@@ -1,0 +1,16 @@
+"use client";
+
+import * as React from "react";
+import { ThemeProvider as NextThemesProvider } from "next-themes";
+
+/** Proveedor de tema claro/oscuro para toda la app. */
+export function ThemeProvider({
+  children,
+  ...props
+}: React.ComponentProps<typeof NextThemesProvider>) {
+  return (
+    <NextThemesProvider attribute="class" defaultTheme="dark" enableSystem {...props}>
+      {children}
+    </NextThemesProvider>
+  );
+}

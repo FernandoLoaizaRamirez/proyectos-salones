@@ -1,0 +1,124 @@
+@import "tailwindcss";
+
+/* Escanea el sistema de diseño compartido para generar sus estilos. */
+@source "../../../../packages/ui/src";
+
+@theme inline {
+  --color-background: var(--bg);
+  --color-foreground: var(--fg);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-fg);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-fg);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-fg);
+  --color-border: var(--border);
+  --color-ring: var(--ring);
+  --color-gold: var(--gold);
+  --color-wine: var(--wine);
+  --color-cream: var(--cream);
+  --font-sans: var(--font-sans);
+  --font-display: var(--font-display);
+  --radius: var(--radius);
+}
+
+/*
+ * Paleta ELEGANTE para bodas/XV (white-label de este cliente).
+ * Oro #C9A96E · Vino #7A2E3B · Crema #F4EDE4 · Tinta #1A1A1A
+ */
+:root {
+  --bg: #fbf9f5;
+  --fg: #241d1a;
+  --card: #ffffff;
+  --card-fg: #241d1a;
+  --primary: #7a2e3b;
+  --primary-fg: #fbf9f5;
+  --muted: #f2eadd;
+  --muted-fg: #6d6055;
+  --border: #e7ddcc;
+  --ring: #c9a96e;
+  --gold: #c9a96e;
+  --wine: #7a2e3b;
+  --cream: #f4ede4;
+  --radius: 0.4rem;
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 5rem;
+}
+
+body {
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-sans, ui-sans-serif, system-ui, sans-serif);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Utilidades de apoyo para el estilo editorial elegante. */
+.eyebrow {
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+.text-balance {
+  text-wrap: balance;
+}
+
+/* Animación de aparición al hacer scroll (ver componente Reveal). */
+.reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition:
+    opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+}
+.reveal.is-visible {
+  opacity: 1;
+  transform: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
+/* Preloader de la versión inmersiva. */
+@keyframes preIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes preLine {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+.pre-in {
+  animation: preIn 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.pre-line {
+  transform-origin: left;
+  animation: preLine 1.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pre-in,
+  .pre-line {
+    animation-duration: 0.01ms;
+  }
+}

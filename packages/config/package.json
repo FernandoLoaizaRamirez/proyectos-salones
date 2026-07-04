@@ -1,0 +1,11 @@
+{
+  "name": "@salones/config",
+  "version": "0.1.0",
+  "private": true,
+  "exports": {
+    "./tsconfig/base.json": "./tsconfig/base.json",
+    "./tsconfig/nextjs.json": "./tsconfig/nextjs.json",
+    "./tsconfig/react-library.json": "./tsconfig/react-library.json",
+    "./prettier": "./prettier/index.mjs"
+  }
+}

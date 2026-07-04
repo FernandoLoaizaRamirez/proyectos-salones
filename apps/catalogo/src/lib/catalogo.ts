@@ -16,8 +16,8 @@ import { AppMode } from "@salones/core";
 export const vendedor = {
   nombre: "Suite para Salones",
   tagline: "Todo lo digital para tu salón de eventos, en un solo lugar.",
-  // ⚠️ Pon aquí TU WhatsApp real (con código de país, sin signos): 52 + número.
-  whatsapp: "526672216283",
+  // WhatsApp real (con código de país de México, sin signos): 52 + número.
+  whatsapp: "526673349236",
   email: "hola@suiteparasalones.mx",
 };
 
@@ -128,3 +128,69 @@ export const productos: Producto[] = [
     precios: { MANAGED: 500, RENTAL: 300, OWNED: 5000 },
   },
 ];
+
+/* ------------------------------------------------------------------ */
+/* Paquetes (combos con descuento)                                    */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Paquetes: combinaciones de apps a un precio más económico que
+ * contratarlas por separado. El precio se calcula solo a partir de los
+ * precios individuales y el descuento, así siempre queda consistente.
+ */
+export type Paquete = {
+  id: string;
+  nombre: string;
+  descripcion: string;
+  incluye: string[]; // ids de productos
+  descuento: number; // 0.2 = 20% de descuento
+  acento: string;
+  destacado?: boolean;
+};
+
+export const paquetes: Paquete[] = [
+  {
+    id: "esencial",
+    nombre: "Paquete Esencial",
+    descripcion: "Tu presencia digital lista: la página del salón y el álbum de fotos del evento.",
+    incluye: ["sitio-salon", "album-fotos"],
+    descuento: 0.15,
+    acento: "from-rose-500 to-fuchsia-600",
+  },
+  {
+    id: "invitados",
+    nombre: "Paquete Invitados",
+    descripcion:
+      "Todo para manejar a tus invitados de principio a fin: invitación, confirmación y acceso con QR.",
+    incluye: ["invitaciones", "rsvp", "pases-qr"],
+    descuento: 0.2,
+    acento: "from-sky-500 to-emerald-600",
+  },
+  {
+    id: "todo",
+    nombre: "Paquete Todo Incluido",
+    descripcion: "La suite completa para tu salón, al mejor precio. Todo lo digital de tu evento.",
+    incluye: ["sitio-salon", "album-fotos", "invitaciones", "rsvp", "pases-qr", "recuerditos"],
+    descuento: 0.25,
+    acento: "from-primary to-purple-600",
+    destacado: true,
+  },
+];
+
+/** Las apps que incluye un paquete (como objetos Producto). */
+export function appsDelPaquete(pkg: Paquete): Producto[] {
+  return pkg.incluye
+    .map((id) => productos.find((p) => p.id === id))
+    .filter((p): p is Producto => Boolean(p));
+}
+
+/** Precio del paquete SIN descuento (suma de las apps sueltas) para un modelo. */
+export function precioPaqueteBruto(pkg: Paquete, modelo: Modelo): number {
+  return appsDelPaquete(pkg).reduce((s, p) => s + p.precios[modelo], 0);
+}
+
+/** Precio del paquete CON descuento, redondeado a $50 para que quede limpio. */
+export function precioPaquete(pkg: Paquete, modelo: Modelo): number {
+  const conDescuento = precioPaqueteBruto(pkg, modelo) * (1 - pkg.descuento);
+  return Math.round(conDescuento / 50) * 50;
+}

@@ -1,43 +1,46 @@
 import type { Metadata } from "next";
-import { Nav } from "@/components/nav";
+import { Preloader } from "@/components/premium/preloader";
+import { ScrollProgress } from "@/components/premium/scroll-progress";
+import { NavPremium } from "@/components/premium/nav-premium";
 import { HeroPremium } from "@/components/premium/hero-premium";
-import { Intro } from "@/components/intro";
+import { IntroPremium } from "@/components/premium/intro-premium";
 import { EspaciosPremium } from "@/components/premium/espacios-premium";
-import { Eventos } from "@/components/eventos";
+import { EventosPremium } from "@/components/premium/eventos-premium";
 import { StatsPremium } from "@/components/premium/stats-premium";
 import { GaleriaPremium } from "@/components/premium/galeria-premium";
-import { Paquetes } from "@/components/paquetes";
-import { Testimonios } from "@/components/testimonios";
-import { Contacto } from "@/components/contacto";
+import { PaquetesPremium } from "@/components/premium/paquetes-premium";
+import { TestimoniosPremium } from "@/components/premium/testimonios-premium";
+import { ContactoPremium } from "@/components/premium/contacto-premium";
 import { Footer } from "@/components/footer";
 import { WhatsappFab } from "@/components/whatsapp-fab";
 import { VersionSwitch } from "@/components/version-switch";
-import { Preloader } from "@/components/premium/preloader";
 
 export const metadata: Metadata = {
   title: "Experiencia inmersiva · Hacienda Santa Renata",
-  description: "La versión inmersiva del sitio, con WebGL, parallax e interacción.",
+  description:
+    "La versión inmersiva del sitio: una experiencia cinematográfica de gala nocturna, con carrusel, parallax e interacción.",
 };
 
 export default function PremiumPage() {
   return (
-    <>
+    <div className="premium min-h-screen bg-background text-foreground">
       <Preloader />
-      <Nav />
+      <ScrollProgress />
+      <NavPremium />
       <main>
         <HeroPremium />
-        <Intro />
+        <IntroPremium />
         <EspaciosPremium />
-        <Eventos />
+        <EventosPremium />
         <StatsPremium />
         <GaleriaPremium />
-        <Paquetes />
-        <Testimonios />
-        <Contacto />
+        <PaquetesPremium />
+        <TestimoniosPremium />
+        <ContactoPremium />
       </main>
       <Footer />
       <WhatsappFab />
       <VersionSwitch href="/" label="Versión clásica" />
-    </>
+    </div>
   );
 }

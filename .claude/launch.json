@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "sitio-salon",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "sitio-salon", "dev"],
+      "autoPort": true,
+      "port": 3000
+    }
+  ]
+}

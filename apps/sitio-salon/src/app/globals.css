@@ -122,3 +122,148 @@ body {
     animation-duration: 0.01ms;
   }
 }
+
+/* ============================================================
+   VERSIÓN PREMIUM (inmersiva) — tema OSCURO cinematográfico.
+   Se activa envolviendo la página en <div class="premium">.
+   Redefine los tokens de color para que TODO el sitio adopte
+   una identidad de "gala nocturna", muy distinta de la clásica.
+   ============================================================ */
+.premium {
+  --bg: #100b08;
+  --fg: #f4ede4;
+  --card: #191210;
+  --card-fg: #f4ede4;
+  --primary: #d8b877;
+  --primary-fg: #17110d;
+  --muted: #211814;
+  --muted-fg: #b7a894;
+  --border: #38291f;
+  --ring: #d8b877;
+  --gold: #d8b877;
+  --wine: #e0a0ad;
+  --cream: #f4ede4;
+  background-color: var(--bg);
+  color: var(--fg);
+}
+.premium ::selection {
+  background: rgba(216, 184, 119, 0.28);
+}
+
+/* Ken Burns: zoom lento e infinito para las fotos de la portada. */
+@keyframes kenburns {
+  from {
+    transform: scale(1.06) translate3d(0, 0, 0);
+  }
+  to {
+    transform: scale(1.2) translate3d(-1.5%, -1.5%, 0);
+  }
+}
+@keyframes kenburnsRev {
+  from {
+    transform: scale(1.2) translate3d(1.5%, 1.5%, 0);
+  }
+  to {
+    transform: scale(1.06) translate3d(0, 0, 0);
+  }
+}
+.kenburns {
+  animation: kenburns 14s ease-out infinite alternate;
+}
+.kenburns-rev {
+  animation: kenburnsRev 14s ease-out infinite alternate;
+}
+
+/* Barra de avance del carrusel (llena de 0 a 100% en cada slide). */
+@keyframes slideBar {
+  from {
+    width: 0%;
+  }
+  to {
+    width: 100%;
+  }
+}
+
+/* Aparición al hacer scroll, con dirección opcional (premium). */
+.p-reveal {
+  opacity: 0;
+  transform: translateY(28px);
+  transition:
+    opacity 0.9s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+}
+.p-reveal.from-left {
+  transform: translateX(-34px);
+}
+.p-reveal.from-right {
+  transform: translateX(34px);
+}
+.p-reveal.from-scale {
+  transform: scale(0.94);
+}
+.p-reveal.is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+/* Entrada escalonada de la portada (fadeUp). */
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(22px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.fade-up {
+  animation: fadeUp 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Anillo pulsante (para el botón de WhatsApp inmersivo). */
+@keyframes waPulse {
+  0% {
+    transform: scale(0.85);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(1.7);
+    opacity: 0;
+  }
+}
+.wa-ring {
+  animation: waPulse 2.4s ease-out infinite;
+}
+
+/* Halo dorado que respira (bordes/tarjetas destacadas). */
+@keyframes goldGlow {
+  0%,
+  100% {
+    box-shadow: 0 0 24px rgba(216, 184, 119, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 46px rgba(216, 184, 119, 0.26);
+  }
+}
+.gold-glow {
+  animation: goldGlow 4.5s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kenburns,
+  .kenburns-rev,
+  .wa-ring,
+  .gold-glow {
+    animation: none;
+  }
+  .p-reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+  .fade-up {
+    animation-duration: 0.01ms;
+  }
+}

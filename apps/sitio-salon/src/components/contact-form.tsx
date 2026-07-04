@@ -74,7 +74,7 @@ export function ContactForm() {
       {error ? <p className="text-sm text-wine">{error}</p> : null}
       <button
         type="submit"
-        className="flex w-full items-center justify-center gap-2 rounded-[var(--radius)] bg-wine px-5 py-3 text-sm text-primary-foreground transition-opacity hover:opacity-90"
+        className="flex w-full items-center justify-center gap-2 rounded-[var(--radius)] bg-primary px-5 py-3 text-sm text-primary-foreground transition-opacity hover:opacity-90"
       >
         <MessageCircle className="size-4" /> Enviar por WhatsApp
       </button>

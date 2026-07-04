@@ -7,6 +7,13 @@
       "runtimeArgs": ["--filter", "sitio-salon", "dev"],
       "autoPort": true,
       "port": 3000
+    },
+    {
+      "name": "catalogo",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "catalogo", "dev"],
+      "autoPort": true,
+      "port": 3001
     }
   ]
 }

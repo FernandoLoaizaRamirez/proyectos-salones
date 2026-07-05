@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Check, Plus, ExternalLink, MessageCircle, Package } from "lucide-react";
-import { Button, Card, cn } from "@salones/ui";
+import { Button, buttonVariants, Card, cn } from "@salones/ui";
 import { AppMode } from "@salones/core";
 import {
   vendedor,
@@ -12,6 +12,9 @@ import {
   appsDelPaquete,
   precioPaquete,
   precioPaqueteBruto,
+  modelosDeProducto,
+  modelosDePaquete,
+  nombreModelo,
   type Modelo,
 } from "@/lib/catalogo";
 
@@ -22,15 +25,19 @@ const money = (n: number) =>
     maximumFractionDigits: 0,
   }).format(n);
 
+const infoModelo = (m: Modelo) => modelos.find((x) => x.clave === m)!;
+
 export function CatalogoCliente() {
   const [modelo, setModelo] = React.useState<Modelo>(AppMode.Rental);
   const [selApps, setSelApps] = React.useState<Record<string, boolean>>({});
   const [selPaq, setSelPaq] = React.useState<Record<string, boolean>>({});
 
-  const modeloInfo = modelos.find((m) => m.clave === modelo)!;
+  const modeloInfo = infoModelo(modelo);
 
-  const appsSel = productos.filter((p) => selApps[p.id]);
-  const paqSel = paquetes.filter((pk) => selPaq[pk.id]);
+  // Solo cuenta lo que está seleccionado Y disponible en el modelo elegido
+  // (así el total siempre es coherente: todo mensual o todo pago único).
+  const appsSel = productos.filter((p) => selApps[p.id] && modelosDeProducto(p).includes(modelo));
+  const paqSel = paquetes.filter((pk) => selPaq[pk.id] && modelosDePaquete(pk).includes(modelo));
 
   const total =
     appsSel.reduce((s, p) => s + p.precios[modelo], 0) +
@@ -101,7 +108,10 @@ export function CatalogoCliente() {
         </div>
         <div className="grid gap-5 md:grid-cols-3">
           {paquetes.map((pk) => {
-            const activo = !!selPaq[pk.id];
+            const mDisp = modelosDePaquete(pk);
+            const disponible = mDisp.includes(modelo);
+            const activo = !!selPaq[pk.id] && disponible;
+            const primero = mDisp[0]!;
             const bruto = precioPaqueteBruto(pk, modelo);
             const precio = precioPaquete(pk, modelo);
             const ahorro = bruto - precio;
@@ -144,33 +154,55 @@ export function CatalogoCliente() {
                   </ul>
                 </div>
                 <div className="mt-auto border-t border-border p-6 pt-4">
-                  <div className="flex flex-wrap items-baseline gap-x-2">
-                    <span className="text-sm text-muted-foreground line-through">
-                      {money(bruto)}
-                    </span>
-                    <span className="text-2xl font-semibold">{money(precio)}</span>
-                    <span className="text-sm text-muted-foreground">{modeloInfo.periodo}</span>
-                  </div>
-                  <p className="mt-1 text-xs font-medium text-primary">
-                    Ahorras {pct}% · {money(ahorro)}
-                    {modeloInfo.periodo}
-                  </p>
-                  <Button
-                    variant={activo ? "primary" : "outline"}
-                    className="mt-4 w-full"
-                    onClick={() => togglePaq(pk.id)}
-                    aria-pressed={activo}
-                  >
-                    {activo ? (
-                      <>
-                        <Check className="size-4" /> Agregado
-                      </>
-                    ) : (
-                      <>
-                        <Plus className="size-4" /> Agregar paquete
-                      </>
-                    )}
-                  </Button>
+                  {disponible ? (
+                    <>
+                      <div className="flex flex-wrap items-baseline gap-x-2">
+                        <span className="text-sm text-muted-foreground line-through">
+                          {money(bruto)}
+                        </span>
+                        <span className="text-2xl font-semibold">{money(precio)}</span>
+                        <span className="text-sm text-muted-foreground">{modeloInfo.periodo}</span>
+                      </div>
+                      <p className="mt-1 text-xs font-medium text-primary">
+                        Ahorras {pct}% · {money(ahorro)}
+                        {modeloInfo.periodo}
+                      </p>
+                      <Button
+                        variant={activo ? "primary" : "outline"}
+                        className="mt-4 w-full"
+                        onClick={() => togglePaq(pk.id)}
+                        aria-pressed={activo}
+                      >
+                        {activo ? (
+                          <>
+                            <Check className="size-4" /> Agregado
+                          </>
+                        ) : (
+                          <>
+                            <Plus className="size-4" /> Agregar paquete
+                          </>
+                        )}
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-sm">
+                        <span className="font-medium">
+                          Solo en {mDisp.map(nombreModelo).join(" o ")}
+                        </span>{" "}
+                        <span className="text-muted-foreground">
+                          (incluye el sitio web, que se vende).
+                        </span>
+                      </p>
+                      <Button
+                        variant="outline"
+                        className="mt-4 w-full"
+                        onClick={() => setModelo(primero)}
+                      >
+                        Ver en {infoModelo(primero).nombre}
+                      </Button>
+                    </>
+                  )}
                 </div>
               </Card>
             );
@@ -183,14 +215,17 @@ export function CatalogoCliente() {
         <div className="mb-6 flex flex-col items-center gap-1 text-center">
           <h2 className="text-2xl font-semibold tracking-tight">O elige app por app</h2>
           <p className="text-sm text-muted-foreground">
-            Cada app se puede rentar o comprar por separado. Arma justo lo que necesitas.
+            Cada app se puede contratar por separado. Arma justo lo que necesitas.
           </p>
         </div>
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {productos.map((p) => {
             const Icono = p.icono;
-            const activo = !!selApps[p.id];
-            const otros = modelos.filter((m) => m.clave !== modelo);
+            const mDisp = modelosDeProducto(p);
+            const disponible = mDisp.includes(modelo);
+            const activo = !!selApps[p.id] && disponible;
+            const primero = mDisp[0]!;
+            const otros = modelos.filter((m) => m.clave !== modelo && mDisp.includes(m.clave));
             return (
               <Card
                 key={p.id}
@@ -223,44 +258,85 @@ export function CatalogoCliente() {
                     ) : null}
                   </div>
                   <p className="mt-2 text-sm text-muted-foreground">{p.descripcion}</p>
-                  {p.demoUrl ? (
-                    <a
-                      href={p.demoUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
-                    >
-                      Ver demo <ExternalLink className="size-3.5" />
-                    </a>
-                  ) : null}
                 </div>
 
                 <div className="mt-auto border-t border-border p-6 pt-4">
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-2xl font-semibold">{money(p.precios[modelo])}</span>
-                    <span className="text-sm text-muted-foreground">{modeloInfo.periodo}</span>
-                  </div>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {otros
-                      .map((m) => `${m.corto} ${money(p.precios[m.clave])}${m.periodo}`)
-                      .join(" · ")}
-                  </p>
-                  <Button
-                    variant={activo ? "primary" : "outline"}
-                    className="mt-4 w-full"
-                    onClick={() => toggleApp(p.id)}
-                    aria-pressed={activo}
-                  >
-                    {activo ? (
-                      <>
-                        <Check className="size-4" /> Agregado
-                      </>
-                    ) : (
-                      <>
-                        <Plus className="size-4" /> Agregar a mi paquete
-                      </>
-                    )}
-                  </Button>
+                  {disponible ? (
+                    <>
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-2xl font-semibold">{money(p.precios[modelo])}</span>
+                        <span className="text-sm text-muted-foreground">{modeloInfo.periodo}</span>
+                      </div>
+                      {otros.length > 0 ? (
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {otros
+                            .map((m) => `${m.corto} ${money(p.precios[m.clave])}${m.periodo}`)
+                            .join(" · ")}
+                        </p>
+                      ) : (
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Hecho a la medida de tu marca: se vende, no se renta.
+                        </p>
+                      )}
+                      <div className="mt-4 flex gap-2">
+                        {p.demoUrl ? (
+                          <a
+                            href={p.demoUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className={cn(buttonVariants({ variant: "outline" }), "flex-1")}
+                          >
+                            <ExternalLink className="size-4" /> Ver demo
+                          </a>
+                        ) : null}
+                        <Button
+                          variant={activo ? "primary" : "outline"}
+                          className={p.demoUrl ? "flex-1" : "w-full"}
+                          onClick={() => toggleApp(p.id)}
+                          aria-pressed={activo}
+                        >
+                          {activo ? (
+                            <>
+                              <Check className="size-4" /> Agregado
+                            </>
+                          ) : (
+                            <>
+                              <Plus className="size-4" /> Agregar
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-sm">
+                        <span className="font-medium">Solo en {mDisp.map(nombreModelo).join(" o ")}.</span>{" "}
+                        <span className="text-muted-foreground">
+                          {money(p.precios[primero])}
+                          {infoModelo(primero).periodo}
+                        </span>
+                      </p>
+                      <div className="mt-4 flex gap-2">
+                        {p.demoUrl ? (
+                          <a
+                            href={p.demoUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className={cn(buttonVariants({ variant: "outline" }), "flex-1")}
+                          >
+                            <ExternalLink className="size-4" /> Ver demo
+                          </a>
+                        ) : null}
+                        <Button
+                          variant="outline"
+                          className={p.demoUrl ? "flex-1" : "w-full"}
+                          onClick={() => setModelo(primero)}
+                        >
+                          Ver en {infoModelo(primero).corto}
+                        </Button>
+                      </div>
+                    </>
+                  )}
                 </div>
               </Card>
             );

@@ -58,6 +58,8 @@ export type Producto = {
   destacado?: boolean;
   demoUrl?: string;
   precios: Record<Modelo, number>;
+  /** En qué modelos se ofrece esta app. Si no se define, se ofrece en los 3. */
+  modelos?: Modelo[];
 };
 
 /**
@@ -76,6 +78,8 @@ export const productos: Producto[] = [
     destacado: true,
     demoUrl: "https://salones-teal.vercel.app",
     precios: { MANAGED: 1500, RENTAL: 900, OWNED: 18000 },
+    // El sitio es hecho a la medida de la marca del salón: se VENDE, no se renta.
+    modelos: [AppMode.Owned],
   },
   {
     id: "album-fotos",
@@ -193,4 +197,26 @@ export function precioPaqueteBruto(pkg: Paquete, modelo: Modelo): number {
 export function precioPaquete(pkg: Paquete, modelo: Modelo): number {
   const conDescuento = precioPaqueteBruto(pkg, modelo) * (1 - pkg.descuento);
   return Math.round(conDescuento / 50) * 50;
+}
+
+/* ------------------------------------------------------------------ */
+/* Qué modelos aplican a cada app / paquete                            */
+/* ------------------------------------------------------------------ */
+
+export const TODOS_LOS_MODELOS: Modelo[] = [AppMode.Managed, AppMode.Rental, AppMode.Owned];
+
+/** Modelos en los que se ofrece una app (por defecto, los 3). */
+export function modelosDeProducto(p: Producto): Modelo[] {
+  return p.modelos ?? TODOS_LOS_MODELOS;
+}
+
+/** Un paquete se ofrece solo en los modelos que TODAS sus apps comparten. */
+export function modelosDePaquete(pkg: Paquete): Modelo[] {
+  const apps = appsDelPaquete(pkg);
+  return TODOS_LOS_MODELOS.filter((m) => apps.every((a) => modelosDeProducto(a).includes(m)));
+}
+
+/** Nombre bonito de un modelo (para textos). */
+export function nombreModelo(m: Modelo): string {
+  return modelos.find((x) => x.clave === m)?.nombre ?? "";
 }

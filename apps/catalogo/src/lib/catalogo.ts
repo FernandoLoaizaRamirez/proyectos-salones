@@ -98,7 +98,8 @@ export const productos: Producto[] = [
       "Invitación web elegante y personalizada con los datos del evento, mapa, cuenta regresiva y confirmación en un clic. Se comparte por WhatsApp.",
     icono: Mail,
     acento: "from-amber-500 to-orange-600",
-    disponible: false,
+    disponible: true,
+    demoUrl: "https://invitaciones-weld.vercel.app",
     precios: { MANAGED: 600, RENTAL: 350, OWNED: 6500 },
   },
   {

@@ -35,6 +35,13 @@
       "runtimeArgs": ["--filter", "rsvp", "dev"],
       "autoPort": true,
       "port": 3004
+    },
+    {
+      "name": "recuerditos",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "recuerditos", "dev"],
+      "autoPort": true,
+      "port": 3005
     }
   ]
 }

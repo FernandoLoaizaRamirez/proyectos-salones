@@ -109,7 +109,8 @@ export const productos: Producto[] = [
       "Los invitados confirman en línea si asisten y cuántos acompañantes llevan. Tú ves la lista actualizada en tiempo real, sin llamadas ni Excel.",
     icono: CalendarCheck,
     acento: "from-teal-500 to-emerald-600",
-    disponible: false,
+    disponible: true,
+    demoUrl: "https://rsvp-umber-pi.vercel.app",
     precios: { MANAGED: 500, RENTAL: 300, OWNED: 5500 },
   },
   {

@@ -21,6 +21,13 @@
       "runtimeArgs": ["--filter", "invitaciones", "dev"],
       "autoPort": true,
       "port": 3002
+    },
+    {
+      "name": "pases-qr",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "pases-qr", "dev"],
+      "autoPort": true,
+      "port": 3003
     }
   ]
 }

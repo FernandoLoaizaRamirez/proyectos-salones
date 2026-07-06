@@ -119,7 +119,8 @@ export const productos: Producto[] = [
       "Cada invitado recibe un pase con código QR. En la entrada se escanea para controlar el acceso: rápido, ordenado y sin colados.",
     icono: QrCode,
     acento: "from-sky-500 to-blue-600",
-    disponible: false,
+    disponible: true,
+    demoUrl: "https://pases-qr.vercel.app",
     precios: { MANAGED: 700, RENTAL: 400, OWNED: 7500 },
   },
   {

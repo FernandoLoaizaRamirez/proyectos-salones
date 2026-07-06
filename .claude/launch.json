@@ -28,6 +28,13 @@
       "runtimeArgs": ["--filter", "pases-qr", "dev"],
       "autoPort": true,
       "port": 3003
+    },
+    {
+      "name": "rsvp",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "rsvp", "dev"],
+      "autoPort": true,
+      "port": 3004
     }
   ]
 }

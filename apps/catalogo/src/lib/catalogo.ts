@@ -131,7 +131,8 @@ export const productos: Producto[] = [
       "Genera recuerdos personalizados del evento (tarjetas, mensajes y foto-clips) que los invitados se llevan a su teléfono como memoria de la fiesta.",
     icono: Gift,
     acento: "from-violet-500 to-indigo-600",
-    disponible: false,
+    disponible: true,
+    demoUrl: "https://recuerditos.vercel.app",
     precios: { MANAGED: 500, RENTAL: 300, OWNED: 5000 },
   },
 ];

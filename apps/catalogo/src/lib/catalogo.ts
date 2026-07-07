@@ -126,13 +126,13 @@ export const productos: Producto[] = [
   },
   {
     id: "recuerditos",
-    nombre: "Recuerditos digitales",
+    nombre: "Generador de recuerditos",
     descripcion:
-      "Genera recuerdos personalizados del evento (tarjetas, mensajes y foto-clips) que los invitados se llevan a su teléfono como memoria de la fiesta.",
+      "Crea los recuerdos de mesa impresos del evento (caballetes de XV años y bodas): eliges una plantilla, subes y encuadras las fotos, editas los textos y exportas un PDF en alta listo para imprimir.",
     icono: Gift,
     acento: "from-violet-500 to-indigo-600",
     disponible: true,
-    demoUrl: "https://recuerditos.vercel.app",
+    demoUrl: "https://generador-de-recuerditos.vercel.app",
     precios: { MANAGED: 500, RENTAL: 300, OWNED: 5000 },
   },
 ];

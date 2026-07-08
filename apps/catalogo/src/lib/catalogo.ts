@@ -89,6 +89,7 @@ export const productos: Producto[] = [
     icono: Camera,
     acento: "from-fuchsia-500 to-purple-600",
     disponible: true,
+    demoUrl: "https://album-fotos-gamma.vercel.app",
     precios: { MANAGED: 800, RENTAL: 500, OWNED: 9000 },
   },
   {

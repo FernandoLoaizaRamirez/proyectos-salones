@@ -42,6 +42,13 @@
       "runtimeArgs": ["--filter", "recuerditos", "dev"],
       "autoPort": true,
       "port": 3005
+    },
+    {
+      "name": "album-fotos",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "album-fotos", "dev"],
+      "autoPort": true,
+      "port": 3006
     }
   ]
 }

@@ -1,19 +1,23 @@
 "use client";
 
 import * as React from "react";
-import { Camera, Download, ImagePlus, Trash2 } from "lucide-react";
-import { Button, Card, EmptyState, cn } from "@salones/ui";
-
-type Archivo = {
-  id: string;
-  nombre: string;
-  url: string;
-  tipo: string;
-};
+import {
+  Camera,
+  Download,
+  ImagePlus,
+  Trash2,
+  X,
+  ChevronLeft,
+  ChevronRight,
+  Play,
+} from "lucide-react";
+import { Button, EmptyState, cn } from "@salones/ui";
+import { fotosEjemplo, type Archivo } from "@/lib/album-data";
 
 export function Album() {
-  const [archivos, setArchivos] = React.useState<Archivo[]>([]);
+  const [archivos, setArchivos] = React.useState<Archivo[]>(fotosEjemplo);
   const [arrastrando, setArrastrando] = React.useState(false);
+  const [idx, setIdx] = React.useState<number | null>(null);
   const inputRef = React.useRef<HTMLInputElement>(null);
   const contador = React.useRef(0);
 
@@ -23,12 +27,7 @@ export function Album() {
       .filter((a) => a.type.startsWith("image/") || a.type.startsWith("video/"))
       .map((a) => {
         contador.current += 1;
-        return {
-          id: `f-${contador.current}`,
-          nombre: a.name,
-          url: URL.createObjectURL(a),
-          tipo: a.type,
-        };
+        return { id: `f-${contador.current}`, nombre: a.name, url: URL.createObjectURL(a), tipo: a.type };
       });
     setArchivos((prev) => [...nuevos, ...prev]);
   }, []);
@@ -36,7 +35,7 @@ export function Album() {
   const eliminar = React.useCallback((id: string) => {
     setArchivos((prev) => {
       const encontrado = prev.find((x) => x.id === id);
-      if (encontrado) URL.revokeObjectURL(encontrado.url);
+      if (encontrado && encontrado.url.startsWith("blob:")) URL.revokeObjectURL(encontrado.url);
       return prev.filter((x) => x.id !== id);
     });
   }, []);
@@ -52,8 +51,32 @@ export function Album() {
     });
   }, [archivos]);
 
+  // --- Visor a pantalla completa ---
+  const open = idx !== null;
+  const cerrar = React.useCallback(() => setIdx(null), []);
+  const ir = React.useCallback(
+    (d: number) => setIdx((i) => (i === null ? i : (i + d + archivos.length) % archivos.length)),
+    [archivos.length],
+  );
+  React.useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") cerrar();
+      else if (e.key === "ArrowRight") ir(1);
+      else if (e.key === "ArrowLeft") ir(-1);
+    };
+    document.addEventListener("keydown", onKey);
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = "";
+    };
+  }, [open, cerrar, ir]);
+  const actual = idx === null ? null : archivos[idx];
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
+      {/* Zona para subir */}
       <div
         onDragOver={(e) => {
           e.preventDefault();
@@ -77,8 +100,7 @@ export function Album() {
           <div className="space-y-1">
             <p className="font-medium">Sube tus fotos y videos</p>
             <p className="text-sm text-muted-foreground">
-              Arrastra los archivos aquí o toca el botón. En este modo se quedan en tu
-              dispositivo.
+              Arrastra los archivos aquí o toca el botón para elegirlos.
             </p>
           </div>
           <Button onClick={() => inputRef.current?.click()}>
@@ -95,9 +117,11 @@ export function Album() {
         </div>
       </div>
 
+      {/* Contador + descargar */}
       <div className="flex items-center justify-between gap-4">
         <p className="text-sm text-muted-foreground">
-          {archivos.length} {archivos.length === 1 ? "archivo" : "archivos"} en el álbum
+          <span className="font-semibold text-foreground">{archivos.length}</span>{" "}
+          {archivos.length === 1 ? "recuerdo" : "recuerdos"} en el álbum
         </p>
         {archivos.length > 0 ? (
           <Button variant="outline" size="sm" onClick={descargarTodo}>
@@ -106,6 +130,7 @@ export function Album() {
         ) : null}
       </div>
 
+      {/* Galería en mosaico */}
       {archivos.length === 0 ? (
         <EmptyState
           icon={<Camera className="size-8" />}
@@ -113,15 +138,38 @@ export function Album() {
           description="Cuando los invitados suban sus fotos, aparecerán aquí en la galería en vivo."
         />
       ) : (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-          {archivos.map((f) => (
-            <Card key={f.id} className="group relative overflow-hidden">
-              {f.tipo.startsWith("video/") ? (
-                <video src={f.url} className="aspect-square w-full object-cover" controls />
-              ) : (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={f.url} alt={f.nombre} className="aspect-square w-full object-cover" />
-              )}
+        <div className="columns-2 gap-3 sm:columns-3 md:columns-4">
+          {archivos.map((f, i) => (
+            <div
+              key={f.id}
+              className="group relative mb-3 break-inside-avoid overflow-hidden rounded-[var(--radius)] border border-border"
+            >
+              <button
+                type="button"
+                onClick={() => setIdx(i)}
+                aria-label={`Ver ${f.nombre}`}
+                className="block w-full cursor-zoom-in"
+              >
+                {f.tipo.startsWith("video/") ? (
+                  <div className="relative">
+                    {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+                    <video src={f.url} className="w-full object-cover" />
+                    <div className="absolute inset-0 grid place-items-center bg-black/20">
+                      <span className="grid size-11 place-items-center rounded-full bg-white/80 text-black">
+                        <Play className="size-5" />
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={f.url}
+                    alt={f.nombre}
+                    loading="lazy"
+                    className="w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  />
+                )}
+              </button>
               <button
                 type="button"
                 aria-label={`Eliminar ${f.nombre}`}
@@ -130,10 +178,62 @@ export function Album() {
               >
                 <Trash2 className="size-4" />
               </button>
-            </Card>
+            </div>
           ))}
         </div>
       )}
+
+      {/* Visor a pantalla completa */}
+      {open && actual ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={actual.nombre}
+          onClick={cerrar}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-6 backdrop-blur-sm"
+        >
+          <button
+            onClick={cerrar}
+            aria-label="Cerrar"
+            className="absolute right-5 top-5 z-10 grid size-11 place-items-center rounded-full border border-white/30 text-white transition-colors hover:bg-white/10"
+          >
+            <X className="size-5" />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              ir(-1);
+            }}
+            aria-label="Anterior"
+            className="absolute left-4 z-10 grid size-11 place-items-center rounded-full border border-white/30 text-white transition-colors hover:bg-white/10 md:left-8"
+          >
+            <ChevronLeft className="size-5" />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              ir(1);
+            }}
+            aria-label="Siguiente"
+            className="absolute right-4 z-10 grid size-11 place-items-center rounded-full border border-white/30 text-white transition-colors hover:bg-white/10 md:right-8"
+          >
+            <ChevronRight className="size-5" />
+          </button>
+          <div className="max-h-[85vh] max-w-4xl" onClick={(e) => e.stopPropagation()}>
+            {actual.tipo.startsWith("video/") ? (
+              // eslint-disable-next-line jsx-a11y/media-has-caption
+              <video src={actual.url} controls autoPlay className="max-h-[85vh] w-auto rounded-lg" />
+            ) : (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={actual.url}
+                alt={actual.nombre}
+                className="max-h-[85vh] w-auto rounded-lg object-contain shadow-2xl"
+              />
+            )}
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

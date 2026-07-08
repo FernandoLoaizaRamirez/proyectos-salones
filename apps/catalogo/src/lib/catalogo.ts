@@ -9,7 +9,7 @@
  * No hay cobros en línea; el botón "Cotizar" arma un mensaje de WhatsApp.
  */
 import type { ComponentType } from "react";
-import { Globe, Camera, Mail, CalendarCheck, QrCode, Gift } from "lucide-react";
+import { Globe, Camera, Mail, CalendarCheck, QrCode } from "lucide-react";
 import { AppMode } from "@salones/core";
 
 /** Tus datos como proveedor de la suite. CAMBIA por los tuyos. */
@@ -124,17 +124,6 @@ export const productos: Producto[] = [
     demoUrl: "https://pases-qr.vercel.app",
     precios: { MANAGED: 700, RENTAL: 400, OWNED: 7500 },
   },
-  {
-    id: "recuerditos",
-    nombre: "Generador de recuerditos",
-    descripcion:
-      "Crea los recuerdos de mesa impresos del evento (caballetes de XV años y bodas): eliges una plantilla, subes y encuadras las fotos, editas los textos y exportas un PDF en alta listo para imprimir.",
-    icono: Gift,
-    acento: "from-violet-500 to-indigo-600",
-    disponible: true,
-    demoUrl: "https://generador-de-recuerditos.vercel.app",
-    precios: { MANAGED: 500, RENTAL: 300, OWNED: 5000 },
-  },
 ];
 
 /* ------------------------------------------------------------------ */
@@ -178,7 +167,7 @@ export const paquetes: Paquete[] = [
     id: "todo",
     nombre: "Paquete Todo Incluido",
     descripcion: "La suite completa para tu salón, al mejor precio. Todo lo digital de tu evento.",
-    incluye: ["sitio-salon", "album-fotos", "invitaciones", "rsvp", "pases-qr", "recuerditos"],
+    incluye: ["sitio-salon", "album-fotos", "invitaciones", "rsvp", "pases-qr"],
     descuento: 0.25,
     acento: "from-primary to-purple-600",
     destacado: true,

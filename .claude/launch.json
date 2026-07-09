@@ -49,6 +49,13 @@
       "runtimeArgs": ["--filter", "album-fotos", "dev"],
       "autoPort": true,
       "port": 3006
+    },
+    {
+      "name": "mesas",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "mesas", "dev"],
+      "autoPort": true,
+      "port": 3007
     }
   ]
 }

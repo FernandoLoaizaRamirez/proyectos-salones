@@ -19,6 +19,9 @@ import {
   BookHeart,
   ListMusic,
   Aperture,
+  MapPinned,
+  Gamepad2,
+  Video,
 } from "lucide-react";
 import { AppMode } from "@salones/core";
 
@@ -179,6 +182,39 @@ export const productos: Producto[] = [
     demoUrl: "https://proyectos-salones-photobooth.vercel.app",
     precios: { MANAGED: 700, RENTAL: 450, OWNED: 7000 },
   },
+  {
+    id: "mi-mesa",
+    nombre: "¿En qué mesa me toca?",
+    descripcion:
+      "El invitado escribe su nombre, encuentra su mesa al instante y ve quiénes lo acompañan. Usa el mismo acomodo que la app de mesas: se comparte por enlace o QR.",
+    icono: MapPinned,
+    acento: "from-emerald-500 to-green-600",
+    disponible: true,
+    demoUrl: "https://proyectos-salones-mi-mesa.vercel.app",
+    precios: { MANAGED: 500, RENTAL: 300, OWNED: 5000 },
+  },
+  {
+    id: "dinamicas",
+    nombre: "Dinámicas y juegos",
+    descripcion:
+      "Trivia de los novios (con ranking en vivo), bingo de boda y un rompehielos. Los invitados juegan desde su teléfono escaneando un QR. Para que nadie se quede sentado.",
+    icono: Gamepad2,
+    acento: "from-yellow-500 to-orange-600",
+    disponible: true,
+    demoUrl: "https://proyectos-salones-dinamicas.vercel.app",
+    precios: { MANAGED: 600, RENTAL: 350, OWNED: 6000 },
+  },
+  {
+    id: "brindis",
+    nombre: "Brindis en video",
+    descripcion:
+      "Cada invitado graba un mensaje corto en video para los novios desde su teléfono y lo comparte. Un recuerdo con la voz y la cara de todos.",
+    icono: Video,
+    acento: "from-red-500 to-rose-600",
+    disponible: true,
+    demoUrl: "https://proyectos-salones-brindis.vercel.app",
+    precios: { MANAGED: 700, RENTAL: 450, OWNED: 7000 },
+  },
 ];
 
 /* ------------------------------------------------------------------ */
@@ -232,6 +268,9 @@ export const paquetes: Paquete[] = [
       "muro",
       "playlist",
       "photobooth",
+      "mi-mesa",
+      "dinamicas",
+      "brindis",
     ],
     descuento: 0.25,
     acento: "from-primary to-purple-600",

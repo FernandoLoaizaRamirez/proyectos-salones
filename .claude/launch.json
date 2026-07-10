@@ -77,6 +77,13 @@
       "runtimeArgs": ["--filter", "photobooth", "dev"],
       "autoPort": true,
       "port": 3010
+    },
+    {
+      "name": "mi-mesa",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "mi-mesa", "dev"],
+      "autoPort": true,
+      "port": 3011
     }
   ]
 }

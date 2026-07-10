@@ -84,6 +84,13 @@
       "runtimeArgs": ["--filter", "mi-mesa", "dev"],
       "autoPort": true,
       "port": 3011
+    },
+    {
+      "name": "dinamicas",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "dinamicas", "dev"],
+      "autoPort": true,
+      "port": 3012
     }
   ]
 }

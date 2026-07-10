@@ -9,7 +9,16 @@
  * No hay cobros en línea; el botón "Cotizar" arma un mensaje de WhatsApp.
  */
 import type { ComponentType } from "react";
-import { Globe, Camera, Mail, CalendarCheck, QrCode, Armchair, BookHeart } from "lucide-react";
+import {
+  Globe,
+  Camera,
+  Mail,
+  CalendarCheck,
+  QrCode,
+  Armchair,
+  BookHeart,
+  ListMusic,
+} from "lucide-react";
 import { AppMode } from "@salones/core";
 
 /** Tus datos como proveedor de la suite. CAMBIA por los tuyos. */
@@ -147,6 +156,17 @@ export const productos: Producto[] = [
     demoUrl: "https://proyectos-salones-muro.vercel.app",
     precios: { MANAGED: 550, RENTAL: 350, OWNED: 5500 },
   },
+  {
+    id: "playlist",
+    nombre: "Playlist colaborativa",
+    descripcion:
+      "Los invitados piden canciones y votan por sus favoritas escaneando un QR. El DJ ve la lista ordenada por votos y marca cuáles ya puso. La música de la fiesta la eligen todos.",
+    icono: ListMusic,
+    acento: "from-cyan-500 to-blue-600",
+    disponible: true,
+    demoUrl: "https://proyectos-salones-playlist.vercel.app",
+    precios: { MANAGED: 600, RENTAL: 350, OWNED: 6000 },
+  },
 ];
 
 /* ------------------------------------------------------------------ */
@@ -190,7 +210,16 @@ export const paquetes: Paquete[] = [
     id: "todo",
     nombre: "Paquete Todo Incluido",
     descripcion: "La suite completa para tu salón, al mejor precio. Todo lo digital de tu evento.",
-    incluye: ["sitio-salon", "album-fotos", "invitaciones", "rsvp", "pases-qr", "mesas", "muro"],
+    incluye: [
+      "sitio-salon",
+      "album-fotos",
+      "invitaciones",
+      "rsvp",
+      "pases-qr",
+      "mesas",
+      "muro",
+      "playlist",
+    ],
     descuento: 0.25,
     acento: "from-primary to-purple-600",
     destacado: true,

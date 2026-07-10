@@ -91,6 +91,13 @@
       "runtimeArgs": ["--filter", "dinamicas", "dev"],
       "autoPort": true,
       "port": 3012
+    },
+    {
+      "name": "brindis",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "brindis", "dev"],
+      "autoPort": true,
+      "port": 3013
     }
   ]
 }

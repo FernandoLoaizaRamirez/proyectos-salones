@@ -9,7 +9,7 @@
  * No hay cobros en línea; el botón "Cotizar" arma un mensaje de WhatsApp.
  */
 import type { ComponentType } from "react";
-import { Globe, Camera, Mail, CalendarCheck, QrCode } from "lucide-react";
+import { Globe, Camera, Mail, CalendarCheck, QrCode, Armchair } from "lucide-react";
 import { AppMode } from "@salones/core";
 
 /** Tus datos como proveedor de la suite. CAMBIA por los tuyos. */
@@ -125,6 +125,17 @@ export const productos: Producto[] = [
     demoUrl: "https://pases-qr.vercel.app",
     precios: { MANAGED: 700, RENTAL: 400, OWNED: 7500 },
   },
+  {
+    id: "mesas",
+    nombre: "Acomodo de mesas",
+    descripcion:
+      "Organiza quién se sienta en cada mesa arrastrando a tus invitados, desde la computadora o el celular. Ves los lugares usados y libres al instante, y compartes el acomodo por un enlace de solo lectura con QR.",
+    icono: Armchair,
+    acento: "from-violet-500 to-indigo-600",
+    disponible: true,
+    demoUrl: "https://proyectos-salones-mesas.vercel.app",
+    precios: { MANAGED: 600, RENTAL: 350, OWNED: 6000 },
+  },
 ];
 
 /* ------------------------------------------------------------------ */
@@ -168,7 +179,7 @@ export const paquetes: Paquete[] = [
     id: "todo",
     nombre: "Paquete Todo Incluido",
     descripcion: "La suite completa para tu salón, al mejor precio. Todo lo digital de tu evento.",
-    incluye: ["sitio-salon", "album-fotos", "invitaciones", "rsvp", "pases-qr"],
+    incluye: ["sitio-salon", "album-fotos", "invitaciones", "rsvp", "pases-qr", "mesas"],
     descuento: 0.25,
     acento: "from-primary to-purple-600",
     destacado: true,

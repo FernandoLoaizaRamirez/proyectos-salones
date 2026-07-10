@@ -70,6 +70,13 @@
       "runtimeArgs": ["--filter", "playlist", "dev"],
       "autoPort": true,
       "port": 3009
+    },
+    {
+      "name": "photobooth",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "photobooth", "dev"],
+      "autoPort": true,
+      "port": 3010
     }
   ]
 }

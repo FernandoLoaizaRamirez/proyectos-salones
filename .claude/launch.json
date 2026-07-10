@@ -63,6 +63,13 @@
       "runtimeArgs": ["--filter", "muro", "dev"],
       "autoPort": true,
       "port": 3008
+    },
+    {
+      "name": "playlist",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "playlist", "dev"],
+      "autoPort": true,
+      "port": 3009
     }
   ]
 }

@@ -18,6 +18,7 @@ import {
   Armchair,
   BookHeart,
   ListMusic,
+  Aperture,
 } from "lucide-react";
 import { AppMode } from "@salones/core";
 
@@ -167,6 +168,17 @@ export const productos: Producto[] = [
     demoUrl: "https://proyectos-salones-playlist.vercel.app",
     precios: { MANAGED: 600, RENTAL: 350, OWNED: 6000 },
   },
+  {
+    id: "photobooth",
+    nombre: "Photobooth digital",
+    descripcion:
+      "Tus invitados se toman una foto con la cámara de su teléfono, eligen un marco del evento y la descargan o comparten al instante, ya lista con el diseño. Sin imprimir nada.",
+    icono: Aperture,
+    acento: "from-purple-500 to-pink-600",
+    disponible: true,
+    demoUrl: "https://proyectos-salones-photobooth.vercel.app",
+    precios: { MANAGED: 700, RENTAL: 450, OWNED: 7000 },
+  },
 ];
 
 /* ------------------------------------------------------------------ */
@@ -219,6 +231,7 @@ export const paquetes: Paquete[] = [
       "mesas",
       "muro",
       "playlist",
+      "photobooth",
     ],
     descuento: 0.25,
     acento: "from-primary to-purple-600",

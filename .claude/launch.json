@@ -56,6 +56,13 @@
       "runtimeArgs": ["--filter", "mesas", "dev"],
       "autoPort": true,
       "port": 3007
+    },
+    {
+      "name": "muro",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "muro", "dev"],
+      "autoPort": true,
+      "port": 3008
     }
   ]
 }

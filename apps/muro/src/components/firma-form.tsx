@@ -1,0 +1,215 @@
+"use client";
+
+import * as React from "react";
+import { Camera, X, Send, Check, PenLine, MessageCircle, Loader2 } from "lucide-react";
+import { Button, Card, cn } from "@salones/ui";
+import {
+  evento,
+  nuevoId,
+  comprimirImagen,
+  type Mensaje,
+} from "@/lib/muro";
+
+const K_MENSAJES = "muro-mensajes";
+
+const campo =
+  "w-full rounded-[var(--radius)] border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/30";
+
+export function FirmaForm() {
+  const [nombre, setNombre] = React.useState("");
+  const [texto, setTexto] = React.useState("");
+  const [foto, setFoto] = React.useState<string | null>(null);
+  const [procesandoFoto, setProcesandoFoto] = React.useState(false);
+  const [error, setError] = React.useState("");
+  const [enviado, setEnviado] = React.useState<Mensaje | null>(null);
+  const fileRef = React.useRef<HTMLInputElement>(null);
+
+  const elegirFoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setProcesandoFoto(true);
+    setError("");
+    try {
+      const dataUrl = await comprimirImagen(file);
+      setFoto(dataUrl);
+    } catch {
+      setError("No pudimos usar esa imagen. Intenta con otra.");
+    } finally {
+      setProcesandoFoto(false);
+    }
+  };
+
+  const guardar = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!nombre.trim() || !texto.trim()) {
+      setError("Escribe tu mensaje y tu nombre.");
+      return;
+    }
+    setError("");
+    let existentes: Mensaje[] = [];
+    try {
+      const raw = localStorage.getItem(K_MENSAJES);
+      existentes = raw ? JSON.parse(raw) : [];
+    } catch {
+      existentes = [];
+    }
+    const msg: Mensaje = {
+      id: nuevoId(existentes),
+      nombre: nombre.trim(),
+      texto: texto.trim(),
+      fecha: Date.now(),
+      ...(foto ? { foto } : {}),
+    };
+    try {
+      localStorage.setItem(K_MENSAJES, JSON.stringify([msg, ...existentes]));
+    } catch {
+      setError(
+        "El muro de este dispositivo está lleno (demasiadas fotos). Para muchos invitados a la vez se usa el servicio con almacenamiento central.",
+      );
+      return;
+    }
+    setEnviado(msg);
+  };
+
+  const enviarWhatsApp = () => {
+    if (!enviado) return;
+    const lineas = [
+      `Mensaje para el muro · ${evento.nombre}`,
+      "",
+      `De: ${enviado.nombre}`,
+      enviado.texto,
+      enviado.foto ? "(Adjunto una foto desde mi teléfono)" : "",
+    ].filter(Boolean);
+    window.open(
+      `https://wa.me/${evento.organizador.whatsapp}?text=${encodeURIComponent(lineas.join("\n"))}`,
+      "_blank",
+      "noopener,noreferrer",
+    );
+  };
+
+  const otro = () => {
+    setNombre("");
+    setTexto("");
+    setFoto(null);
+    setError("");
+    setEnviado(null);
+  };
+
+  if (enviado) {
+    return (
+      <Card className="w-full max-w-md p-8 text-center">
+        <div className="mx-auto grid size-14 place-items-center rounded-full bg-green-500/15 text-green-600">
+          <Check className="size-7" />
+        </div>
+        <h1 className="mt-5 text-2xl font-semibold tracking-tight">¡Gracias, {enviado.nombre}!</h1>
+        <p className="mt-2 text-muted-foreground">
+          Tu mensaje quedó guardado en el muro de {evento.nombre}. ¡Los novios lo van a atesorar!
+        </p>
+        {enviado.foto ? (
+          <img
+            src={enviado.foto}
+            alt="Tu foto"
+            className="mx-auto mt-5 max-h-48 rounded-[var(--radius)] object-cover"
+          />
+        ) : null}
+        <div className="mt-6 flex flex-col gap-2">
+          <Button onClick={enviarWhatsApp} variant="outline" className="w-full">
+            <MessageCircle className="size-4" /> Enviar también al anfitrión por WhatsApp
+          </Button>
+          <Button onClick={otro} className="w-full">
+            <PenLine className="size-4" /> Escribir otro mensaje
+          </Button>
+        </div>
+        <p className="mt-4 text-xs text-muted-foreground">
+          En esta demostración tu mensaje se guarda en este teléfono. Para reunir en una sola
+          pantalla los mensajes de todos los invitados se usa el servicio gestionado.
+        </p>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="w-full max-w-md p-6 sm:p-8">
+      <div className="text-center">
+        <p className="text-sm text-muted-foreground">{evento.nombre}</p>
+        <h1 className="mt-1 text-2xl font-semibold tracking-tight">{evento.invitacion}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Firma el libro de recuerdos con tus buenos deseos.
+        </p>
+      </div>
+
+      <form onSubmit={guardar} className="mt-6 space-y-4">
+        <div>
+          <label className="mb-1.5 block text-sm font-medium">Tu mensaje</label>
+          <textarea
+            className={cn(campo, "min-h-28 resize-y")}
+            value={texto}
+            onChange={(e) => setTexto(e.target.value)}
+            maxLength={500}
+            placeholder="Escribe unas palabras para los novios…"
+          />
+          <div className="mt-1 text-right text-xs text-muted-foreground">{texto.length}/500</div>
+        </div>
+
+        <div>
+          <label className="mb-1.5 block text-sm font-medium">Tu nombre</label>
+          <input
+            className={campo}
+            value={nombre}
+            onChange={(e) => setNombre(e.target.value)}
+            maxLength={60}
+            placeholder="¿Cómo firmas?"
+          />
+        </div>
+
+        <div>
+          <label className="mb-1.5 block text-sm font-medium">Foto (opcional)</label>
+          {foto ? (
+            <div className="relative overflow-hidden rounded-[var(--radius)] border border-border">
+              <img src={foto} alt="Vista previa" className="max-h-56 w-full object-cover" />
+              <button
+                type="button"
+                onClick={() => setFoto(null)}
+                aria-label="Quitar foto"
+                className="absolute right-2 top-2 grid size-8 place-items-center rounded-full bg-black/60 text-white transition-colors hover:bg-black/80"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              disabled={procesandoFoto}
+              className="flex w-full items-center justify-center gap-2 rounded-[var(--radius)] border border-dashed border-border px-4 py-6 text-sm text-muted-foreground transition-colors hover:border-ring hover:text-foreground"
+            >
+              {procesandoFoto ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" /> Preparando foto…
+                </>
+              ) : (
+                <>
+                  <Camera className="size-4" /> Agregar una foto
+                </>
+              )}
+            </button>
+          )}
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={elegirFoto}
+          />
+        </div>
+
+        {error ? <p className="text-sm text-red-500">{error}</p> : null}
+
+        <Button type="submit" className="w-full" disabled={procesandoFoto}>
+          <Send className="size-4" /> Dejar mi mensaje
+        </Button>
+      </form>
+    </Card>
+  );
+}

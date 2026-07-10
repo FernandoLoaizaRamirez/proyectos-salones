@@ -9,7 +9,7 @@
  * No hay cobros en línea; el botón "Cotizar" arma un mensaje de WhatsApp.
  */
 import type { ComponentType } from "react";
-import { Globe, Camera, Mail, CalendarCheck, QrCode, Armchair } from "lucide-react";
+import { Globe, Camera, Mail, CalendarCheck, QrCode, Armchair, BookHeart } from "lucide-react";
 import { AppMode } from "@salones/core";
 
 /** Tus datos como proveedor de la suite. CAMBIA por los tuyos. */
@@ -136,6 +136,17 @@ export const productos: Producto[] = [
     demoUrl: "https://proyectos-salones-mesas.vercel.app",
     precios: { MANAGED: 600, RENTAL: 350, OWNED: 6000 },
   },
+  {
+    id: "muro",
+    nombre: "Muro de mensajes",
+    descripcion:
+      "Un libro de firmas digital: los invitados escanean un QR, escriben su mensaje, firman y suben una foto. Tú los ves aparecer en una pared y los proyectas en la fiesta con el “modo pantalla”.",
+    icono: BookHeart,
+    acento: "from-rose-500 to-fuchsia-600",
+    disponible: true,
+    demoUrl: "https://proyectos-salones-muro.vercel.app",
+    precios: { MANAGED: 550, RENTAL: 350, OWNED: 5500 },
+  },
 ];
 
 /* ------------------------------------------------------------------ */
@@ -179,7 +190,7 @@ export const paquetes: Paquete[] = [
     id: "todo",
     nombre: "Paquete Todo Incluido",
     descripcion: "La suite completa para tu salón, al mejor precio. Todo lo digital de tu evento.",
-    incluye: ["sitio-salon", "album-fotos", "invitaciones", "rsvp", "pases-qr", "mesas"],
+    incluye: ["sitio-salon", "album-fotos", "invitaciones", "rsvp", "pases-qr", "mesas", "muro"],
     descuento: 0.25,
     acento: "from-primary to-purple-600",
     destacado: true,

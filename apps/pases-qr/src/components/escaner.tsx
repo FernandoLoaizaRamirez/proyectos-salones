@@ -61,7 +61,7 @@ export function Escaner({ onDetectar }: { onDetectar: (texto: string) => void })
 
   return (
     <div>
-      <div className="relative aspect-video overflow-hidden rounded-[var(--radius)] border border-border bg-muted">
+      <div className="relative mx-auto aspect-square w-full max-w-sm overflow-hidden rounded-[var(--radius)] border border-border bg-muted">
         {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
         <video
           ref={videoRef}
@@ -74,7 +74,7 @@ export function Escaner({ onDetectar }: { onDetectar: (texto: string) => void })
             La cámara está apagada. Enciéndela para escanear los pases en la entrada.
           </div>
         ) : (
-          <div className="pointer-events-none absolute inset-10 rounded-xl border-2 border-white/80" />
+          <div className="pointer-events-none absolute inset-8 rounded-2xl border-[3px] border-white/90 shadow-[0_0_0_100vmax_rgba(0,0,0,0.15)]" />
         )}
         <canvas ref={canvasRef} className="hidden" />
       </div>

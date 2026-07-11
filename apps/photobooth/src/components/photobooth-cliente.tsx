@@ -22,6 +22,7 @@ import {
   componer,
   capturarDeVideo,
   descargar,
+  nombreDescarga,
   compartir,
   type Marco,
 } from "@/lib/photobooth";
@@ -121,7 +122,7 @@ export function PhotoboothCliente() {
   };
 
   const alDescargar = () => {
-    if (resultado) descargar(resultado, `photobooth-${evento.hashtag}`);
+    if (resultado) descargar(resultado, nombreDescarga(marcoId));
   };
   const alCompartir = async () => {
     if (!resultado) return;
@@ -129,7 +130,7 @@ export function PhotoboothCliente() {
     const ok = await compartir(resultado);
     setCompartiendo(false);
     if (!ok) {
-      descargar(resultado, `photobooth-${evento.hashtag}`);
+      descargar(resultado, nombreDescarga(marcoId));
       setAviso("Tu navegador no permite compartir directo; descargamos la foto para que la envíes.");
       setTimeout(() => setAviso(""), 4000);
     }

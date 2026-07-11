@@ -21,6 +21,10 @@ import { QR } from "@/components/qr";
 import {
   evento,
   MAX_SEGUNDOS,
+  VIDEO_ANCHO,
+  VIDEO_ALTO,
+  marcosBrindis,
+  dibujarMarcoBrindis,
   elegirMime,
   formatoTiempo,
   descargarVideo,
@@ -29,11 +33,45 @@ import {
   listarVideosLocales,
   borrarVideoLocal,
   type VideoGuardado,
+  type MarcoBrindis,
 } from "@/lib/brindis";
 
 type Fase = "inicio" | "preview" | "grabando" | "listo";
 
 type ItemGaleria = { id: string; url: string; blob: Blob; mime: string };
+
+/**
+ * ¿Podemos "quemar" el marco dentro del video en este navegador?
+ * En Safari/iOS (WebKit) grabar un canvas + el micrófono suele salir SIN audio,
+ * así que ahí grabamos el video directo (con su sonido) y sin marco. En Chrome,
+ * Android y demás sí quemamos el marco.
+ */
+function puedeQuemarMarco(): boolean {
+  if (typeof document === "undefined" || typeof navigator === "undefined") return false;
+  const proto = HTMLCanvasElement.prototype as unknown as { captureStream?: unknown };
+  if (typeof proto.captureStream !== "function") return false;
+  const ua = navigator.userAgent;
+  const esIOS =
+    /iPad|iPhone|iPod/.test(ua) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const esSafari = /^((?!chrome|android|crios|fxios|edg).)*safari/i.test(ua);
+  return !esIOS && !esSafari;
+}
+
+/** Dibuja el video cubriendo (cover) todo el lienzo, sin deformar. */
+function dibujarCoverVideo(
+  ctx: CanvasRenderingContext2D,
+  v: HTMLVideoElement,
+  W: number,
+  H: number,
+) {
+  const iw = v.videoWidth || W;
+  const ih = v.videoHeight || H;
+  const escala = Math.max(W / iw, H / ih);
+  const w = iw * escala;
+  const h = ih * escala;
+  ctx.drawImage(v, (W - w) / 2, (H - h) / 2, w, h);
+}
 
 export function BrindisCliente() {
   const [fase, setFase] = React.useState<Fase>("inicio");
@@ -43,14 +81,44 @@ export function BrindisCliente() {
   const [videoUrl, setVideoUrl] = React.useState<string | null>(null);
   const [galeria, setGaleria] = React.useState<ItemGaleria[]>([]);
   const [compartiendo, setCompartiendo] = React.useState(false);
+  const [marcoId, setMarcoId] = React.useState<string>(marcosBrindis[0]!.id);
+  // ¿Este navegador puede grabar el marco dentro del video? (Chrome sí, iPhone no)
+  const [modoMarco, setModoMarco] = React.useState(false);
 
   const liveRef = React.useRef<HTMLVideoElement>(null);
+  const canvasRef = React.useRef<HTMLCanvasElement>(null);
   const streamRef = React.useRef<MediaStream | null>(null);
+  const recStreamRef = React.useRef<MediaStream | null>(null);
   const recorderRef = React.useRef<MediaRecorder | null>(null);
   const chunksRef = React.useRef<Blob[]>([]);
   const mimeRef = React.useRef<string>("");
   const blobRef = React.useRef<Blob | null>(null);
   const timerRef = React.useRef<number | null>(null);
+  const rafRef = React.useRef(0);
+  const marcoRef = React.useRef<MarcoBrindis>(marcosBrindis[0]!);
+  // Marca que la grabación se está CANCELANDO, para que onstop no guarde el parcial.
+  const cancelandoRef = React.useRef(false);
+  // Espejos de los valores actuales, para poder liberar sus object URLs al salir.
+  const videoUrlRef = React.useRef<string | null>(null);
+  const galeriaRef = React.useRef<ItemGaleria[]>([]);
+  // ¿El componente sigue montado? (para no dejar la cámara viva si se sale durante el permiso)
+  const montadoRef = React.useRef(true);
+
+  const marco = marcosBrindis.find((m) => m.id === marcoId) ?? marcosBrindis[0]!;
+  React.useEffect(() => {
+    marcoRef.current = marco;
+  }, [marco]);
+
+  React.useEffect(() => {
+    videoUrlRef.current = videoUrl;
+  }, [videoUrl]);
+  React.useEffect(() => {
+    galeriaRef.current = galeria;
+  }, [galeria]);
+
+  React.useEffect(() => {
+    setModoMarco(puedeQuemarMarco());
+  }, []);
 
   const cargarGaleria = React.useCallback(async () => {
     try {
@@ -70,13 +138,45 @@ export function BrindisCliente() {
   }, []);
 
   React.useEffect(() => {
+    montadoRef.current = true;
     cargarGaleria();
     return () => {
+      montadoRef.current = false;
       streamRef.current?.getTracks().forEach((t) => t.stop());
+      recStreamRef.current?.getTracks().forEach((t) => t.stop());
       if (timerRef.current) window.clearInterval(timerRef.current);
+      cancelAnimationFrame(rafRef.current);
+      if (videoUrlRef.current) URL.revokeObjectURL(videoUrlRef.current);
+      galeriaRef.current.forEach((it) => URL.revokeObjectURL(it.url));
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Bucle de dibujo (solo cuando quemamos marco): pinta el video (espejado) + el
+  // marco en el lienzo. Es lo que se ve en pantalla y lo que se graba.
+  const dibujar = React.useCallback(() => {
+    const v = liveRef.current;
+    const canvas = canvasRef.current;
+    if (canvas && v && v.readyState >= 2 && v.videoWidth > 0) {
+      const ctx = canvas.getContext("2d");
+      if (ctx) {
+        ctx.save();
+        ctx.translate(canvas.width, 0);
+        ctx.scale(-1, 1);
+        dibujarCoverVideo(ctx, v, canvas.width, canvas.height);
+        ctx.restore();
+        dibujarMarcoBrindis(ctx, canvas.width, canvas.height, marcoRef.current);
+      }
+    }
+    rafRef.current = requestAnimationFrame(dibujar);
+  }, []);
+
+  React.useEffect(() => {
+    if (modoMarco && (fase === "preview" || fase === "grabando")) {
+      rafRef.current = requestAnimationFrame(dibujar);
+      return () => cancelAnimationFrame(rafRef.current);
+    }
+  }, [modoMarco, fase, dibujar]);
 
   const detenerCamara = () => {
     streamRef.current?.getTracks().forEach((t) => t.stop());
@@ -94,6 +194,11 @@ export function BrindisCliente() {
         video: { facingMode: "user" },
         audio: true,
       });
+      // Si se salió de la pantalla mientras se pedía el permiso, no dejes la cámara viva.
+      if (!montadoRef.current) {
+        stream.getTracks().forEach((t) => t.stop());
+        return;
+      }
       streamRef.current = stream;
       setFase("preview");
       requestAnimationFrame(() => {
@@ -115,10 +220,33 @@ export function BrindisCliente() {
     const mime = elegirMime();
     mimeRef.current = mime;
     chunksRef.current = [];
+    cancelandoRef.current = false;
+
+    // Por defecto se graba el stream directo (video + audio del micrófono).
+    // Si quemamos marco, grabamos el lienzo y le añadimos el audio del micrófono.
+    let grabStream: MediaStream = stream;
+    recStreamRef.current = null;
+    if (modoMarco && canvasRef.current) {
+      try {
+        const cs = (
+          canvasRef.current as HTMLCanvasElement & { captureStream: (fps?: number) => MediaStream }
+        ).captureStream(30);
+        const audio = stream.getAudioTracks()[0];
+        if (audio) cs.addTrack(audio);
+        grabStream = cs;
+        recStreamRef.current = cs;
+      } catch {
+        grabStream = stream; // si el lienzo no se puede grabar, grabamos directo
+      }
+    }
+
     let rec: MediaRecorder;
     try {
-      rec = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
+      rec = new MediaRecorder(grabStream, mime ? { mimeType: mime } : undefined);
     } catch {
+      // Si ya estábamos capturando el lienzo, detén esa captura para no dejarla viva.
+      recStreamRef.current?.getVideoTracks().forEach((t) => t.stop());
+      recStreamRef.current = null;
       setError("No se pudo iniciar la grabación en este navegador.");
       return;
     }
@@ -127,6 +255,15 @@ export function BrindisCliente() {
       if (e.data.size > 0) chunksRef.current.push(e.data);
     };
     rec.onstop = async () => {
+      detenerCamara();
+      recStreamRef.current?.getTracks().forEach((t) => t.stop());
+      recStreamRef.current = null;
+      // Si se canceló, no guardamos ni mostramos el video parcial.
+      if (cancelandoRef.current) {
+        cancelandoRef.current = false;
+        chunksRef.current = [];
+        return;
+      }
       const tipo = mimeRef.current || "video/webm";
       const blob = new Blob(chunksRef.current, { type: tipo });
       blobRef.current = blob;
@@ -134,7 +271,6 @@ export function BrindisCliente() {
         if (prev) URL.revokeObjectURL(prev);
         return URL.createObjectURL(blob);
       });
-      detenerCamara();
       setFase("listo");
       try {
         await guardarVideoLocal(blob, tipo);
@@ -165,7 +301,21 @@ export function BrindisCliente() {
   }, [fase, elapsed, detenerGrabar]);
 
   const reiniciar = () => {
+    // Si veníamos de grabar (aunque ya se haya pulsado Detener y el video se esté
+    // "cerrando"), cancelamos de verdad para que onstop NO guarde el parcial.
+    if (fase === "grabando") {
+      cancelandoRef.current = true;
+      if (recorderRef.current && recorderRef.current.state !== "inactive") {
+        try {
+          recorderRef.current.stop();
+        } catch {
+          /* noop */
+        }
+      }
+    }
     detenerCamara();
+    recStreamRef.current?.getTracks().forEach((t) => t.stop());
+    recStreamRef.current = null;
     if (timerRef.current) window.clearInterval(timerRef.current);
     setVideoUrl((prev) => {
       if (prev) URL.revokeObjectURL(prev);
@@ -229,7 +379,8 @@ export function BrindisCliente() {
             </div>
             <h1 className="mt-4 text-2xl font-semibold tracking-tight">Brindis en video</h1>
             <p className="mt-1 text-muted-foreground">
-              Graba un mensaje corto (máx. {MAX_SEGUNDOS}s) para {evento.nombre} y compártelo.
+              Graba un mensaje corto en video (máx. {MAX_SEGUNDOS}s) para {evento.nombre} y
+              compártelo.
             </p>
             <Button onClick={abrirCamara} size="lg" className="mt-6 w-full">
               <Video className="size-5" /> Grabar mi brindis
@@ -277,41 +428,80 @@ export function BrindisCliente() {
 
       {/* PREVIEW / GRABANDO */}
       {fase === "preview" || fase === "grabando" ? (
-        <Card className="overflow-hidden p-0">
-          <div className="relative aspect-[3/4] w-full bg-black">
-            <video
-              ref={liveRef}
-              autoPlay
-              playsInline
-              muted
-              className="size-full -scale-x-100 object-cover"
-            />
-            {fase === "grabando" ? (
-              <div className="absolute left-3 top-3 flex items-center gap-2 rounded-full bg-black/60 px-3 py-1.5 text-sm font-medium text-white">
-                <span className="size-2.5 animate-pulse rounded-full bg-red-500" />
-                {formatoTiempo(elapsed)} / {formatoTiempo(MAX_SEGUNDOS)}
+        <>
+          <Card className="overflow-hidden p-0">
+            <div className="relative aspect-[3/4] w-full bg-black">
+              {/* Video de la cámara. Con marco: oculto (alimenta el lienzo).
+                  Sin marco: visible y en espejo (es lo que se graba). */}
+              <video
+                ref={liveRef}
+                autoPlay
+                playsInline
+                muted
+                className={cn(
+                  "absolute inset-0 size-full object-cover",
+                  modoMarco ? "opacity-0" : "-scale-x-100",
+                )}
+              />
+              {/* Lienzo con el marco (solo cuando se puede quemar en el video). */}
+              {modoMarco ? (
+                <canvas
+                  ref={canvasRef}
+                  width={VIDEO_ANCHO}
+                  height={VIDEO_ALTO}
+                  className="absolute inset-0 size-full"
+                />
+              ) : null}
+              {fase === "grabando" ? (
+                <div className="absolute left-3 top-3 flex items-center gap-2 rounded-full bg-black/60 px-3 py-1.5 text-sm font-medium text-white">
+                  <span className="size-2.5 animate-pulse rounded-full bg-red-500" />
+                  {formatoTiempo(elapsed)} / {formatoTiempo(MAX_SEGUNDOS)}
+                </div>
+              ) : null}
+              <button
+                onClick={reiniciar}
+                aria-label="Cancelar"
+                className="absolute right-3 top-3 grid size-9 place-items-center rounded-full bg-black/50 text-white hover:bg-black/70"
+              >
+                <X className="size-5" />
+              </button>
+            </div>
+            <div className="p-4">
+              {fase === "preview" ? (
+                <Button onClick={empezarGrabar} size="lg" className="w-full">
+                  <Circle className="size-5 fill-current" /> Empezar a grabar
+                </Button>
+              ) : (
+                <Button onClick={detenerGrabar} size="lg" variant="outline" className="w-full">
+                  <Square className="size-5 fill-current" /> Detener
+                </Button>
+              )}
+            </div>
+          </Card>
+
+          {/* Selector de marco (solo antes de grabar y si se puede quemar) */}
+          {fase === "preview" && modoMarco ? (
+            <div className="mt-4">
+              <div className="mb-2 text-sm font-medium">Elige un marco</div>
+              <div className="flex flex-wrap gap-2">
+                {marcosBrindis.map((m) => (
+                  <button
+                    key={m.id}
+                    onClick={() => setMarcoId(m.id)}
+                    className={cn(
+                      "rounded-full border px-4 py-2 text-sm font-medium transition-colors",
+                      m.id === marcoId
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-border text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    {m.nombre}
+                  </button>
+                ))}
               </div>
-            ) : null}
-            <button
-              onClick={reiniciar}
-              aria-label="Cancelar"
-              className="absolute right-3 top-3 grid size-9 place-items-center rounded-full bg-black/50 text-white hover:bg-black/70"
-            >
-              <X className="size-5" />
-            </button>
-          </div>
-          <div className="p-4">
-            {fase === "preview" ? (
-              <Button onClick={empezarGrabar} size="lg" className="w-full">
-                <Circle className="size-5 fill-current" /> Empezar a grabar
-              </Button>
-            ) : (
-              <Button onClick={detenerGrabar} size="lg" variant="outline" className="w-full">
-                <Square className="size-5 fill-current" /> Detener
-              </Button>
-            )}
-          </div>
-        </Card>
+            </div>
+          ) : null}
+        </>
       ) : null}
 
       {/* LISTO */}

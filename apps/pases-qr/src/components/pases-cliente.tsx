@@ -18,7 +18,18 @@ import { Escaner } from "./escaner";
 const LISTA = "pases-sr-lista";
 const INGRESOS = "pases-sr-ingresados";
 
-type Resultado = { estado: "ok" | "repetido" | "invalido"; texto: string } | null;
+/** Hora legible (ej. "5:22 p. m.") de una marca de tiempo. Vacío si no es válida. */
+function horaDe(ts: unknown): string {
+  if (typeof ts !== "number" || !Number.isFinite(ts)) return "";
+  return new Date(ts).toLocaleTimeString("es-MX", { hour: "numeric", minute: "2-digit" });
+}
+
+type Aviso = {
+  estado: "ok" | "repetido" | "invalido";
+  titulo: string;
+  detalle?: string;
+  hora?: string;
+} | null;
 type Tab = "invitados" | "pases" | "checkin";
 
 const campo =
@@ -27,7 +38,7 @@ const campo =
 export function PasesCliente() {
   const [tab, setTab] = React.useState<Tab>("invitados");
   const [invitados, setInvitados] = React.useState<Invitado[]>([]);
-  const [ingresados, setIngresados] = React.useState<Record<string, boolean>>({});
+  const [ingresados, setIngresados] = React.useState<Record<string, number>>({});
   const [cargado, setCargado] = React.useState(false);
 
   // Formulario de alta / edición
@@ -38,7 +49,7 @@ export function PasesCliente() {
   const [formError, setFormError] = React.useState("");
 
   const [paseVer, setPaseVer] = React.useState<Invitado | null>(null);
-  const [resultado, setResultado] = React.useState<Resultado>(null);
+  const [resultado, setResultado] = React.useState<Aviso>(null);
 
   const invitadosRef = React.useRef(invitados);
   const ingresadosRef = React.useRef(ingresados);
@@ -152,16 +163,31 @@ export function PasesCliente() {
   };
 
   // --- Check-in ---
-  const marcar = (id: string, val: boolean) => setIngresados((s) => ({ ...s, [id]: val }));
+  const marcar = (id: string, val: boolean) =>
+    setIngresados((s) => {
+      const n = { ...s };
+      if (val) n[id] = Date.now();
+      else delete n[id];
+      return n;
+    });
 
   const registrar = React.useCallback((inv: Invitado) => {
-    if (ingresadosRef.current[inv.id]) {
-      setResultado({ estado: "repetido", texto: `${inv.nombre} ya había ingresado.` });
+    const yaTs = ingresadosRef.current[inv.id];
+    if (yaTs) {
+      setResultado({
+        estado: "repetido",
+        titulo: inv.nombre,
+        detalle: `Ya había ingresado · Mesa ${inv.mesa} · ${inv.personas} pers`,
+        hora: horaDe(yaTs),
+      });
     } else {
-      setIngresados((s) => ({ ...s, [inv.id]: true }));
+      const ts = Date.now();
+      setIngresados((s) => ({ ...s, [inv.id]: ts }));
       setResultado({
         estado: "ok",
-        texto: `¡Bienvenidos! ${inv.nombre} · Mesa ${inv.mesa} · ${inv.personas} pers.`,
+        titulo: inv.nombre,
+        detalle: `¡Puede ingresar! · Mesa ${inv.mesa} · ${inv.personas} pers`,
+        hora: horaDe(ts),
       });
     }
   }, []);
@@ -174,13 +200,25 @@ export function PasesCliente() {
       if (id) ultimo.current = { id, t: now };
       const inv = id ? invitadosRef.current.find((i) => i.id === id) : undefined;
       if (!inv) {
-        setResultado({ estado: "invalido", texto: "Pase no válido o no reconocido." });
+        setResultado({
+          estado: "invalido",
+          titulo: "Pase no válido",
+          detalle: "No se reconoció este código.",
+        });
         return;
       }
       registrar(inv);
     },
     [registrar],
   );
+
+  // El aviso grande se oculta solo después de unos segundos; la hora queda
+  // registrada en la lista de abajo como comprobante permanente.
+  React.useEffect(() => {
+    if (!resultado) return;
+    const t = window.setTimeout(() => setResultado(null), 6000);
+    return () => window.clearTimeout(t);
+  }, [resultado]);
 
   return (
     <div>
@@ -394,21 +432,54 @@ export function PasesCliente() {
 
           {resultado ? (
             <div
+              key={`${resultado.titulo}-${resultado.hora ?? ""}`}
               className={cn(
-                "mt-4 flex items-center gap-2 rounded-[var(--radius)] border p-4 text-sm font-medium",
+                "mt-4 flex items-center gap-4 rounded-[var(--radius)] border-2 p-5 shadow-lg",
                 resultado.estado === "ok"
-                  ? "border-green-500/40 bg-green-500/10 text-green-600"
+                  ? "border-green-500/60 bg-green-500/10"
                   : resultado.estado === "repetido"
-                    ? "border-amber-500/40 bg-amber-500/10 text-amber-600"
-                    : "border-red-500/40 bg-red-500/10 text-red-600",
+                    ? "border-amber-500/60 bg-amber-500/10"
+                    : "border-red-500/60 bg-red-500/10",
               )}
             >
-              {resultado.estado === "invalido" ? (
-                <X className="size-4 shrink-0" />
-              ) : (
-                <Check className="size-4 shrink-0" />
-              )}
-              {resultado.texto}
+              <div
+                className={cn(
+                  "grid size-14 shrink-0 place-items-center rounded-full text-white",
+                  resultado.estado === "ok"
+                    ? "bg-green-500"
+                    : resultado.estado === "repetido"
+                      ? "bg-amber-500"
+                      : "bg-red-500",
+                )}
+              >
+                {resultado.estado === "invalido" ? (
+                  <X className="size-8" />
+                ) : (
+                  <Check className="size-8" />
+                )}
+              </div>
+              <div className="min-w-0">
+                <p
+                  className={cn(
+                    "text-xl font-bold leading-tight",
+                    resultado.estado === "ok"
+                      ? "text-green-700 dark:text-green-400"
+                      : resultado.estado === "repetido"
+                        ? "text-amber-700 dark:text-amber-400"
+                        : "text-red-700 dark:text-red-400",
+                  )}
+                >
+                  {resultado.titulo}
+                </p>
+                {resultado.detalle ? (
+                  <p className="mt-0.5 text-sm text-muted-foreground">{resultado.detalle}</p>
+                ) : null}
+                {resultado.hora ? (
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    Escaneado a las {resultado.hora}
+                  </p>
+                ) : null}
+              </div>
             </div>
           ) : null}
 
@@ -443,6 +514,11 @@ export function PasesCliente() {
                     <div className="text-sm text-muted-foreground">
                       Mesa {inv.mesa} · {inv.personas} pers · {inv.id}
                     </div>
+                    {dentro ? (
+                      <div className="mt-0.5 text-xs font-medium text-green-600 dark:text-green-400">
+                        Ingresó{horaDe(ingresados[inv.id]) ? ` · ${horaDe(ingresados[inv.id])}` : ""}
+                      </div>
+                    ) : null}
                   </div>
                   <Button
                     variant={dentro ? "primary" : "outline"}

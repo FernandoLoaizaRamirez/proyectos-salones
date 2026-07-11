@@ -255,12 +255,28 @@ export function capturarDeVideo(video: HTMLVideoElement, espejo = true): string 
   return canvas.toDataURL("image/jpeg", 0.92);
 }
 
+/**
+ * Nombre de archivo ÚNICO para cada descarga: incluye el marco y la hora, así
+ * el invitado puede guardar la misma foto con varios marcos sin que el teléfono
+ * pida "reemplazar" la anterior.
+ */
+export function nombreDescarga(marcoId: string): string {
+  const d = new Date();
+  const p = (n: number) => String(n).padStart(2, "0");
+  const sello = `${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
+  return `photobooth-${evento.hashtag}-${marcoId}-${sello}`;
+}
+
 /** Descarga un dataURL como archivo PNG. */
 export function descargar(dataUrl: string, nombre = "photobooth") {
   const a = document.createElement("a");
   a.href = dataUrl;
   a.download = `${nombre}.png`;
+  // Agregarlo al documento hace que la descarga funcione también en navegadores
+  // como Samsung Internet o Firefox, no solo en Chrome.
+  document.body.appendChild(a);
   a.click();
+  a.remove();
 }
 
 /**

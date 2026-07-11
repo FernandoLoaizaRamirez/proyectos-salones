@@ -22,14 +22,20 @@ export const evento = {
 /** Duración máxima sugerida del brindis (segundos). */
 export const MAX_SEGUNDOS = 60;
 
-/** Elige un formato de grabación soportado por el navegador. */
+/**
+ * Elige un formato de grabación soportado por el navegador.
+ * Se prioriza MP4 porque es el que WhatsApp reproduce como video (no como
+ * "archivo/documento"); si el navegador no lo soporta, cae a WebM.
+ */
 export function elegirMime(): string {
   if (typeof MediaRecorder === "undefined") return "";
   const candidatos = [
+    "video/mp4;codecs=avc1.42E01E,mp4a.40.2",
+    "video/mp4;codecs=h264,aac",
+    "video/mp4",
     "video/webm;codecs=vp9,opus",
     "video/webm;codecs=vp8,opus",
     "video/webm",
-    "video/mp4",
   ];
   for (const c of candidatos) {
     try {
@@ -59,8 +65,94 @@ export function descargarVideo(blob: Blob, mime: string) {
   const a = document.createElement("a");
   a.href = url;
   a.download = `brindis-${evento.nombre.replace(/\s+/g, "-").toLowerCase()}.${extensionDe(mime)}`;
+  // Agregarlo al documento hace que la descarga funcione también en navegadores
+  // como Samsung Internet o Firefox, no solo en Chrome.
+  document.body.appendChild(a);
   a.click();
+  a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+/* ------------------------------------------------------------------ */
+/* Marco temático del brindis (se "quema" dentro del video)            */
+/* ------------------------------------------------------------------ */
+
+/** Tamaño del video de salida (vertical 3:4). */
+export const VIDEO_ANCHO = 720;
+export const VIDEO_ALTO = 960;
+
+export type MarcoBrindis = {
+  id: string;
+  nombre: string;
+  /** Color de acento del borde y del nombre del evento. */
+  acento: string;
+  /** Si el borde usa un degradado dorado en vez del color plano. */
+  dorado?: boolean;
+};
+
+/** Marcos disponibles para el video. Edítalos libremente (white-label). */
+export const marcosBrindis: MarcoBrindis[] = [
+  { id: "dorado", nombre: "Dorado", acento: "#f4e3a1", dorado: true },
+  { id: "rosa", nombre: "Rosa", acento: "#ec4899" },
+  { id: "blanco", nombre: "Clásico", acento: "#ffffff" },
+];
+
+/**
+ * Dibuja el marco del brindis (borde, copas y textos del evento) sobre el
+ * cuadro de video ya pintado en el lienzo. No espeja: el texto se lee bien.
+ */
+export function dibujarMarcoBrindis(
+  ctx: CanvasRenderingContext2D,
+  W: number,
+  H: number,
+  marco: MarcoBrindis,
+) {
+  ctx.save();
+  ctx.textAlign = "center";
+
+  // Borde
+  const bw = Math.round(W * 0.028);
+  if (marco.dorado) {
+    const g = ctx.createLinearGradient(0, 0, W, H);
+    g.addColorStop(0, "#b8862b");
+    g.addColorStop(0.5, "#f4e3a1");
+    g.addColorStop(1, "#b8862b");
+    ctx.strokeStyle = g;
+  } else {
+    ctx.strokeStyle = marco.acento;
+  }
+  ctx.lineWidth = bw;
+  ctx.strokeRect(bw / 2, bw / 2, W - bw, H - bw);
+
+  // Copas de brindis (emoji) arriba
+  ctx.font = `${Math.round(W * 0.1)}px system-ui, "Segoe UI Emoji", "Noto Color Emoji", sans-serif`;
+  ctx.fillStyle = "#ffffff";
+  ctx.fillText("🥂", W / 2, H * 0.135);
+
+  // Degradado inferior para que el texto se lea sobre cualquier fondo
+  const banda = H * 0.28;
+  const grad = ctx.createLinearGradient(0, H - banda, 0, H);
+  grad.addColorStop(0, "rgba(0,0,0,0)");
+  grad.addColorStop(1, "rgba(0,0,0,0.78)");
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, H - banda, W, banda);
+
+  // "Un brindis para"
+  ctx.fillStyle = "rgba(255,255,255,0.85)";
+  ctx.font = `500 ${Math.round(W * 0.036)}px system-ui, sans-serif`;
+  ctx.fillText("Un brindis para", W / 2, H - H * 0.11);
+
+  // Nombre del evento (acento)
+  ctx.fillStyle = marco.dorado ? marco.acento : marco.id === "blanco" ? "#ffffff" : marco.acento;
+  ctx.font = `700 ${Math.round(W * 0.058)}px system-ui, sans-serif`;
+  ctx.fillText(evento.nombre, W / 2, H - H * 0.06);
+
+  // Fecha
+  ctx.fillStyle = "rgba(255,255,255,0.75)";
+  ctx.font = `400 ${Math.round(W * 0.03)}px system-ui, sans-serif`;
+  ctx.fillText(evento.fecha, W / 2, H - H * 0.025);
+
+  ctx.restore();
 }
 
 /**

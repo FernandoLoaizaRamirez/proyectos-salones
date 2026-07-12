@@ -84,22 +84,180 @@ export const VIDEO_ALTO = 960;
 export type MarcoBrindis = {
   id: string;
   nombre: string;
-  /** Color de acento del borde y del nombre del evento. */
-  acento: string;
-  /** Si el borde usa un degradado dorado en vez del color plano. */
-  dorado?: boolean;
 };
 
-/** Marcos disponibles para el video. Edítalos libremente (white-label). */
+/** Marcos disponibles para el video (los que eligió el cliente). Editables. */
 export const marcosBrindis: MarcoBrindis[] = [
-  { id: "dorado", nombre: "Dorado", acento: "#f4e3a1", dorado: true },
-  { id: "rosa", nombre: "Rosa", acento: "#ec4899" },
-  { id: "blanco", nombre: "Clásico", acento: "#ffffff" },
+  { id: "dorado", nombre: "Dorado clásico" },
+  { id: "deco", nombre: "Art déco" },
 ];
 
+type Ctx2D = CanvasRenderingContext2D & { letterSpacing?: string };
+
+/** Degradado dorado reutilizable (claro en el centro, oscuro en los extremos). */
+function degradadoOro(
+  ctx: CanvasRenderingContext2D,
+  x0: number,
+  y0: number,
+  x1: number,
+  y1: number,
+): CanvasGradient {
+  const g = ctx.createLinearGradient(x0, y0, x1, y1);
+  g.addColorStop(0, "#a9781f");
+  g.addColorStop(0.5, "#f6e6a6");
+  g.addColorStop(1, "#c99a3c");
+  return g;
+}
+
+/** Ajusta el tamaño de fuente para que el texto quepa en maxW. Devuelve px. */
+function fuenteQueQuepa(
+  ctx: CanvasRenderingContext2D,
+  texto: string,
+  maxW: number,
+  pxIdeal: number,
+  familia: string,
+): number {
+  let px = pxIdeal;
+  ctx.font = `${px}px ${familia}`;
+  while (px > 10 && ctx.measureText(texto).width > maxW) {
+    px -= 1;
+    ctx.font = `${px}px ${familia}`;
+  }
+  return px;
+}
+
+/** Pequeño rombo (ornamento de esquina). */
+function rombo(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number, color: string) {
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - r);
+  ctx.lineTo(cx + r, cy);
+  ctx.lineTo(cx, cy + r);
+  ctx.lineTo(cx - r, cy);
+  ctx.closePath();
+  ctx.fill();
+}
+
+/** Esquina geométrica estilo art déco. sx/sy = dirección hacia dentro (+1/-1). */
+function esquinaDeco(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  sx: number,
+  sy: number,
+  L: number,
+) {
+  const s = L * 0.11;
+  const o = L * 0.03;
+  ctx.strokeStyle = degradadoOro(ctx, cx, cy, cx + sx * s, cy + sy * s);
+  ctx.lineCap = "butt";
+  ctx.lineWidth = Math.max(2, Math.round(L * 0.009));
+  ctx.beginPath();
+  ctx.moveTo(cx, cy + sy * s);
+  ctx.lineTo(cx, cy);
+  ctx.lineTo(cx + sx * s, cy);
+  ctx.stroke();
+  ctx.lineWidth = Math.max(1, Math.round(L * 0.004));
+  ctx.beginPath();
+  ctx.moveTo(cx + sx * o, cy + sy * (s * 0.62));
+  ctx.lineTo(cx + sx * o, cy + sy * o);
+  ctx.lineTo(cx + sx * (s * 0.62), cy + sy * o);
+  ctx.stroke();
+}
+
+/** Año (4 dígitos) que aparezca en la fecha, o cadena vacía. */
+function anioDe(fecha: string): string {
+  return fecha.match(/\d{4}/)?.[0] ?? "";
+}
+
+/** Marco 1 — Dorado clásico: doble filete, rombos y tipografía serif. */
+function marcoDoradoClasico(ctx: Ctx2D, W: number, H: number) {
+  const m = Math.round(W * 0.05);
+  const m2 = m + Math.round(W * 0.022);
+  ctx.strokeStyle = degradadoOro(ctx, 0, 0, W, H);
+  ctx.lineWidth = Math.max(3, Math.round(W * 0.012));
+  ctx.strokeRect(m, m, W - 2 * m, H - 2 * m);
+  ctx.lineWidth = Math.max(1, Math.round(W * 0.0035));
+  ctx.strokeRect(m2, m2, W - 2 * m2, H - 2 * m2);
+  const r = W * 0.016;
+  rombo(ctx, m2, m2, r, "#f6e6a6");
+  rombo(ctx, W - m2, m2, r, "#f6e6a6");
+  rombo(ctx, m2, H - m2, r, "#f6e6a6");
+  rombo(ctx, W - m2, H - m2, r, "#f6e6a6");
+
+  const bh = H * 0.22;
+  const by = H - m2 - bh;
+  const grad = ctx.createLinearGradient(0, by, 0, by + bh);
+  grad.addColorStop(0, "rgba(8,5,2,0)");
+  grad.addColorStop(0.4, "rgba(8,5,2,0.55)");
+  grad.addColorStop(1, "rgba(8,5,2,0.8)");
+  ctx.fillStyle = grad;
+  ctx.fillRect(m2 + 1, by, W - 2 * (m2 + 1), bh);
+
+  const cx = W / 2;
+  const maxW = W - 2 * m2 - W * 0.06;
+  ctx.textBaseline = "middle";
+  ctx.fillStyle = "#efd79c";
+  ctx.font = `italic ${Math.round(W * 0.042)}px Georgia, "Times New Roman", serif`;
+  ctx.fillText("Un brindis para", cx, by + bh * 0.3);
+  ctx.fillStyle = "#faefce";
+  const pxNom = fuenteQueQuepa(ctx, evento.nombre, maxW, Math.round(W * 0.062), 'Georgia, "Times New Roman", serif');
+  ctx.font = `${pxNom}px Georgia, "Times New Roman", serif`;
+  ctx.fillText(evento.nombre, cx, by + bh * 0.58);
+  ctx.fillStyle = "#cfa869";
+  const pxFec = fuenteQueQuepa(ctx, evento.fecha, maxW, Math.round(W * 0.032), 'Georgia, "Times New Roman", serif');
+  ctx.font = `${pxFec}px Georgia, "Times New Roman", serif`;
+  ctx.fillText(evento.fecha, cx, by + bh * 0.83);
+}
+
+/** Marco 3 — Art déco: marco fino, esquinas geométricas y tipografía espaciada. */
+function marcoDeco(ctx: Ctx2D, W: number, H: number) {
+  const m = Math.round(W * 0.05);
+  ctx.strokeStyle = degradadoOro(ctx, 0, 0, W, H);
+  ctx.lineWidth = Math.max(2, Math.round(W * 0.006));
+  ctx.strokeRect(m, m, W - 2 * m, H - 2 * m);
+  esquinaDeco(ctx, m, m, 1, 1, W);
+  esquinaDeco(ctx, W - m, m, -1, 1, W);
+  esquinaDeco(ctx, m, H - m, 1, -1, W);
+  esquinaDeco(ctx, W - m, H - m, -1, -1, W);
+
+  const bh = H * 0.2;
+  const by = H - m - bh;
+  const grad = ctx.createLinearGradient(0, by, 0, by + bh);
+  grad.addColorStop(0, "rgba(8,5,2,0)");
+  grad.addColorStop(1, "rgba(8,5,2,0.72)");
+  ctx.fillStyle = grad;
+  ctx.fillRect(m + 1, by, W - 2 * (m + 1), bh);
+
+  const cx = W / 2;
+  const maxW = W - 2 * m - W * 0.1;
+  ctx.textBaseline = "middle";
+  ctx.letterSpacing = `${Math.round(W * 0.006)}px`;
+  ctx.fillStyle = "#faefce";
+  const pxNom = fuenteQueQuepa(ctx, evento.nombre, maxW, Math.round(W * 0.05), 'Georgia, "Times New Roman", serif');
+  ctx.font = `${pxNom}px Georgia, "Times New Roman", serif`;
+  ctx.fillText(evento.nombre, cx, by + bh * 0.42);
+  ctx.letterSpacing = "0px";
+
+  const anchoLinea = Math.min(maxW * 0.5, W * 0.22);
+  ctx.strokeStyle = degradadoOro(ctx, cx - anchoLinea, 0, cx + anchoLinea, 0);
+  ctx.lineWidth = Math.max(1, Math.round(W * 0.0025));
+  ctx.beginPath();
+  ctx.moveTo(cx - anchoLinea, by + bh * 0.62);
+  ctx.lineTo(cx + anchoLinea, by + bh * 0.62);
+  ctx.stroke();
+
+  const anio = anioDe(evento.fecha);
+  ctx.letterSpacing = `${Math.round(W * 0.008)}px`;
+  ctx.fillStyle = "#e6c88f";
+  ctx.font = `${Math.round(W * 0.028)}px system-ui, sans-serif`;
+  ctx.fillText(`UN BRINDIS${anio ? ` · ${anio}` : ""}`, cx, by + bh * 0.8);
+  ctx.letterSpacing = "0px";
+}
+
 /**
- * Dibuja el marco del brindis (borde, copas y textos del evento) sobre el
- * cuadro de video ya pintado en el lienzo. No espeja: el texto se lee bien.
+ * Dibuja el marco elegido sobre el cuadro de video ya pintado en el lienzo.
+ * No espeja: el texto se lee bien.
  */
 export function dibujarMarcoBrindis(
   ctx: CanvasRenderingContext2D,
@@ -107,52 +265,14 @@ export function dibujarMarcoBrindis(
   H: number,
   marco: MarcoBrindis,
 ) {
-  ctx.save();
-  ctx.textAlign = "center";
-
-  // Borde
-  const bw = Math.round(W * 0.028);
-  if (marco.dorado) {
-    const g = ctx.createLinearGradient(0, 0, W, H);
-    g.addColorStop(0, "#b8862b");
-    g.addColorStop(0.5, "#f4e3a1");
-    g.addColorStop(1, "#b8862b");
-    ctx.strokeStyle = g;
-  } else {
-    ctx.strokeStyle = marco.acento;
-  }
-  ctx.lineWidth = bw;
-  ctx.strokeRect(bw / 2, bw / 2, W - bw, H - bw);
-
-  // Copas de brindis (emoji) arriba
-  ctx.font = `${Math.round(W * 0.1)}px system-ui, "Segoe UI Emoji", "Noto Color Emoji", sans-serif`;
-  ctx.fillStyle = "#ffffff";
-  ctx.fillText("🥂", W / 2, H * 0.135);
-
-  // Degradado inferior para que el texto se lea sobre cualquier fondo
-  const banda = H * 0.28;
-  const grad = ctx.createLinearGradient(0, H - banda, 0, H);
-  grad.addColorStop(0, "rgba(0,0,0,0)");
-  grad.addColorStop(1, "rgba(0,0,0,0.78)");
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, H - banda, W, banda);
-
-  // "Un brindis para"
-  ctx.fillStyle = "rgba(255,255,255,0.85)";
-  ctx.font = `500 ${Math.round(W * 0.036)}px system-ui, sans-serif`;
-  ctx.fillText("Un brindis para", W / 2, H - H * 0.11);
-
-  // Nombre del evento (acento)
-  ctx.fillStyle = marco.dorado ? marco.acento : marco.id === "blanco" ? "#ffffff" : marco.acento;
-  ctx.font = `700 ${Math.round(W * 0.058)}px system-ui, sans-serif`;
-  ctx.fillText(evento.nombre, W / 2, H - H * 0.06);
-
-  // Fecha
-  ctx.fillStyle = "rgba(255,255,255,0.75)";
-  ctx.font = `400 ${Math.round(W * 0.03)}px system-ui, sans-serif`;
-  ctx.fillText(evento.fecha, W / 2, H - H * 0.025);
-
-  ctx.restore();
+  const c = ctx as Ctx2D;
+  c.save();
+  c.textAlign = "center";
+  c.lineJoin = "miter";
+  if (marco.id === "deco") marcoDeco(c, W, H);
+  else marcoDoradoClasico(c, W, H);
+  c.letterSpacing = "0px";
+  c.restore();
 }
 
 /**

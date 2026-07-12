@@ -20,7 +20,7 @@ export const evento = {
 /** Lado del lienzo cuadrado de salida (px). */
 export const LADO = 1080;
 
-export type TipoMarco = "clasico" | "corazones" | "dorado" | "polaroid";
+export type TipoMarco = "clasico" | "corazones" | "dorado" | "deco" | "polaroid";
 
 export type Marco = {
   id: string;
@@ -54,9 +54,17 @@ export const marcos: Marco[] = [
   },
   {
     id: "dorado",
-    nombre: "Dorado",
+    nombre: "Dorado clásico",
     tipo: "dorado",
     acento: "#e7c76b",
+    etiqueta: evento.nombre,
+    sub: evento.fecha,
+  },
+  {
+    id: "deco",
+    nombre: "Art déco",
+    tipo: "deco",
+    acento: "#f4e3a1",
     etiqueta: evento.nombre,
     sub: evento.fecha,
   },
@@ -113,6 +121,79 @@ function corazon(ctx: CanvasRenderingContext2D, cx: number, cy: number, s: numbe
   ctx.restore();
 }
 
+type Ctx2D = CanvasRenderingContext2D & { letterSpacing?: string };
+
+/** Degradado dorado reutilizable (claro en el centro, oscuro en los extremos). */
+function degradadoOro(
+  ctx: CanvasRenderingContext2D,
+  x0: number,
+  y0: number,
+  x1: number,
+  y1: number,
+): CanvasGradient {
+  const g = ctx.createLinearGradient(x0, y0, x1, y1);
+  g.addColorStop(0, "#a9781f");
+  g.addColorStop(0.5, "#f6e6a6");
+  g.addColorStop(1, "#c99a3c");
+  return g;
+}
+
+/** Ajusta el tamaño de fuente para que el texto quepa en maxW. Devuelve px. */
+function fuenteQueQuepa(
+  ctx: CanvasRenderingContext2D,
+  texto: string,
+  maxW: number,
+  pxIdeal: number,
+  familia: string,
+): number {
+  let px = pxIdeal;
+  ctx.font = `${px}px ${familia}`;
+  while (px > 12 && ctx.measureText(texto).width > maxW) {
+    px -= 1;
+    ctx.font = `${px}px ${familia}`;
+  }
+  return px;
+}
+
+/** Pequeño rombo (ornamento de esquina). */
+function rombo(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number, color: string) {
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - r);
+  ctx.lineTo(cx + r, cy);
+  ctx.lineTo(cx, cy + r);
+  ctx.lineTo(cx - r, cy);
+  ctx.closePath();
+  ctx.fill();
+}
+
+/** Esquina geométrica estilo art déco. sx/sy = dirección hacia dentro (+1/-1). */
+function esquinaDeco(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  sx: number,
+  sy: number,
+  L: number,
+) {
+  const s = L * 0.1;
+  const o = L * 0.028;
+  ctx.strokeStyle = degradadoOro(ctx, cx, cy, cx + sx * s, cy + sy * s);
+  ctx.lineCap = "butt";
+  ctx.lineWidth = Math.max(2, Math.round(L * 0.008));
+  ctx.beginPath();
+  ctx.moveTo(cx, cy + sy * s);
+  ctx.lineTo(cx, cy);
+  ctx.lineTo(cx + sx * s, cy);
+  ctx.stroke();
+  ctx.lineWidth = Math.max(1, Math.round(L * 0.0038));
+  ctx.beginPath();
+  ctx.moveTo(cx + sx * o, cy + sy * (s * 0.62));
+  ctx.lineTo(cx + sx * o, cy + sy * o);
+  ctx.lineTo(cx + sx * (s * 0.62), cy + sy * o);
+  ctx.stroke();
+}
+
 /** Dibuja el marco (decoración + textos) sobre la foto ya pintada. */
 function dibujarMarco(ctx: CanvasRenderingContext2D, marco: Marco) {
   const L = LADO;
@@ -164,26 +245,86 @@ function dibujarMarco(ctx: CanvasRenderingContext2D, marco: Marco) {
       ctx.fillText(marco.sub, L / 2, 126);
     }
   } else if (marco.tipo === "dorado") {
-    const g = ctx.createLinearGradient(0, 0, L, L);
-    g.addColorStop(0, "#b8862b");
-    g.addColorStop(0.5, "#f4e3a1");
-    g.addColorStop(1, "#b8862b");
-    ctx.strokeStyle = g;
-    ctx.lineWidth = 38;
-    ctx.strokeRect(19, 19, L - 38, L - 38);
-    // Barra inferior.
-    ctx.fillStyle = "rgba(0,0,0,0.6)";
-    ctx.fillRect(38, L - 200, L - 76, 162);
+    // Dorado clásico: doble filete dorado, rombos y tipografía serif.
+    const m = Math.round(L * 0.045);
+    const m2 = m + Math.round(L * 0.02);
+    ctx.strokeStyle = degradadoOro(ctx, 0, 0, L, L);
+    ctx.lineWidth = Math.max(3, Math.round(L * 0.012));
+    ctx.strokeRect(m, m, L - 2 * m, L - 2 * m);
+    ctx.lineWidth = Math.max(1, Math.round(L * 0.0035));
+    ctx.strokeRect(m2, m2, L - 2 * m2, L - 2 * m2);
+    const r = L * 0.015;
+    rombo(ctx, m2, m2, r, "#f6e6a6");
+    rombo(ctx, L - m2, m2, r, "#f6e6a6");
+    rombo(ctx, m2, L - m2, r, "#f6e6a6");
+    rombo(ctx, L - m2, L - m2, r, "#f6e6a6");
+    const bh = L * 0.2;
+    const by = L - m2 - bh;
+    const grad = ctx.createLinearGradient(0, by, 0, by + bh);
+    grad.addColorStop(0, "rgba(8,5,2,0)");
+    grad.addColorStop(0.4, "rgba(8,5,2,0.55)");
+    grad.addColorStop(1, "rgba(8,5,2,0.8)");
+    ctx.fillStyle = grad;
+    ctx.fillRect(m2 + 1, by, L - 2 * (m2 + 1), bh);
+    const maxW = L - 2 * m2 - L * 0.06;
+    ctx.textBaseline = "middle";
     if (marco.etiqueta) {
-      ctx.fillStyle = "#f4e3a1";
-      ctx.font = "600 58px ui-sans-serif, system-ui, sans-serif";
-      ctx.fillText(marco.etiqueta, L / 2, L - 116);
+      ctx.fillStyle = "#faefce";
+      const px = fuenteQueQuepa(ctx, marco.etiqueta, maxW, Math.round(L * 0.06), 'Georgia, "Times New Roman", serif');
+      ctx.font = `${px}px Georgia, "Times New Roman", serif`;
+      ctx.fillText(marco.etiqueta, L / 2, by + bh * 0.42);
     }
     if (marco.sub) {
-      ctx.fillStyle = "rgba(255,255,255,0.9)";
-      ctx.font = "400 34px ui-sans-serif, system-ui, sans-serif";
-      ctx.fillText(marco.sub, L / 2, L - 66);
+      ctx.fillStyle = "#cfa869";
+      const px = fuenteQueQuepa(ctx, marco.sub, maxW, Math.round(L * 0.034), 'Georgia, "Times New Roman", serif');
+      ctx.font = `${px}px Georgia, "Times New Roman", serif`;
+      ctx.fillText(marco.sub, L / 2, by + bh * 0.74);
     }
+    ctx.textBaseline = "alphabetic";
+  } else if (marco.tipo === "deco") {
+    // Art déco: marco fino, esquinas geométricas y tipografía espaciada.
+    const c = ctx as Ctx2D;
+    const m = Math.round(L * 0.045);
+    ctx.strokeStyle = degradadoOro(ctx, 0, 0, L, L);
+    ctx.lineWidth = Math.max(2, Math.round(L * 0.006));
+    ctx.strokeRect(m, m, L - 2 * m, L - 2 * m);
+    esquinaDeco(ctx, m, m, 1, 1, L);
+    esquinaDeco(ctx, L - m, m, -1, 1, L);
+    esquinaDeco(ctx, m, L - m, 1, -1, L);
+    esquinaDeco(ctx, L - m, L - m, -1, -1, L);
+    const bh = L * 0.19;
+    const by = L - m - bh;
+    const grad = ctx.createLinearGradient(0, by, 0, by + bh);
+    grad.addColorStop(0, "rgba(8,5,2,0)");
+    grad.addColorStop(1, "rgba(8,5,2,0.72)");
+    ctx.fillStyle = grad;
+    ctx.fillRect(m + 1, by, L - 2 * (m + 1), bh);
+    const maxW = L - 2 * m - L * 0.1;
+    ctx.textBaseline = "middle";
+    if (marco.etiqueta) {
+      c.letterSpacing = `${Math.round(L * 0.006)}px`;
+      ctx.fillStyle = "#faefce";
+      const px = fuenteQueQuepa(ctx, marco.etiqueta, maxW, Math.round(L * 0.05), 'Georgia, "Times New Roman", serif');
+      ctx.font = `${px}px Georgia, "Times New Roman", serif`;
+      ctx.fillText(marco.etiqueta, L / 2, by + bh * 0.4);
+      c.letterSpacing = "0px";
+    }
+    const anchoLinea = Math.min(maxW * 0.5, L * 0.2);
+    ctx.strokeStyle = degradadoOro(ctx, L / 2 - anchoLinea, 0, L / 2 + anchoLinea, 0);
+    ctx.lineWidth = Math.max(1, Math.round(L * 0.0025));
+    ctx.beginPath();
+    ctx.moveTo(L / 2 - anchoLinea, by + bh * 0.6);
+    ctx.lineTo(L / 2 + anchoLinea, by + bh * 0.6);
+    ctx.stroke();
+    if (marco.sub) {
+      c.letterSpacing = `${Math.round(L * 0.006)}px`;
+      ctx.fillStyle = "#e6c88f";
+      const px = fuenteQueQuepa(ctx, marco.sub, maxW, Math.round(L * 0.03), "system-ui, sans-serif");
+      ctx.font = `${px}px system-ui, sans-serif`;
+      ctx.fillText(marco.sub, L / 2, by + bh * 0.82);
+      c.letterSpacing = "0px";
+    }
+    ctx.textBaseline = "alphabetic";
   } else if (marco.tipo === "polaroid") {
     const area = areaFoto(marco);
     // Marco blanco tipo instantánea (la foto ya se dibujó dentro del área).

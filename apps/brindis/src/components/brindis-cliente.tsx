@@ -240,9 +240,18 @@ export function BrindisCliente() {
       }
     }
 
+    // Fijamos la calidad al grabar para que el video quede liviano y parejo entre
+    // teléfonos: sin esto, un iPhone graba ~4× más pesado que un Android (misma
+    // duración). ~2.5 Mbps deja un clip de 60 s en ~19 MB, sube rápido y gasta
+    // menos datos al invitado.
+    const opciones: MediaRecorderOptions = {
+      videoBitsPerSecond: 2_500_000,
+      audioBitsPerSecond: 128_000,
+    };
+    if (mime) opciones.mimeType = mime;
     let rec: MediaRecorder;
     try {
-      rec = new MediaRecorder(grabStream, mime ? { mimeType: mime } : undefined);
+      rec = new MediaRecorder(grabStream, opciones);
     } catch {
       // Si ya estábamos capturando el lienzo, detén esa captura para no dejarla viva.
       recStreamRef.current?.getVideoTracks().forEach((t) => t.stop());

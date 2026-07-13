@@ -15,6 +15,7 @@ import {
   Check,
   QrCode,
   Film,
+  UploadCloud,
 } from "lucide-react";
 import { Button, Card, cn } from "@salones/ui";
 import { QR } from "@/components/qr";
@@ -35,6 +36,7 @@ import {
   type VideoGuardado,
   type MarcoBrindis,
 } from "@/lib/brindis";
+import { subirBrindis } from "@/lib/supabase";
 
 type Fase = "inicio" | "preview" | "grabando" | "listo";
 
@@ -81,6 +83,8 @@ export function BrindisCliente() {
   const [videoUrl, setVideoUrl] = React.useState<string | null>(null);
   const [galeria, setGaleria] = React.useState<ItemGaleria[]>([]);
   const [compartiendo, setCompartiendo] = React.useState(false);
+  const [subiendo, setSubiendo] = React.useState(false);
+  const [subido, setSubido] = React.useState(false);
   const [marcoId, setMarcoId] = React.useState<string>(marcosBrindis[0]!.id);
   // ¿Este navegador puede grabar el marco dentro del video? (Chrome sí, iPhone no)
   const [modoMarco, setModoMarco] = React.useState(false);
@@ -334,11 +338,27 @@ export function BrindisCliente() {
     setElapsed(0);
     setError("");
     setAviso("");
+    setSubido(false);
     setFase("inicio");
   };
 
   const alDescargar = () => {
     if (blobRef.current) descargarVideo(blobRef.current, mimeRef.current);
+  };
+  const alEnviarNube = async () => {
+    if (!blobRef.current || subido) return;
+    setSubiendo(true);
+    setAviso("");
+    const r = await subirBrindis(blobRef.current, mimeRef.current);
+    setSubiendo(false);
+    if (r.ok) {
+      setSubido(true);
+    } else {
+      setAviso(
+        `No se pudo enviar (${r.error ?? "revisa tu internet"}). Puedes descargarlo y mandarlo por WhatsApp.`,
+      );
+      setTimeout(() => setAviso(""), 6000);
+    }
   };
   const alCompartir = async () => {
     if (!blobRef.current) return;
@@ -538,14 +558,36 @@ export function BrindisCliente() {
           ) : null}
 
           <div className="mt-4 flex flex-col gap-2">
+            {subido ? (
+              <div className="flex items-center justify-center gap-2 rounded-[var(--radius)] border border-green-500/40 bg-green-500/10 px-4 py-3 text-sm font-medium text-green-700 dark:text-green-400">
+                <Check className="size-5" /> ¡Enviado! Ya está con los demás brindis 🎉
+              </div>
+            ) : (
+              <Button onClick={alEnviarNube} size="lg" disabled={subiendo}>
+                {subiendo ? (
+                  <>
+                    <Loader2 className="size-5 animate-spin" /> Enviando…
+                  </>
+                ) : (
+                  <>
+                    <UploadCloud className="size-5" /> Enviar a los novios
+                  </>
+                )}
+              </Button>
+            )}
             <div className="flex gap-2">
-              <Button onClick={alCompartir} className="flex-1" disabled={compartiendo}>
+              <Button
+                onClick={alCompartir}
+                variant="outline"
+                className="flex-1"
+                disabled={compartiendo}
+              >
                 {compartiendo ? (
                   <Loader2 className="size-4 animate-spin" />
                 ) : (
                   <Share2 className="size-4" />
                 )}
-                Enviar al anfitrión
+                Compartir
               </Button>
               <Button onClick={alDescargar} variant="outline" className="flex-1">
                 <Download className="size-4" /> Descargar
@@ -556,8 +598,8 @@ export function BrindisCliente() {
             </Button>
           </div>
           <p className="mt-4 text-center text-xs text-muted-foreground">
-            Tu video se queda en este teléfono. Para reunir los brindis de todos los invitados en un
-            solo lugar se usa el servicio gestionado.
+            Al enviarlo, tu brindis se guarda junto con los de todos para que {evento.nombre} los vea
+            en un solo lugar.
           </p>
         </div>
       ) : null}

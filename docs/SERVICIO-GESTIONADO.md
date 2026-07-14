@@ -30,8 +30,12 @@ automático**:
 - ✅ **Fase 1 — Muro de mensajes** conectado a los cimientos y **verificado**:
   un invitado firma en una pantalla y el mensaje aparece solo en el muro del
   anfitrión, en vivo. (Probado en modo local, entre pestañas.)
+- ✅ **Fase 2 — Playlist, RSVP y Dinámicas** conectados y verificados en local:
+  el invitado pide una canción / confirma su asistencia / juega la trivia y la
+  pantalla del anfitrión (la del DJ, el tablero o el ranking) se actualiza sola.
 - ⏳ **Pendiente**: encender el servidor real (necesita tu cuenta de Supabase,
-  ver abajo) y conectar las demás apps (Fases 2–4).
+  ver abajo). Con eso, Muro + Playlist + RSVP + Dinámicas funcionan entre
+  teléfonos de una sola vez. Luego, la Fase 3 (medios) y la Fase 4 (cuentas).
 
 ## Cómo encender el servidor real (una sola vez)
 
@@ -88,7 +92,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
 | Fase | Qué incluye | Costo de servidor |
 |---|---|---|
 | **1 · Cimientos + Muro** | La pieza `@salones/sync` y el muro de punta a punta. **Hecho** (falta encender el servidor). | ~Gratis (texto) |
-| **2 · Las "baratas"** | Reusan los cimientos: Playlist, RSVP, ranking de Dinámicas. | ~Gratis (texto) |
+| **2 · Las "baratas"** ✅ | Reusan los cimientos: **Playlist**, **RSVP** y **Dinámicas** (ranking de la trivia). Hecho y verificado en local. | ~Gratis (texto) |
 | **3 · Las de medios** | Álbum (fotos) y Brindis (video). Aquí sí hay costo mensual que crece con el uso. | 💲 Almacenamiento |
 | **4 · Para vender en serio** | Tu cuenta para varios eventos, eventos con su propio código/QR, moderación (esconder un mensaje antes de proyectar), borrar/exportar al terminar, y cerrar el acceso público de la tabla. | Bajo |
 
@@ -97,8 +101,15 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
 - El proveedor de servidor usa la **API REST de Supabase** (PostgREST) con
   **sondeo cada 3 s**. Es simple y sin dependencias nuevas; más adelante se puede
   subir a "tiempo real" por websocket si hace falta.
-- En la Fase 1 hay **un solo evento** (`EVENTO_ID = "demo"`). La creación de
+- En la Fase 1/2 hay **un solo evento** (`EVENTO_ID = "demo"`). La creación de
   eventos con su propio código/QR es parte de la Fase 4.
+- **Playlist**: los votos suben con "leer y sumar". En local es exacto; con
+  muchos teléfonos votando en el mismo instante podría perderse algún voto
+  simultáneo (se afina en la Fase 4 con una suma atómica). Para una fiesta es de
+  sobra.
+- **RSVP**: la lista de invitados la administra el anfitrión en su dispositivo;
+  lo que se comparte y se junta son las **respuestas**. Sincronizar también la
+  lista entre varios dispositivos del anfitrión queda para la Fase 4.
 - **Seguridad**: en la Fase 1 la tabla es pública. Está bien para probar y para
   eventos pequeños, pero antes de vender el servicio en serio hay que cerrarla
   por evento (Fase 4).

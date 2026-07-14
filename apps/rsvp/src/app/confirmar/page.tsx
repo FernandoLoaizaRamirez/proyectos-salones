@@ -3,9 +3,15 @@
 import * as React from "react";
 import { Check, X, MessageCircle } from "lucide-react";
 import { Button, Card, cn } from "@salones/ui";
-import { decodificar, evento, EstadoRSVP, type Invitado } from "@/lib/rsvp";
-
-const K_ESTADOS = "rsvp-estados";
+import { obtenerSync } from "@salones/sync";
+import {
+  decodificar,
+  evento,
+  EstadoRSVP,
+  EVENTO_ID,
+  COLECCION_RESPUESTAS,
+  type Invitado,
+} from "@/lib/rsvp";
 
 export default function ConfirmarPage() {
   const [inv, setInv] = React.useState<Invitado | null | "cargando">("cargando");
@@ -20,17 +26,21 @@ export default function ConfirmarPage() {
     if (i) setPersonas(i.cupos);
   }, []);
 
-  const confirmar = () => {
+  const confirmar = async () => {
     if (!inv || inv === "cargando" || !asiste) return;
     const estado = asiste === "si" ? EstadoRSVP.Confirmado : EstadoRSVP.Rechazado;
     const p = asiste === "si" ? personas : 0;
+    // Manda la respuesta al "lugar central" (@salones/sync): en local queda en
+    // este dispositivo; con el servicio gestionado llega solo al tablero del
+    // anfitrión, junto con las de todos los demás invitados.
     try {
-      const raw = localStorage.getItem(K_ESTADOS);
-      const all = raw ? JSON.parse(raw) : {};
-      all[inv.id] = { estado, personas: p };
-      localStorage.setItem(K_ESTADOS, JSON.stringify(all));
+      await obtenerSync().guardar(EVENTO_ID, COLECCION_RESPUESTAS, {
+        id: inv.id,
+        estado,
+        personas: p,
+      });
     } catch {
-      /* noop */
+      /* si el guardado falla, aún queda el aviso por WhatsApp de abajo */
     }
     const lineas = [
       `Confirmación de asistencia · ${evento.nombre}`,

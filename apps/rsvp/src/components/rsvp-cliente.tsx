@@ -3,6 +3,7 @@
 import * as React from "react";
 import { Plus, Check, Trash2, MessageCircle, Clock } from "lucide-react";
 import { Button, Card, cn } from "@salones/ui";
+import { obtenerSync } from "@salones/sync";
 import {
   invitadosIniciales,
   respuestasIniciales,
@@ -11,13 +12,15 @@ import {
   nuevoId,
   codificar,
   etiquetaEstado,
+  EVENTO_ID,
+  COLECCION_RESPUESTAS,
   type Invitado,
   type Estado,
   type Respuesta,
+  type RespuestaItem,
 } from "@/lib/rsvp";
 
 const K_LISTA = "rsvp-invitados";
-const K_ESTADOS = "rsvp-estados";
 
 const campo =
   "w-full rounded-[var(--radius)] border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/30";
@@ -32,33 +35,25 @@ export function RsvpCliente() {
   const [invitados, setInvitados] = React.useState<Invitado[]>([]);
   const [estados, setEstados] = React.useState<Record<string, Respuesta>>({});
   const [cargado, setCargado] = React.useState(false);
+  const estadosRef = React.useRef<Record<string, Respuesta>>({});
+  estadosRef.current = estados;
 
   const [form, setForm] = React.useState({ nombre: "", cupos: "2" });
   const [editId, setEditId] = React.useState<string | null>(null);
   const [formError, setFormError] = React.useState("");
   const formRef = React.useRef<HTMLDivElement>(null);
 
-  // Carga inicial + sincronización en vivo entre pestañas.
+  // La LISTA de invitados la administra el anfitrión en su dispositivo.
   React.useEffect(() => {
     try {
       const l = localStorage.getItem(K_LISTA);
       setInvitados(l ? JSON.parse(l) : invitadosIniciales);
-      const e = localStorage.getItem(K_ESTADOS);
-      setEstados(e ? JSON.parse(e) : respuestasIniciales);
     } catch {
       setInvitados(invitadosIniciales);
-      setEstados(respuestasIniciales);
     }
     setCargado(true);
 
     const onStorage = (ev: StorageEvent) => {
-      if (ev.key === K_ESTADOS && ev.newValue) {
-        try {
-          setEstados(JSON.parse(ev.newValue));
-        } catch {
-          /* noop */
-        }
-      }
       if (ev.key === K_LISTA && ev.newValue) {
         try {
           setInvitados(JSON.parse(ev.newValue));
@@ -74,9 +69,29 @@ export function RsvpCliente() {
   React.useEffect(() => {
     if (cargado) localStorage.setItem(K_LISTA, JSON.stringify(invitados));
   }, [invitados, cargado]);
+
+  // Las RESPUESTAS llegan por el "lugar central" (@salones/sync): el tablero se
+  // actualiza solo con lo que confirma cada invitado. En local, entre pestañas;
+  // con el servicio gestionado, desde el teléfono de cada invitado.
   React.useEffect(() => {
-    if (cargado) localStorage.setItem(K_ESTADOS, JSON.stringify(estados));
-  }, [estados, cargado]);
+    const sync = obtenerSync();
+    const cancelar = sync.suscribir<RespuestaItem>(EVENTO_ID, COLECCION_RESPUESTAS, (items) => {
+      setEstados(
+        Object.fromEntries(items.map((r) => [r.id, { estado: r.estado, personas: r.personas }])),
+      );
+    });
+    // Solo en la demo local: sembramos respuestas de ejemplo si no hay ninguna.
+    if (sync.nombre === "local") {
+      sync.listar<RespuestaItem>(EVENTO_ID, COLECCION_RESPUESTAS).then((items) => {
+        if (items.length === 0) {
+          for (const [id, r] of Object.entries(respuestasIniciales)) {
+            void sync.guardar(EVENTO_ID, COLECCION_RESPUESTAS, { id, ...r });
+          }
+        }
+      });
+    }
+    return cancelar;
+  }, []);
 
   const estadoDe = (id: string): Estado => estados[id]?.estado ?? EstadoRSVP.Pendiente;
 
@@ -112,22 +127,20 @@ export function RsvpCliente() {
   };
   const eliminar = (id: string) => {
     setInvitados((l) => l.filter((i) => i.id !== id));
-    setEstados((s) => {
-      const n = { ...s };
-      delete n[id];
-      return n;
-    });
+    void obtenerSync().eliminar(EVENTO_ID, COLECCION_RESPUESTAS, id);
   };
 
   const marcar = (inv: Invitado, estado: Estado) => {
-    setEstados((s) => {
-      const personas =
-        estado === EstadoRSVP.Confirmado ? s[inv.id]?.personas || inv.cupos : 0;
-      return { ...s, [inv.id]: { estado, personas } };
-    });
+    const personas =
+      estado === EstadoRSVP.Confirmado ? estadosRef.current[inv.id]?.personas || inv.cupos : 0;
+    void obtenerSync().guardar(EVENTO_ID, COLECCION_RESPUESTAS, { id: inv.id, estado, personas });
   };
   const cambiarPersonas = (id: string, personas: number) => {
-    setEstados((s) => ({ ...s, [id]: { estado: EstadoRSVP.Confirmado, personas } }));
+    void obtenerSync().guardar(EVENTO_ID, COLECCION_RESPUESTAS, {
+      id,
+      estado: EstadoRSVP.Confirmado,
+      personas,
+    });
   };
 
   const compartir = (inv: Invitado) => {

@@ -20,6 +20,14 @@ export const evento = {
   organizador: { nombre: "Suite para Salones", whatsapp: "526673349236" },
 };
 
+/**
+ * Evento compartido y colección para el módulo de sincronización
+ * (@salones/sync). En la Fase 1/2 hay un solo evento de demostración; el id real
+ * del evento vendrá del enlace/QR cuando exista la creación de eventos.
+ */
+export const EVENTO_ID = "demo";
+export const COLECCION_CANCIONES = "canciones";
+
 export const EstadoCancion = {
   Pendiente: "pendiente",
   Puesta: "puesta",

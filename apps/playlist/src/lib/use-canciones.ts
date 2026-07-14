@@ -1,58 +1,63 @@
 "use client";
 
 import * as React from "react";
+import { obtenerSync } from "@salones/sync";
 import {
   cancionesIniciales,
-  nuevoId,
   EstadoCancion,
+  EVENTO_ID,
+  COLECCION_CANCIONES,
   type Cancion,
   type EstadoCancion as Estado,
 } from "@/lib/playlist";
 
-const K_CANCIONES = "playlist-canciones";
 const K_MIS_VOTOS = "playlist-mis-votos";
 
 /**
  * Estado compartido de la playlist: lo usan tanto el DJ como el invitado.
- * Guarda en localStorage y se sincroniza en vivo entre pestañas. Lleva la cuenta
- * de qué canciones votó ESTE dispositivo para no dejar votar dos veces.
+ * Lee y escribe a través del "lugar central" (@salones/sync): en local se
+ * sincroniza entre pestañas del mismo dispositivo; con el servicio gestionado,
+ * entre los teléfonos de todos. Mismo código.
+ *
+ * Los votos de ESTE dispositivo (para no dejar votar dos veces) se guardan
+ * aparte, en localStorage, porque son personales de cada teléfono.
  */
 export function useCanciones() {
   const [canciones, setCanciones] = React.useState<Cancion[]>([]);
   const [misVotos, setMisVotos] = React.useState<string[]>([]);
   const [cargado, setCargado] = React.useState(false);
 
+  // Referencias a lo último, para leer sin cerrar sobre valores viejos.
+  const cancionesRef = React.useRef<Cancion[]>([]);
+  cancionesRef.current = canciones;
+  const misVotosRef = React.useRef<string[]>([]);
+  misVotosRef.current = misVotos;
+
   React.useEffect(() => {
-    try {
-      const raw = localStorage.getItem(K_CANCIONES);
-      setCanciones(raw ? JSON.parse(raw) : cancionesIniciales());
-    } catch {
-      setCanciones(cancionesIniciales());
-    }
     try {
       const v = localStorage.getItem(K_MIS_VOTOS);
       setMisVotos(v ? JSON.parse(v) : []);
     } catch {
       setMisVotos([]);
     }
+
+    const sync = obtenerSync();
+    const cancelar = sync.suscribir<Cancion>(EVENTO_ID, COLECCION_CANCIONES, setCanciones);
     setCargado(true);
 
-    const onStorage = (ev: StorageEvent) => {
-      if (ev.key === K_CANCIONES && ev.newValue) {
-        try {
-          setCanciones(JSON.parse(ev.newValue));
-        } catch {
-          /* noop */
+    // Solo en la demo local: si la lista está vacía, la sembramos con ejemplos.
+    if (sync.nombre === "local") {
+      sync.listar<Cancion>(EVENTO_ID, COLECCION_CANCIONES).then((items) => {
+        if (items.length === 0) {
+          for (const c of cancionesIniciales()) {
+            void sync.guardar(EVENTO_ID, COLECCION_CANCIONES, c);
+          }
         }
-      }
-    };
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
+      });
+    }
+    return cancelar;
   }, []);
 
-  React.useEffect(() => {
-    if (cargado) localStorage.setItem(K_CANCIONES, JSON.stringify(canciones));
-  }, [canciones, cargado]);
   React.useEffect(() => {
     if (cargado) localStorage.setItem(K_MIS_VOTOS, JSON.stringify(misVotos));
   }, [misVotos, cargado]);
@@ -61,40 +66,39 @@ export function useCanciones() {
 
   const agregar = React.useCallback(
     (datos: { titulo: string; artista?: string; link?: string; pedidaPor?: string }) => {
-      setCanciones((l) => {
-        const c: Cancion = {
-          id: nuevoId(l),
-          titulo: datos.titulo,
-          votos: 1,
-          estado: EstadoCancion.Pendiente,
-          fecha: Date.now(),
-          ...(datos.artista ? { artista: datos.artista } : {}),
-          ...(datos.link ? { link: datos.link } : {}),
-          ...(datos.pedidaPor ? { pedidaPor: datos.pedidaPor } : {}),
-        };
-        // Marca esta canción como "ya votada" por este dispositivo (su autor).
-        setMisVotos((v) => (v.includes(c.id) ? v : [...v, c.id]));
-        return [c, ...l];
-      });
+      const c: Cancion = {
+        id: "SG-" + Math.random().toString(36).slice(2, 6).toUpperCase(),
+        titulo: datos.titulo,
+        votos: 1,
+        estado: EstadoCancion.Pendiente,
+        fecha: Date.now(),
+        ...(datos.artista ? { artista: datos.artista } : {}),
+        ...(datos.link ? { link: datos.link } : {}),
+        ...(datos.pedidaPor ? { pedidaPor: datos.pedidaPor } : {}),
+      };
+      void obtenerSync().guardar(EVENTO_ID, COLECCION_CANCIONES, c);
+      // El autor de la canción cuenta como su primer voto (en este dispositivo).
+      setMisVotos((v) => (v.includes(c.id) ? v : [...v, c.id]));
     },
     [],
   );
 
-  const votar = React.useCallback(
-    (id: string) => {
-      if (misVotos.includes(id)) return;
-      setCanciones((l) => l.map((c) => (c.id === id ? { ...c, votos: c.votos + 1 } : c)));
-      setMisVotos((v) => [...v, id]);
-    },
-    [misVotos],
-  );
+  const votar = React.useCallback((id: string) => {
+    if (misVotosRef.current.includes(id)) return;
+    const actual = cancionesRef.current.find((c) => c.id === id);
+    if (!actual) return;
+    void obtenerSync().guardar(EVENTO_ID, COLECCION_CANCIONES, { ...actual, votos: actual.votos + 1 });
+    setMisVotos((v) => (v.includes(id) ? v : [...v, id]));
+  }, []);
 
   const setEstado = React.useCallback((id: string, estado: Estado) => {
-    setCanciones((l) => l.map((c) => (c.id === id ? { ...c, estado } : c)));
+    const actual = cancionesRef.current.find((c) => c.id === id);
+    if (!actual) return;
+    void obtenerSync().guardar(EVENTO_ID, COLECCION_CANCIONES, { ...actual, estado });
   }, []);
 
   const eliminar = React.useCallback((id: string) => {
-    setCanciones((l) => l.filter((c) => c.id !== id));
+    void obtenerSync().eliminar(EVENTO_ID, COLECCION_CANCIONES, id);
   }, []);
 
   return { canciones, cargado, yaVote, agregar, votar, setEstado, eliminar };

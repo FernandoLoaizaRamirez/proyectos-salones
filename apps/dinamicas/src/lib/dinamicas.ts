@@ -20,6 +20,14 @@ export const evento = {
   organizador: { nombre: "Suite para Salones", whatsapp: "526673349236" },
 };
 
+/**
+ * Evento compartido y colección del ranking de la trivia para @salones/sync.
+ * El bingo y el rompehielos son personales de cada teléfono; lo único colectivo
+ * es el ranking de la trivia.
+ */
+export const EVENTO_ID = "demo";
+export const COLECCION_RANKING = "ranking";
+
 /* ------------------------------- Trivia --------------------------- */
 
 export type PreguntaTrivia = {

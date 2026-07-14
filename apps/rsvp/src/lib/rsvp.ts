@@ -27,6 +27,17 @@ export type Invitado = {
 
 export type Respuesta = { estado: Estado; personas: number };
 
+/**
+ * Evento compartido y colección de respuestas para @salones/sync. Las respuestas
+ * de los invitados llegan al tablero del anfitrión: en local, entre pestañas;
+ * con el servicio gestionado, desde el teléfono de cada invitado.
+ */
+export const EVENTO_ID = "demo";
+export const COLECCION_RESPUESTAS = "respuestas";
+
+/** Una respuesta como item sincronizable (lleva el id del invitado). */
+export type RespuestaItem = Respuesta & { id: string };
+
 /** Lista de ejemplo (editable / borrable desde la app). */
 export const invitadosIniciales: Invitado[] = [
   { id: "IN-1042", nombre: "Ana Herrera Medina", cupos: 2 },

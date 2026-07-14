@@ -31,6 +31,15 @@ export type Mensaje = {
   fecha: number; // marca de tiempo (ms)
 };
 
+/**
+ * Identificador del evento compartido y nombre de la colección para el módulo
+ * de sincronización (@salones/sync). En la Fase 1 hay un solo evento de
+ * demostración; cuando exista la creación real de eventos, este id vendrá del
+ * enlace/QR del evento concreto.
+ */
+export const EVENTO_ID = "demo";
+export const COLECCION_MENSAJES = "mensajes";
+
 /** Una hora en milisegundos, para armar fechas de ejemplo legibles. */
 const HORA = 3600 * 1000;
 

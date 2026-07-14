@@ -3,14 +3,14 @@
 import * as React from "react";
 import { Camera, X, Send, Check, PenLine, MessageCircle, Loader2 } from "lucide-react";
 import { Button, Card, cn } from "@salones/ui";
+import { obtenerSync, estaConectado } from "@salones/sync";
 import {
   evento,
-  nuevoId,
   comprimirImagen,
+  EVENTO_ID,
+  COLECCION_MENSAJES,
   type Mensaje,
 } from "@/lib/muro";
-
-const K_MENSAJES = "muro-mensajes";
 
 const campo =
   "w-full rounded-[var(--radius)] border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/30";
@@ -20,6 +20,7 @@ export function FirmaForm() {
   const [texto, setTexto] = React.useState("");
   const [foto, setFoto] = React.useState<string | null>(null);
   const [procesandoFoto, setProcesandoFoto] = React.useState(false);
+  const [enviando, setEnviando] = React.useState(false);
   const [error, setError] = React.useState("");
   const [enviado, setEnviado] = React.useState<Mensaje | null>(null);
   const fileRef = React.useRef<HTMLInputElement>(null);
@@ -40,36 +41,35 @@ export function FirmaForm() {
     }
   };
 
-  const guardar = (e: React.FormEvent) => {
+  const guardar = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!nombre.trim() || !texto.trim()) {
       setError("Escribe tu mensaje y tu nombre.");
       return;
     }
     setError("");
-    let existentes: Mensaje[] = [];
-    try {
-      const raw = localStorage.getItem(K_MENSAJES);
-      existentes = raw ? JSON.parse(raw) : [];
-    } catch {
-      existentes = [];
-    }
+    setEnviando(true);
     const msg: Mensaje = {
-      id: nuevoId(existentes),
+      id: "MS-" + Math.random().toString(36).slice(2, 8).toUpperCase(),
       nombre: nombre.trim(),
       texto: texto.trim(),
       fecha: Date.now(),
       ...(foto ? { foto } : {}),
     };
     try {
-      localStorage.setItem(K_MENSAJES, JSON.stringify([msg, ...existentes]));
-    } catch {
+      // Escribe en el "lugar central" (@salones/sync): en local queda en este
+      // dispositivo; con el servicio gestionado llega al muro de todos.
+      await obtenerSync().guardar(EVENTO_ID, COLECCION_MENSAJES, msg);
+      setEnviado(msg);
+    } catch (err) {
       setError(
-        "El muro de este dispositivo está lleno (demasiadas fotos). Para muchos invitados a la vez se usa el servicio con almacenamiento central.",
+        (err as Error)?.message === "almacenamiento-lleno"
+          ? "El muro de este dispositivo está lleno (demasiadas fotos). Para muchos invitados a la vez se usa el servicio con almacenamiento central."
+          : "No pudimos guardar tu mensaje. Revisa tu conexión e inténtalo de nuevo.",
       );
-      return;
+    } finally {
+      setEnviando(false);
     }
-    setEnviado(msg);
   };
 
   const enviarWhatsApp = () => {
@@ -122,8 +122,9 @@ export function FirmaForm() {
           </Button>
         </div>
         <p className="mt-4 text-xs text-muted-foreground">
-          En esta demostración tu mensaje se guarda en este teléfono. Para reunir en una sola
-          pantalla los mensajes de todos los invitados se usa el servicio gestionado.
+          {estaConectado()
+            ? "Tu mensaje ya está en el muro de la fiesta, junto con los de los demás invitados."
+            : "En esta demostración tu mensaje se guarda en este teléfono. Para reunir en una sola pantalla los mensajes de todos los invitados se usa el servicio gestionado."}
         </p>
       </Card>
     );
@@ -206,8 +207,16 @@ export function FirmaForm() {
 
         {error ? <p className="text-sm text-red-500">{error}</p> : null}
 
-        <Button type="submit" className="w-full" disabled={procesandoFoto}>
-          <Send className="size-4" /> Dejar mi mensaje
+        <Button type="submit" className="w-full" disabled={procesandoFoto || enviando}>
+          {enviando ? (
+            <>
+              <Loader2 className="size-4 animate-spin" /> Enviando…
+            </>
+          ) : (
+            <>
+              <Send className="size-4" /> Dejar mi mensaje
+            </>
+          )}
         </Button>
       </form>
     </Card>

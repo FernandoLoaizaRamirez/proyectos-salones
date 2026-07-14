@@ -14,6 +14,7 @@ import {
   PenLine,
 } from "lucide-react";
 import { Button, Card, EmptyState, cn } from "@salones/ui";
+import { obtenerSync } from "@salones/sync";
 import { QR } from "@/components/qr";
 import { ModoPantalla } from "@/components/modo-pantalla";
 import {
@@ -21,10 +22,10 @@ import {
   mensajesIniciales,
   tiempoRelativo,
   exportarRecuerdo,
+  EVENTO_ID,
+  COLECCION_MENSAJES,
   type Mensaje,
 } from "@/lib/muro";
-
-const K_MENSAJES = "muro-mensajes";
 
 export function MuroCliente() {
   const [mensajes, setMensajes] = React.useState<Mensaje[]>([]);
@@ -35,47 +36,42 @@ export function MuroCliente() {
   const [copiado, setCopiado] = React.useState(false);
   const [ahora, setAhora] = React.useState(() => 0);
 
-  // Carga inicial + sincronización en vivo entre pestañas.
+  // Carga + sincronización en vivo desde el "lugar central" (@salones/sync).
+  // En local se sincroniza entre pestañas de este dispositivo; con el servicio
+  // gestionado, entre los teléfonos de todos los invitados. Mismo código.
   React.useEffect(() => {
-    try {
-      const raw = localStorage.getItem(K_MENSAJES);
-      setMensajes(raw ? JSON.parse(raw) : mensajesIniciales());
-    } catch {
-      setMensajes(mensajesIniciales());
-    }
-    setCargado(true);
     setAhora(Date.now());
     setUrlFirmar(`${window.location.origin}/firmar`);
 
-    const onStorage = (ev: StorageEvent) => {
-      if (ev.key === K_MENSAJES && ev.newValue) {
-        try {
-          setMensajes(JSON.parse(ev.newValue));
-        } catch {
-          /* noop */
+    const sync = obtenerSync();
+    const cancelar = sync.suscribir<Mensaje>(EVENTO_ID, COLECCION_MENSAJES, setMensajes);
+    setCargado(true);
+
+    // Solo en la demo local: si el muro está vacío, lo llenamos con ejemplos
+    // para que no se vea vacío. Conectado al servidor no se siembra nada.
+    if (sync.nombre === "local") {
+      sync.listar<Mensaje>(EVENTO_ID, COLECCION_MENSAJES).then((items) => {
+        if (items.length === 0) {
+          for (const m of mensajesIniciales()) {
+            void sync.guardar(EVENTO_ID, COLECCION_MENSAJES, m);
+          }
         }
-      }
-    };
-    window.addEventListener("storage", onStorage);
+      });
+    }
+
     // Refresca las etiquetas de tiempo cada minuto.
     const t = window.setInterval(() => setAhora(Date.now()), 60000);
     return () => {
-      window.removeEventListener("storage", onStorage);
+      cancelar();
       window.clearInterval(t);
     };
   }, []);
 
-  React.useEffect(() => {
-    if (cargado) {
-      try {
-        localStorage.setItem(K_MENSAJES, JSON.stringify(mensajes));
-      } catch {
-        /* almacenamiento lleno: se ignora aquí (el formulario avisa al invitado) */
-      }
-    }
-  }, [mensajes, cargado]);
-
-  const eliminar = (id: string) => setMensajes((l) => l.filter((m) => m.id !== id));
+  // Quitar un mensaje (moderación del anfitrión): se borra del lugar central y
+  // la suscripción refresca la vista sola.
+  const eliminar = (id: string) => {
+    void obtenerSync().eliminar(EVENTO_ID, COLECCION_MENSAJES, id);
+  };
 
   const copiar = async () => {
     try {

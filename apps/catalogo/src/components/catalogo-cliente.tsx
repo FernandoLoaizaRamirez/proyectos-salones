@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Check, Plus, ExternalLink, MessageCircle, Package } from "lucide-react";
+import { Check, Plus, ExternalLink, MessageCircle, Package, Info } from "lucide-react";
 import { Button, buttonVariants, Card, cn } from "@salones/ui";
 import { AppMode } from "@salones/core";
 import {
@@ -258,6 +258,12 @@ export function CatalogoCliente() {
                     ) : null}
                   </div>
                   <p className="mt-2 text-sm text-muted-foreground">{p.descripcion}</p>
+                  {p.notaGestionado ? (
+                    <p className="mt-3 flex gap-1.5 rounded-[var(--radius)] bg-muted px-3 py-2 text-xs leading-relaxed text-muted-foreground">
+                      <Info className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
+                      <span>{p.notaGestionado}</span>
+                    </p>
+                  ) : null}
                 </div>
 
                 <div className="mt-auto border-t border-border p-6 pt-4">

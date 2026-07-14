@@ -73,6 +73,13 @@ export type Producto = {
   precios: Record<Modelo, number>;
   /** En qué modelos se ofrece esta app. Si no se define, se ofrece en los 3. */
   modelos?: Modelo[];
+  /**
+   * Nota honesta sobre qué hace la app HOY vs. qué requiere el servicio
+   * gestionado. Se muestra en la tarjeta para no vender de más las funciones
+   * "colectivas" (juntar el contenido de muchos teléfonos en un solo lugar),
+   * que necesitan el sistema central.
+   */
+  notaGestionado?: string;
 };
 
 /**
@@ -91,8 +98,10 @@ export const productos: Producto[] = [
     destacado: true,
     demoUrl: "https://salones-teal.vercel.app",
     precios: { MANAGED: 1500, RENTAL: 900, OWNED: 18000 },
-    // El sitio es hecho a la medida de la marca del salón: se VENDE, no se renta.
-    modelos: [AppMode.Owned],
+    // El sitio se ofrece en los 3 modelos: renta o gestionado (mensual) y compra
+    // (pago único, hecho a la medida de la marca del salón). Al ofrecerse en los
+    // 3, los paquetes que lo incluyen (Esencial y Todo Incluido) aparecen con
+    // precio en todas las vistas, no solo en Compra.
   },
   {
     id: "album-fotos",
@@ -104,6 +113,8 @@ export const productos: Producto[] = [
     disponible: true,
     demoUrl: "https://album-fotos-gamma.vercel.app",
     precios: { MANAGED: 800, RENTAL: 500, OWNED: 9000 },
+    notaGestionado:
+      "Hoy cada invitado guarda y comparte sus fotos desde su propio teléfono. El álbum común, que reúne las de todos en un solo lugar, es parte del Servicio gestionado.",
   },
   {
     id: "invitaciones",
@@ -126,6 +137,8 @@ export const productos: Producto[] = [
     disponible: true,
     demoUrl: "https://rsvp-umber-pi.vercel.app",
     precios: { MANAGED: 500, RENTAL: 300, OWNED: 5500 },
+    notaGestionado:
+      "Hoy cada confirmación te llega por WhatsApp. El tablero que se actualiza solo, juntando todas las respuestas, es parte del Servicio gestionado.",
   },
   {
     id: "pases-qr",
@@ -159,6 +172,8 @@ export const productos: Producto[] = [
     disponible: true,
     demoUrl: "https://proyectos-salones-muro.vercel.app",
     precios: { MANAGED: 550, RENTAL: 350, OWNED: 5500 },
+    notaGestionado:
+      "Hoy los mensajes te llegan por WhatsApp (o en vivo desde una tablet en la fiesta). Que aparezcan solos en la pared desde el teléfono de cada invitado es parte del Servicio gestionado.",
   },
   {
     id: "playlist",
@@ -170,6 +185,8 @@ export const productos: Producto[] = [
     disponible: true,
     demoUrl: "https://proyectos-salones-playlist.vercel.app",
     precios: { MANAGED: 600, RENTAL: 350, OWNED: 6000 },
+    notaGestionado:
+      "Hoy funciona en una tablet-kiosco en la fiesta. Recibir las peticiones y votos desde el teléfono de cada invitado es parte del Servicio gestionado.",
   },
   {
     id: "photobooth",
@@ -181,6 +198,9 @@ export const productos: Producto[] = [
     disponible: true,
     demoUrl: "https://proyectos-salones-photobooth.vercel.app",
     precios: { MANAGED: 700, RENTAL: 450, OWNED: 7000 },
+    // Photobooth funciona 100% hoy: cada invitado se toma su foto, elige el marco
+    // y la descarga/comparte desde su teléfono. No necesita sistema central, así
+    // que NO lleva nota de "servicio gestionado".
   },
   {
     id: "mi-mesa",
@@ -203,6 +223,8 @@ export const productos: Producto[] = [
     disponible: true,
     demoUrl: "https://proyectos-salones-dinamicas.vercel.app",
     precios: { MANAGED: 600, RENTAL: 350, OWNED: 6000 },
+    notaGestionado:
+      "El bingo y el rompehielos funcionan en cada teléfono. El ranking en vivo de la trivia, compartido entre todos los invitados, es parte del Servicio gestionado.",
   },
   {
     id: "brindis",
@@ -214,6 +236,8 @@ export const productos: Producto[] = [
     disponible: true,
     demoUrl: "https://proyectos-salones-brindis.vercel.app",
     precios: { MANAGED: 700, RENTAL: 450, OWNED: 7000 },
+    notaGestionado:
+      "Hoy cada video te llega por WhatsApp. Reunirlos automáticamente en una sola galería con los brindis de todos es parte del Servicio gestionado.",
   },
 ];
 

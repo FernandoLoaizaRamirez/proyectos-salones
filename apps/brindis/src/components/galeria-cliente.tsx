@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { RefreshCw, Download, Loader2, Film } from "lucide-react";
+import { RefreshCw, Download, Loader2, Film, Sparkles } from "lucide-react";
 import { Button, Card, cn } from "@salones/ui";
 import { listarBrindis, type VideoNube } from "@/lib/supabase";
 
@@ -22,9 +22,23 @@ async function descargar(url: string, nombre: string) {
   }
 }
 
+const TEXTO_ESTADO: Record<string, string> = {
+  queued: "En cola…",
+  fetching: "Reuniendo los brindis…",
+  rendering: "Armando el video…",
+  saving: "Guardando…",
+};
+
 export function GaleriaCliente() {
   const [videos, setVideos] = React.useState<VideoNube[]>([]);
   const [cargando, setCargando] = React.useState(true);
+
+  // Video recuerdo
+  const [creando, setCreando] = React.useState(false);
+  const [estado, setEstado] = React.useState<string | null>(null);
+  const [recuerdoUrl, setRecuerdoUrl] = React.useState<string | null>(null);
+  const [avisoRecuerdo, setAvisoRecuerdo] = React.useState("");
+  const pollRef = React.useRef<number | null>(null);
 
   const cargar = React.useCallback(async () => {
     setCargando(true);
@@ -37,11 +51,120 @@ export function GaleriaCliente() {
 
   React.useEffect(() => {
     cargar();
+    return () => {
+      if (pollRef.current) window.clearInterval(pollRef.current);
+    };
   }, [cargar]);
+
+  const consultar = React.useCallback((id: string) => {
+    if (pollRef.current) window.clearInterval(pollRef.current);
+    pollRef.current = window.setInterval(async () => {
+      try {
+        const r = await fetch(`/api/recuerdo?id=${encodeURIComponent(id)}`);
+        const d = await r.json();
+        if (d.status === "done" && d.url) {
+          if (pollRef.current) window.clearInterval(pollRef.current);
+          setRecuerdoUrl(d.url);
+          setEstado(null);
+          setCreando(false);
+        } else if (d.status === "failed" || d.error) {
+          if (pollRef.current) window.clearInterval(pollRef.current);
+          setCreando(false);
+          setEstado(null);
+          setAvisoRecuerdo(d.error ?? "No se pudo crear el video. Intenta de nuevo.");
+        } else {
+          setEstado(d.status);
+        }
+      } catch {
+        /* reintenta en el siguiente tick */
+      }
+    }, 5000);
+  }, []);
+
+  const crearRecuerdo = async () => {
+    setCreando(true);
+    setAvisoRecuerdo("");
+    setRecuerdoUrl(null);
+    setEstado("queued");
+    try {
+      const r = await fetch("/api/recuerdo", { method: "POST" });
+      const d = await r.json();
+      if (!r.ok || !d.id) {
+        setCreando(false);
+        setEstado(null);
+        setAvisoRecuerdo(d.error ?? "No se pudo iniciar el video recuerdo.");
+        return;
+      }
+      consultar(d.id);
+    } catch {
+      setCreando(false);
+      setEstado(null);
+      setAvisoRecuerdo("No se pudo conectar. Revisa tu internet.");
+    }
+  };
 
   return (
     <div className="w-full">
-      <div className="mb-6 flex items-center justify-between gap-3">
+      {/* Panel del VIDEO RECUERDO */}
+      <Card className="mb-6 p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="min-w-0">
+            <h2 className="flex items-center gap-2 font-semibold">
+              <Sparkles className="size-5 text-primary" /> Video recuerdo
+            </h2>
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              Junta todos los brindis en un solo video, con portada y música.
+            </p>
+          </div>
+          {!recuerdoUrl ? (
+            <Button onClick={crearRecuerdo} disabled={creando || videos.length === 0}>
+              {creando ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" /> {estado ? TEXTO_ESTADO[estado] ?? "Creando…" : "Creando…"}
+                </>
+              ) : (
+                <>
+                  <Sparkles className="size-4" /> Crear video recuerdo
+                </>
+              )}
+            </Button>
+          ) : null}
+        </div>
+
+        {creando ? (
+          <p className="mt-3 text-xs text-muted-foreground">
+            Se arma en la nube y tarda unos minutos. Puedes dejar esta página abierta.
+          </p>
+        ) : null}
+
+        {avisoRecuerdo ? (
+          <div className="mt-3 rounded-[var(--radius)] border border-amber-500/40 bg-amber-500/10 px-4 py-2.5 text-sm text-amber-700 dark:text-amber-400">
+            {avisoRecuerdo}
+          </div>
+        ) : null}
+
+        {recuerdoUrl ? (
+          <div className="mt-4">
+            <video
+              src={recuerdoUrl}
+              controls
+              playsInline
+              className="mx-auto max-h-[70vh] w-auto rounded-[var(--radius)] bg-black"
+            />
+            <div className="mt-3 flex gap-2">
+              <Button className="flex-1" onClick={() => descargar(recuerdoUrl, "video-recuerdo.mp4")}>
+                <Download className="size-4" /> Descargar recuerdo
+              </Button>
+              <Button variant="outline" onClick={() => setRecuerdoUrl(null)}>
+                Crear otro
+              </Button>
+            </div>
+          </div>
+        ) : null}
+      </Card>
+
+      {/* Lista de brindis recibidos */}
+      <div className="mb-4 flex items-center justify-between gap-3">
         <p className="text-sm text-muted-foreground">
           {cargando && videos.length === 0
             ? "Cargando…"

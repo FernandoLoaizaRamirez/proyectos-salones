@@ -33,9 +33,15 @@ automático**:
 - ✅ **Fase 2 — Playlist, RSVP y Dinámicas** conectados y verificados en local:
   el invitado pide una canción / confirma su asistencia / juega la trivia y la
   pantalla del anfitrión (la del DJ, el tablero o el ranking) se actualiza sola.
-- ⏳ **Pendiente**: encender el servidor real (necesita tu cuenta de Supabase,
-  ver abajo). Con eso, Muro + Playlist + RSVP + Dinámicas funcionan entre
-  teléfonos de una sola vez. Luego, la Fase 3 (medios) y la Fase 4 (cuentas).
+- ✅ **Servidor real ENCENDIDO** (16 jul 2026): cuenta nueva de Supabase
+  (organización "Suite para Salones", proyecto `suite-salones`, plan Free,
+  región Canadá), tabla `items` creada y llaves puestas en los `.env.local`
+  locales y en las variables de entorno de los 4 proyectos de Vercel (muro,
+  playlist, rsvp, dinámicas). URL del proyecto:
+  `https://cpbfisylcquuahrmyaca.supabase.co` (la llave pública se ve en
+  Vercel → Settings → Environment Variables o en el panel de Supabase).
+- ⏳ **Pendiente**: Fase 3 (Álbum y Brindis, medios con almacenamiento) y
+  Fase 4 (eventos con su propio QR, moderación, cerrar el acceso público).
 
 ## Cómo encender el servidor real (una sola vez)
 

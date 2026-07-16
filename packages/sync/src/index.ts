@@ -158,10 +158,13 @@ function crearProveedorLocal(): ProveedorSync {
  */
 function crearProveedorServidor(url: string, anon: string): ProveedorSync {
   const base = `${url.replace(/\/$/, "")}/rest/v1/items`;
+  // La llave puede ser "legacy" (un JWT que empieza con eyJ) o del formato nuevo
+  // (sb_publishable_...). El encabezado Authorization solo admite JWTs; con las
+  // llaves nuevas basta el encabezado apikey.
   const headers: Record<string, string> = {
     apikey: anon,
-    Authorization: `Bearer ${anon}`,
     "Content-Type": "application/json",
+    ...(anon.startsWith("eyJ") ? { Authorization: `Bearer ${anon}` } : {}),
   };
   const INTERVALO_MS = 3000;
 

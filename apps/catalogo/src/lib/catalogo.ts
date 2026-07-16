@@ -138,7 +138,7 @@ export const productos: Producto[] = [
     demoUrl: "https://rsvp-umber-pi.vercel.app",
     precios: { MANAGED: 500, RENTAL: 300, OWNED: 5500 },
     notaGestionado:
-      "Hoy cada confirmación te llega por WhatsApp. El tablero que se actualiza solo, juntando todas las respuestas, es parte del Servicio gestionado.",
+      "Con el Servicio gestionado —así corre esta demo— el tablero se actualiza solo con la confirmación de cada invitado, desde su propio teléfono. En Renta/Compra, cada respuesta te llega por WhatsApp.",
   },
   {
     id: "pases-qr",
@@ -173,7 +173,7 @@ export const productos: Producto[] = [
     demoUrl: "https://proyectos-salones-muro.vercel.app",
     precios: { MANAGED: 550, RENTAL: 350, OWNED: 5500 },
     notaGestionado:
-      "Hoy los mensajes te llegan por WhatsApp (o en vivo desde una tablet en la fiesta). Que aparezcan solos en la pared desde el teléfono de cada invitado es parte del Servicio gestionado.",
+      "Con el Servicio gestionado —así corre esta demo— los mensajes aparecen solos en la pared desde el teléfono de cada invitado. En Renta/Compra funciona en una tablet en la fiesta o por WhatsApp.",
   },
   {
     id: "playlist",
@@ -186,7 +186,7 @@ export const productos: Producto[] = [
     demoUrl: "https://proyectos-salones-playlist.vercel.app",
     precios: { MANAGED: 600, RENTAL: 350, OWNED: 6000 },
     notaGestionado:
-      "Hoy funciona en una tablet-kiosco en la fiesta. Recibir las peticiones y votos desde el teléfono de cada invitado es parte del Servicio gestionado.",
+      "Con el Servicio gestionado —así corre esta demo— las peticiones y los votos llegan al DJ desde el teléfono de cada invitado. En Renta/Compra funciona en una tablet-kiosco en la fiesta.",
   },
   {
     id: "photobooth",
@@ -224,7 +224,7 @@ export const productos: Producto[] = [
     demoUrl: "https://proyectos-salones-dinamicas.vercel.app",
     precios: { MANAGED: 600, RENTAL: 350, OWNED: 6000 },
     notaGestionado:
-      "El bingo y el rompehielos funcionan en cada teléfono. El ranking en vivo de la trivia, compartido entre todos los invitados, es parte del Servicio gestionado.",
+      "Con el Servicio gestionado —así corre esta demo— el ranking de la trivia junta en vivo a todos los invitados. El bingo y el rompehielos funcionan en cada teléfono, sin necesidad de nada más.",
   },
   {
     id: "brindis",

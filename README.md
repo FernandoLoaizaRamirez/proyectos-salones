@@ -33,10 +33,10 @@ Todas están publicadas y en vivo. La vitrina de venta que las reúne es el
 | **Brindis en video** | Cada invitado graba un mensaje corto en video para los novios y lo comparte. | [Ver demo](https://proyectos-salones-brindis.vercel.app) |
 
 > Las **7 apps nuevas** (mesas, muro, playlist, photobooth, mi-mesa, dinámicas y
-> brindis) usan la cámara y el micrófono del propio teléfono. No suben nada a
-> ningún servidor: todo se queda en el dispositivo del invitado hasta que él lo
-> comparte. Reunir el contenido de muchos teléfonos en un solo lugar es lo que
-> ofrecerá el **servicio gestionado** (pendiente).
+> brindis) usan la cámara y el micrófono del propio teléfono y funcionan solas en
+> cada dispositivo. Además, el **servicio gestionado** (ya encendido en las
+> demos) junta en un solo lugar lo que mandan muchos teléfonos: hoy el muro, la
+> playlist, el RSVP y el ranking de dinámicas; fotos y video vienen en camino.
 
 ## Estructura
 
@@ -86,13 +86,17 @@ pnpm --filter photobooth build   # compilar una app
 - ✅ Cimientos: reglas comunes, sistema de diseño y vocabulario de datos.
 - ✅ **12 aplicaciones** construidas, publicadas en Vercel y enlazadas en el catálogo.
 - ✅ Catálogo-tienda con precios en 3 modelos (gestionado / renta / compra) y paquetes.
-- ⏳ Pendiente (a propósito, para más adelante): el **servicio gestionado**
-  (backend central para reunir el contenido de muchos teléfonos) y un dominio
-  propio con **subdominios**.
+- ✅ **Servicio gestionado (fases 1 y 2) en producción**: servidor central
+  (Supabase) encendido; el Muro, la Playlist, el RSVP y el ranking de Dinámicas
+  ya juntan el contenido de muchos teléfonos en vivo.
+- ⏳ Pendiente: fase 3 del gestionado (fotos del álbum y videos del brindis),
+  fase 4 (un QR por evento, cuentas y moderación) y un dominio propio con
+  **subdominios**.
 
 ## Documentación
 
 - [`docs/ARQUITECTURA.md`](docs/ARQUITECTURA.md) — cómo está armado todo por dentro.
+- [`docs/SERVICIO-GESTIONADO.md`](docs/SERVICIO-GESTIONADO.md) — el "lugar central" que junta el contenido de muchos teléfonos.
 - [`docs/DEPLOY-VERCEL.md`](docs/DEPLOY-VERCEL.md) — cómo se publica cada app en Vercel.
 - [`docs/GUIA-WHITE-LABEL.md`](docs/GUIA-WHITE-LABEL.md) — cómo personalizar una app con los datos de un cliente.
 </content>

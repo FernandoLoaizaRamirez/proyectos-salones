@@ -185,7 +185,17 @@ function crearProveedorServidor(url: string, anon: string): ProveedorSync {
     apikey: anon,
     ...(anon.startsWith("eyJ") ? { Authorization: `Bearer ${anon}` } : {}),
   };
-  const headers: Record<string, string> = { ...auth, "Content-Type": "application/json" };
+  /**
+   * La llave del evento viaja TAMBIÉN como encabezado (x-evento) en cada
+   * petición. Así el servidor puede exigirla con sus políticas (Fase 5): sin la
+   * llave correcta no se puede leer ni escribir nada, ni siquiera conociendo la
+   * llave pública del proyecto.
+   */
+  const headersDe = (evento: string): Record<string, string> => ({
+    ...auth,
+    "x-evento": evento,
+    "Content-Type": "application/json",
+  });
   /** Almacenamiento central de fotos/videos (bucket "media" del proyecto). */
   const almacen = `${url.replace(/\/$/, "")}/storage/v1`;
   const BUCKET = "media";
@@ -196,7 +206,7 @@ function crearProveedorServidor(url: string, anon: string): ProveedorSync {
 
   async function pedir<T extends ItemSync>(evento: string, coleccion: string): Promise<T[]> {
     const q = `${base}?${filtro(evento, coleccion)}&select=id,dato&order=creado.desc`;
-    const res = await fetch(q, { headers });
+    const res = await fetch(q, { headers: headersDe(evento) });
     if (!res.ok) throw new Error(`sync/listar ${res.status}`);
     const filas = (await res.json()) as { id: string; dato: Record<string, unknown> }[];
     return filas.map((f) => ({ ...(f.dato ?? {}), id: f.id })) as T[];
@@ -211,14 +221,14 @@ function crearProveedorServidor(url: string, anon: string): ProveedorSync {
       const { id, ...dato } = item;
       const res = await fetch(base, {
         method: "POST",
-        headers: { ...headers, Prefer: "resolution=merge-duplicates,return=minimal" },
+        headers: { ...headersDe(evento), Prefer: "resolution=merge-duplicates,return=minimal" },
         body: JSON.stringify({ evento, coleccion, id, dato }),
       });
       if (!res.ok) throw new Error(`sync/guardar ${res.status}`);
     },
     async eliminar(evento, coleccion, id) {
       const q = `${base}?${filtro(evento, coleccion)}&id=eq.${encodeURIComponent(id)}`;
-      const res = await fetch(q, { method: "DELETE", headers });
+      const res = await fetch(q, { method: "DELETE", headers: headersDe(evento) });
       if (!res.ok) throw new Error(`sync/eliminar ${res.status}`);
     },
     suscribir(evento, coleccion, cb) {
@@ -251,7 +261,7 @@ function crearProveedorServidor(url: string, anon: string): ProveedorSync {
         .slice(2, 8)}.${ext}`;
       const res = await fetch(`${almacen}/object/${BUCKET}/${ruta}`, {
         method: "POST",
-        headers: { ...auth, "Content-Type": tipo || "application/octet-stream" },
+        headers: { ...auth, "x-evento": evento, "Content-Type": tipo || "application/octet-stream" },
         body: blob,
       });
       if (!res.ok) throw new Error(`sync/subir ${res.status}`);

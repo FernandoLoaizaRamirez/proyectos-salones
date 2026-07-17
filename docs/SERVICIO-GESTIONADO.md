@@ -52,14 +52,17 @@ automático**:
   Candados: la tabla rechaza registros >600 KB y el bucket solo acepta
   imágenes/videos de hasta 25 MB. El evento `demo` sigue siendo el de las
   vitrinas públicas.
-- ⏳ **Pendiente (Fase 5, cuando se venda en serio)**: cierre TOTAL del acceso —
-  hoy el código del evento es una "llave por enlace" (aleatoria y difícil de
-  adivinar: protege del acceso casual), pero una persona con conocimientos
-  técnicos y la llave pública aún podría leer la tabla completa. El plan: exigir
-  el código del evento también del lado del servidor (políticas RLS que leen un
-  encabezado `x-evento`) y/o cuentas de anfitrión. También: moderación con
-  aprobación previa, borrar/exportar al cerrar un evento, y opcional migrar el
-  brindis a este proyecto.
+- ✅ **Fase 5 — candado del servidor**: la llave del evento viaja como
+  encabezado (`x-evento`) en cada petición y las políticas del servidor la
+  EXIGEN: sin la llave de un evento no se puede leer, escribir ni borrar nada,
+  ni siquiera con la llave pública del proyecto. El cajón de fotos ya no se
+  puede listar (cada foto solo se alcanza por su URL, que vive dentro de su
+  evento). Verificado con pruebas de intruso: leer toda la tabla → vacío;
+  escribir sin llave → 401; listar el cajón → vacío; cruzar burbujas → vacío.
+- ⏳ **Backlog (cuando el negocio lo pida)**: cuentas o llave de anfitrión
+  (para que borrar/moderar exija una llave distinta a la de los invitados),
+  moderación con aprobación previa, borrar/exportar todo al cerrar un evento,
+  y migrar el brindis a este proyecto.
 
 ## Cómo encender el servidor real (una sola vez)
 
@@ -91,20 +94,25 @@ create table if not exists items (
 create index if not exists items_evento_coleccion_creado
   on items (evento, coleccion, creado desc);
 
--- Fase 1: la tabla es pública (cualquiera con el QR del evento puede escribir y
--- leer). Es suficiente para un muro o una playlist de fiesta. En la Fase 4 se
--- restringe el acceso por evento y con moderación.
+-- Fase 5: la llave del evento se EXIGE en cada petición (encabezado x-evento,
+-- que @salones/sync manda solo). Sin la llave de un evento no se puede leer,
+-- escribir ni borrar nada, ni siquiera con la llave pública del proyecto.
 alter table items enable row level security;
-create policy "lectura publica"       on items for select using (true);
-create policy "escritura publica"     on items for insert with check (true);
-create policy "actualizacion publica" on items for update using (true) with check (true);
-create policy "borrado publico"       on items for delete using (true);
+create policy "lectura por evento"       on items for select using (evento = current_setting('request.headers', true)::json->>'x-evento');
+create policy "escritura por evento"     on items for insert with check (evento = current_setting('request.headers', true)::json->>'x-evento');
+create policy "actualizacion por evento" on items for update using (evento = current_setting('request.headers', true)::json->>'x-evento') with check (evento = current_setting('request.headers', true)::json->>'x-evento');
+create policy "borrado por evento"       on items for delete using (evento = current_setting('request.headers', true)::json->>'x-evento');
 
--- Fase 3: cajón de fotos/videos ("media") para el álbum. Público para leer y
--- subir (igual que la tabla, se cierra por evento en la Fase 4). Borrar no es
--- público: quitar una foto del álbum borra su registro, no el archivo.
+-- Candado de tamaño: ningún registro puede pasar de ~600 KB.
+alter table items add constraint dato_tamano_max check (pg_column_size(dato) < 600000);
+
+-- Fase 3/5: cajón de fotos/videos ("media") para el álbum. Es un bucket
+-- público: cada foto se VE por su URL directa (que vive dentro de su evento),
+-- pero NO se puede listar el cajón. Subir sí está permitido, con límites:
+-- 25 MB máximo y solo imágenes/videos. Quitar una foto del álbum borra su
+-- registro; el archivo queda huérfano (limpieza en el backlog).
 insert into storage.buckets (id, name, public) values ('media', 'media', true) on conflict (id) do nothing;
-create policy "lectura publica media" on storage.objects for select using (bucket_id = 'media');
+update storage.buckets set file_size_limit = 26214400, allowed_mime_types = array['image/*','video/*'] where id = 'media';
 create policy "subida publica media"  on storage.objects for insert with check (bucket_id = 'media');
 ```
 
@@ -126,7 +134,8 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
 | **2 · Las "baratas"** ✅ | Reusan los cimientos: **Playlist**, **RSVP** y **Dinámicas** (ranking de la trivia). Hecho y verificado en local. | ~Gratis (texto) |
 | **3 · Las de medios** ✅ | **Álbum** (fotos al bucket `media`, hecho y verificado) y **Brindis** (videos por su propio camino con Shotstack). El costo crece con el uso. | 💲 Almacenamiento |
 | **4 · Para vender en serio** ✅ | Eventos con su propio código en el enlace/QR, generador del operador (`/evento` en el catálogo) y candados de tamaño/tipo. Hecho y verificado. | Bajo |
-| **5 · Cierre total (al vender)** | Exigir el código del evento del lado del servidor, cuentas de anfitrión, moderación con aprobación, borrar/exportar al cerrar. | Bajo |
+| **5 · Candado del servidor** ✅ | La llave del evento se exige del lado del servidor (encabezado `x-evento`): sin ella no se lee ni se escribe nada. Cajón de fotos sin listado público. Hecho y verificado con pruebas de intruso. | Bajo |
+| **Backlog** | Cuentas/llave de anfitrión, moderación con aprobación previa, borrar/exportar al cerrar un evento, migrar el brindis. | — |
 
 ## Notas técnicas
 

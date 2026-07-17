@@ -40,8 +40,14 @@ automático**:
   playlist, rsvp, dinámicas). URL del proyecto:
   `https://cpbfisylcquuahrmyaca.supabase.co` (la llave pública se ve en
   Vercel → Settings → Environment Variables o en el panel de Supabase).
-- ⏳ **Pendiente**: Fase 3 (Álbum y Brindis, medios con almacenamiento) y
-  Fase 4 (eventos con su propio QR, moderación, cerrar el acceso público).
+- ✅ **Fase 3 — medios**: el **Álbum** sube cada foto (comprimida a JPEG) al
+  almacenamiento central (bucket `media`) y el álbum común se actualiza solo en
+  todos los dispositivos. Verificado de punta a punta. El **Brindis** junta los
+  videos por su propio camino (bucket `brindis` en otro proyecto de Supabase +
+  fusión con Shotstack), construido aparte; a futuro puede unificarse aquí.
+- ⏳ **Pendiente**: Fase 4 (eventos con su propio QR, moderación, cerrar el
+  acceso público de tabla y bucket) y, opcional, migrar el brindis a este
+  proyecto para liberar el otro espacio de Supabase.
 
 ## Cómo encender el servidor real (una sola vez)
 
@@ -81,6 +87,13 @@ create policy "lectura publica"       on items for select using (true);
 create policy "escritura publica"     on items for insert with check (true);
 create policy "actualizacion publica" on items for update using (true) with check (true);
 create policy "borrado publico"       on items for delete using (true);
+
+-- Fase 3: cajón de fotos/videos ("media") para el álbum. Público para leer y
+-- subir (igual que la tabla, se cierra por evento en la Fase 4). Borrar no es
+-- público: quitar una foto del álbum borra su registro, no el archivo.
+insert into storage.buckets (id, name, public) values ('media', 'media', true) on conflict (id) do nothing;
+create policy "lectura publica media" on storage.objects for select using (bucket_id = 'media');
+create policy "subida publica media"  on storage.objects for insert with check (bucket_id = 'media');
 ```
 
 ### Las variables de entorno
@@ -99,7 +112,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
 |---|---|---|
 | **1 · Cimientos + Muro** | La pieza `@salones/sync` y el muro de punta a punta. **Hecho** (falta encender el servidor). | ~Gratis (texto) |
 | **2 · Las "baratas"** ✅ | Reusan los cimientos: **Playlist**, **RSVP** y **Dinámicas** (ranking de la trivia). Hecho y verificado en local. | ~Gratis (texto) |
-| **3 · Las de medios** | Álbum (fotos) y Brindis (video). Aquí sí hay costo mensual que crece con el uso. | 💲 Almacenamiento |
+| **3 · Las de medios** ✅ | **Álbum** (fotos al bucket `media`, hecho y verificado) y **Brindis** (videos por su propio camino con Shotstack). El costo crece con el uso. | 💲 Almacenamiento |
 | **4 · Para vender en serio** | Tu cuenta para varios eventos, eventos con su propio código/QR, moderación (esconder un mensaje antes de proyectar), borrar/exportar al terminar, y cerrar el acceso público de la tabla. | Bajo |
 
 ## Notas técnicas

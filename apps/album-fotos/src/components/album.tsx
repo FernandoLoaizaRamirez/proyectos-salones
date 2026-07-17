@@ -10,29 +10,86 @@ import {
   ChevronLeft,
   ChevronRight,
   Play,
+  Loader2,
 } from "lucide-react";
 import { Button, EmptyState, cn } from "@salones/ui";
-import { fotosEjemplo, type Archivo } from "@/lib/album-data";
+import { obtenerSync, estaConectado } from "@salones/sync";
+import {
+  fotosEjemplo,
+  comprimirImagen,
+  EVENTO_ID,
+  COLECCION_FOTOS,
+  type Archivo,
+} from "@/lib/album-data";
 
 export function Album() {
-  const [archivos, setArchivos] = React.useState<Archivo[]>(fotosEjemplo);
+  // Con el servicio gestionado, el álbum llega del servidor (y arranca vacío
+  // hasta que los invitados suben); en local, la demo muestra los ejemplos.
+  const [archivos, setArchivos] = React.useState<Archivo[]>(() =>
+    estaConectado() ? [] : fotosEjemplo,
+  );
   const [arrastrando, setArrastrando] = React.useState(false);
+  const [subiendo, setSubiendo] = React.useState(0);
+  const [errorSubida, setErrorSubida] = React.useState("");
   const [idx, setIdx] = React.useState<number | null>(null);
   const inputRef = React.useRef<HTMLInputElement>(null);
   const contador = React.useRef(0);
 
-  const agregar = React.useCallback((lista: FileList | null) => {
+  // Álbum COMPARTIDO: se suscribe al "lugar central" (@salones/sync) y se
+  // actualiza solo con las fotos que sube cada invitado desde su teléfono.
+  React.useEffect(() => {
+    if (!estaConectado()) return;
+    return obtenerSync().suscribir<Archivo>(EVENTO_ID, COLECCION_FOTOS, setArchivos);
+  }, []);
+
+  const agregar = React.useCallback(async (lista: FileList | null) => {
     if (!lista) return;
-    const nuevos: Archivo[] = Array.from(lista)
-      .filter((a) => a.type.startsWith("image/") || a.type.startsWith("video/"))
-      .map((a) => {
+    const validos = Array.from(lista).filter(
+      (a) => a.type.startsWith("image/") || a.type.startsWith("video/"),
+    );
+    if (validos.length === 0) return;
+
+    // Modo local (demo de un solo dispositivo): igual que siempre.
+    if (!estaConectado()) {
+      const nuevos: Archivo[] = validos.map((a) => {
         contador.current += 1;
         return { id: `f-${contador.current}`, nombre: a.name, url: URL.createObjectURL(a), tipo: a.type };
       });
-    setArchivos((prev) => [...nuevos, ...prev]);
+      setArchivos((prev) => [...nuevos, ...prev]);
+      return;
+    }
+
+    // Modo servidor: cada foto sube (comprimida) al almacenamiento central y se
+    // anota en la colección; el álbum de todos se actualiza solo.
+    const sync = obtenerSync();
+    setErrorSubida("");
+    setSubiendo((n) => n + validos.length);
+    for (const a of validos) {
+      try {
+        const blob = a.type.startsWith("image/") ? await comprimirImagen(a) : a;
+        const tipo = blob.type || a.type;
+        const url = await sync.subirArchivo(EVENTO_ID, a.name, blob, tipo);
+        await sync.guardar(EVENTO_ID, COLECCION_FOTOS, {
+          id: "F-" + Math.random().toString(36).slice(2, 10).toUpperCase(),
+          nombre: a.name,
+          url,
+          tipo,
+          fecha: Date.now(),
+        });
+      } catch {
+        setErrorSubida("No pudimos subir un archivo. Revisa tu conexión e inténtalo de nuevo.");
+      } finally {
+        setSubiendo((n) => n - 1);
+      }
+    }
   }, []);
 
   const eliminar = React.useCallback((id: string) => {
+    if (estaConectado()) {
+      // Se quita del álbum compartido; la suscripción refresca la vista sola.
+      void obtenerSync().eliminar(EVENTO_ID, COLECCION_FOTOS, id);
+      return;
+    }
     setArchivos((prev) => {
       const encontrado = prev.find((x) => x.id === id);
       if (encontrado && encontrado.url.startsWith("blob:")) URL.revokeObjectURL(encontrado.url);
@@ -103,9 +160,18 @@ export function Album() {
               Arrastra los archivos aquí o toca el botón para elegirlos.
             </p>
           </div>
-          <Button onClick={() => inputRef.current?.click()}>
-            <Camera className="size-4" /> Elegir archivos
+          <Button onClick={() => inputRef.current?.click()} disabled={subiendo > 0}>
+            {subiendo > 0 ? (
+              <>
+                <Loader2 className="size-4 animate-spin" /> Subiendo {subiendo}…
+              </>
+            ) : (
+              <>
+                <Camera className="size-4" /> Elegir archivos
+              </>
+            )}
           </Button>
+          {errorSubida ? <p className="text-sm text-red-500">{errorSubida}</p> : null}
           <input
             ref={inputRef}
             type="file"

@@ -42,6 +42,21 @@ export interface ProveedorSync {
     coleccion: string,
     cb: (items: T[]) => void,
   ): () => void;
+  /**
+   * Sube un archivo (foto o video) y devuelve la URL para mostrarlo.
+   * En LOCAL devuelve una URL temporal del propio navegador (dura mientras la
+   * pestaña esté abierta: la demo de un solo dispositivo). En SERVIDOR lo guarda
+   * en el almacenamiento central (bucket "media") y la URL sirve para todos.
+   */
+  subirArchivo(evento: string, nombre: string, blob: Blob, tipo: string): Promise<string>;
+}
+
+/** Saca una extensión de archivo razonable del nombre o del tipo MIME. */
+function extensionDe(nombre: string, tipo: string): string {
+  const porNombre = /\.([a-z0-9]{1,5})$/i.exec(nombre)?.[1];
+  if (porNombre) return porNombre.toLowerCase();
+  const porTipo = tipo.split("/")[1]?.replace(/[^a-z0-9]/gi, "");
+  return (porTipo || "bin").toLowerCase();
 }
 
 /* ================================================================== */
@@ -140,6 +155,11 @@ function crearProveedorLocal(): ProveedorSync {
         if (hayNavegador()) window.removeEventListener("storage", onStorage);
       };
     },
+    async subirArchivo(_evento, _nombre, blob) {
+      if (!hayNavegador()) throw new Error("sin-navegador");
+      // Demo local: una URL temporal de este navegador (no viaja a otros).
+      return URL.createObjectURL(blob);
+    },
   };
 }
 
@@ -161,11 +181,14 @@ function crearProveedorServidor(url: string, anon: string): ProveedorSync {
   // La llave puede ser "legacy" (un JWT que empieza con eyJ) o del formato nuevo
   // (sb_publishable_...). El encabezado Authorization solo admite JWTs; con las
   // llaves nuevas basta el encabezado apikey.
-  const headers: Record<string, string> = {
+  const auth: Record<string, string> = {
     apikey: anon,
-    "Content-Type": "application/json",
     ...(anon.startsWith("eyJ") ? { Authorization: `Bearer ${anon}` } : {}),
   };
+  const headers: Record<string, string> = { ...auth, "Content-Type": "application/json" };
+  /** Almacenamiento central de fotos/videos (bucket "media" del proyecto). */
+  const almacen = `${url.replace(/\/$/, "")}/storage/v1`;
+  const BUCKET = "media";
   const INTERVALO_MS = 3000;
 
   const filtro = (evento: string, coleccion: string) =>
@@ -220,6 +243,19 @@ function crearProveedorServidor(url: string, anon: string): ProveedorSync {
         vivo = false;
         if (t !== null) window.clearInterval(t);
       };
+    },
+    async subirArchivo(evento, nombre, blob, tipo) {
+      const ext = extensionDe(nombre, tipo);
+      const ruta = `${encodeURIComponent(evento)}/${Date.now()}-${Math.random()
+        .toString(36)
+        .slice(2, 8)}.${ext}`;
+      const res = await fetch(`${almacen}/object/${BUCKET}/${ruta}`, {
+        method: "POST",
+        headers: { ...auth, "Content-Type": tipo || "application/octet-stream" },
+        body: blob,
+      });
+      if (!res.ok) throw new Error(`sync/subir ${res.status}`);
+      return `${almacen}/object/public/${BUCKET}/${ruta}`;
     },
   };
 }

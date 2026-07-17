@@ -114,7 +114,7 @@ export const productos: Producto[] = [
     demoUrl: "https://album-fotos-gamma.vercel.app",
     precios: { MANAGED: 800, RENTAL: 500, OWNED: 9000 },
     notaGestionado:
-      "Hoy cada invitado guarda y comparte sus fotos desde su propio teléfono. El álbum común, que reúne las de todos en un solo lugar, es parte del Servicio gestionado.",
+      "Con el Servicio gestionado —así corre esta demo— cada foto sube sola al álbum común del evento: todos las ven y descargan en un mismo lugar. En Renta/Compra, cada quien guarda las suyas en su teléfono.",
   },
   {
     id: "invitaciones",
@@ -237,7 +237,7 @@ export const productos: Producto[] = [
     demoUrl: "https://proyectos-salones-brindis.vercel.app",
     precios: { MANAGED: 700, RENTAL: 450, OWNED: 7000 },
     notaGestionado:
-      "Hoy cada video te llega por WhatsApp. Reunirlos automáticamente en una sola galería con los brindis de todos es parte del Servicio gestionado.",
+      "Con el Servicio gestionado —así corre esta demo— cada video sube solo a la galería del anfitrión, que además puede crear un video recuerdo que fusiona los brindis de todos en uno. En Renta/Compra, cada video te llega por WhatsApp.",
   },
 ];
 

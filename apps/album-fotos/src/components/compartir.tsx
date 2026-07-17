@@ -4,6 +4,7 @@ import * as React from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { Check, Copy, QrCode } from "lucide-react";
 import { Button } from "@salones/ui";
+import { sufijoEvento } from "@salones/sync";
 
 /** Tarjeta para compartir el álbum: los invitados escanean el QR para unirse. */
 export function Compartir() {
@@ -11,7 +12,8 @@ export function Compartir() {
   const [copiado, setCopiado] = React.useState(false);
 
   React.useEffect(() => {
-    setUrl(window.location.origin);
+    // El enlace del álbum lleva el código del evento actual (?e=...).
+    setUrl(`${window.location.origin}/${sufijoEvento()}`);
   }, []);
 
   const copiar = async () => {

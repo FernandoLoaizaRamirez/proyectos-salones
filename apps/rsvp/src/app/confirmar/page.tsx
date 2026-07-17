@@ -3,12 +3,11 @@
 import * as React from "react";
 import { Check, X, MessageCircle } from "lucide-react";
 import { Button, Card, cn } from "@salones/ui";
-import { obtenerSync } from "@salones/sync";
+import { obtenerSync, eventoActual } from "@salones/sync";
 import {
   decodificar,
   evento,
   EstadoRSVP,
-  EVENTO_ID,
   COLECCION_RESPUESTAS,
   type Invitado,
 } from "@/lib/rsvp";
@@ -34,7 +33,7 @@ export default function ConfirmarPage() {
     // este dispositivo; con el servicio gestionado llega solo al tablero del
     // anfitrión, junto con las de todos los demás invitados.
     try {
-      await obtenerSync().guardar(EVENTO_ID, COLECCION_RESPUESTAS, {
+      await obtenerSync().guardar(eventoActual(), COLECCION_RESPUESTAS, {
         id: inv.id,
         estado,
         personas: p,

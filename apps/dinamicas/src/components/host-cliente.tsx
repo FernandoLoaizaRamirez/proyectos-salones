@@ -15,6 +15,7 @@ import {
   QrCode,
 } from "lucide-react";
 import { Button, Card, cn } from "@salones/ui";
+import { sufijoEvento } from "@salones/sync";
 import { QR } from "@/components/qr";
 import { useRanking } from "@/lib/use-ranking";
 import { evento, porPuntaje } from "@/lib/dinamicas";
@@ -33,7 +34,8 @@ export function HostCliente() {
   const [url, setUrl] = React.useState("");
   const [copiado, setCopiado] = React.useState(false);
 
-  React.useEffect(() => setUrl(`${window.location.origin}/jugar`), []);
+  // El enlace para jugar lleva el código del evento actual (?e=...).
+  React.useEffect(() => setUrl(`${window.location.origin}/jugar${sufijoEvento()}`), []);
 
   const top = [...ranking].sort(porPuntaje).slice(0, 10);
 

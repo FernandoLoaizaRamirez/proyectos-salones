@@ -45,9 +45,21 @@ automático**:
   todos los dispositivos. Verificado de punta a punta. El **Brindis** junta los
   videos por su propio camino (bucket `brindis` en otro proyecto de Supabase +
   fusión con Shotstack), construido aparte; a futuro puede unificarse aquí.
-- ⏳ **Pendiente**: Fase 4 (eventos con su propio QR, moderación, cerrar el
-  acceso público de tabla y bucket) y, opcional, migrar el brindis a este
-  proyecto para liberar el otro espacio de Supabase.
+- ✅ **Fase 4 — eventos separados y candados**: cada evento vive en su propia
+  burbuja con un código en el enlace (`?e=boda-garcia-x7k2`); los QR y enlaces
+  de compartir lo propagan solos. **Generador de eventos** para el operador en
+  el catálogo: `/evento` (crea el código + los enlaces listos para mandar).
+  Candados: la tabla rechaza registros >600 KB y el bucket solo acepta
+  imágenes/videos de hasta 25 MB. El evento `demo` sigue siendo el de las
+  vitrinas públicas.
+- ⏳ **Pendiente (Fase 5, cuando se venda en serio)**: cierre TOTAL del acceso —
+  hoy el código del evento es una "llave por enlace" (aleatoria y difícil de
+  adivinar: protege del acceso casual), pero una persona con conocimientos
+  técnicos y la llave pública aún podría leer la tabla completa. El plan: exigir
+  el código del evento también del lado del servidor (políticas RLS que leen un
+  encabezado `x-evento`) y/o cuentas de anfitrión. También: moderación con
+  aprobación previa, borrar/exportar al cerrar un evento, y opcional migrar el
+  brindis a este proyecto.
 
 ## Cómo encender el servidor real (una sola vez)
 
@@ -113,15 +125,17 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
 | **1 · Cimientos + Muro** | La pieza `@salones/sync` y el muro de punta a punta. **Hecho** (falta encender el servidor). | ~Gratis (texto) |
 | **2 · Las "baratas"** ✅ | Reusan los cimientos: **Playlist**, **RSVP** y **Dinámicas** (ranking de la trivia). Hecho y verificado en local. | ~Gratis (texto) |
 | **3 · Las de medios** ✅ | **Álbum** (fotos al bucket `media`, hecho y verificado) y **Brindis** (videos por su propio camino con Shotstack). El costo crece con el uso. | 💲 Almacenamiento |
-| **4 · Para vender en serio** | Tu cuenta para varios eventos, eventos con su propio código/QR, moderación (esconder un mensaje antes de proyectar), borrar/exportar al terminar, y cerrar el acceso público de la tabla. | Bajo |
+| **4 · Para vender en serio** ✅ | Eventos con su propio código en el enlace/QR, generador del operador (`/evento` en el catálogo) y candados de tamaño/tipo. Hecho y verificado. | Bajo |
+| **5 · Cierre total (al vender)** | Exigir el código del evento del lado del servidor, cuentas de anfitrión, moderación con aprobación, borrar/exportar al cerrar. | Bajo |
 
 ## Notas técnicas
 
 - El proveedor de servidor usa la **API REST de Supabase** (PostgREST) con
   **sondeo cada 3 s**. Es simple y sin dependencias nuevas; más adelante se puede
   subir a "tiempo real" por websocket si hace falta.
-- En la Fase 1/2 hay **un solo evento** (`EVENTO_ID = "demo"`). La creación de
-  eventos con su propio código/QR es parte de la Fase 4.
+- El evento se lee del enlace (`?e=codigo`) con `eventoActual()` de
+  `@salones/sync`; sin `?e=` se usa el evento `demo` (las vitrinas). Los códigos
+  se crean en el **generador del operador**: `suite-salones.vercel.app/evento`.
 - **Playlist**: los votos suben con "leer y sumar". En local es exacto; con
   muchos teléfonos votando en el mismo instante podría perderse algún voto
   simultáneo (se afina en la Fase 4 con una suma atómica). Para una fiesta es de

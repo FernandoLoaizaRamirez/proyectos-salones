@@ -3,11 +3,10 @@
 import * as React from "react";
 import { Camera, X, Send, Check, PenLine, MessageCircle, Loader2 } from "lucide-react";
 import { Button, Card, cn } from "@salones/ui";
-import { obtenerSync, estaConectado } from "@salones/sync";
+import { obtenerSync, estaConectado, eventoActual } from "@salones/sync";
 import {
   evento,
   comprimirImagen,
-  EVENTO_ID,
   COLECCION_MENSAJES,
   type Mensaje,
 } from "@/lib/muro";
@@ -57,9 +56,10 @@ export function FirmaForm() {
       ...(foto ? { foto } : {}),
     };
     try {
-      // Escribe en el "lugar central" (@salones/sync): en local queda en este
-      // dispositivo; con el servicio gestionado llega al muro de todos.
-      await obtenerSync().guardar(EVENTO_ID, COLECCION_MENSAJES, msg);
+      // Escribe en el "lugar central" (@salones/sync) del evento del enlace:
+      // en local queda en este dispositivo; con el servicio gestionado llega al
+      // muro de todos los invitados de ESTE evento.
+      await obtenerSync().guardar(eventoActual(), COLECCION_MENSAJES, msg);
       setEnviado(msg);
     } catch (err) {
       setError(

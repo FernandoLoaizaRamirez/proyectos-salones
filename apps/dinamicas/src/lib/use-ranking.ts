@@ -1,11 +1,10 @@
 "use client";
 
 import * as React from "react";
-import { obtenerSync } from "@salones/sync";
+import { obtenerSync, eventoActual } from "@salones/sync";
 import {
   rankingInicial,
   nuevoId,
-  EVENTO_ID,
   COLECCION_RANKING,
   type Jugador,
 } from "@/lib/dinamicas";
@@ -21,16 +20,17 @@ export function useRanking() {
   const [cargado, setCargado] = React.useState(false);
 
   React.useEffect(() => {
+    const eventoId = eventoActual();
     const sync = obtenerSync();
-    const cancelar = sync.suscribir<Jugador>(EVENTO_ID, COLECCION_RANKING, setRanking);
+    const cancelar = sync.suscribir<Jugador>(eventoId, COLECCION_RANKING, setRanking);
     setCargado(true);
 
     // Solo en la demo local: si el ranking está vacío, lo sembramos con ejemplos.
     if (sync.nombre === "local") {
-      sync.listar<Jugador>(EVENTO_ID, COLECCION_RANKING).then((items) => {
+      sync.listar<Jugador>(eventoId, COLECCION_RANKING).then((items) => {
         if (items.length === 0) {
           for (const j of rankingInicial()) {
-            void sync.guardar(EVENTO_ID, COLECCION_RANKING, j);
+            void sync.guardar(eventoId, COLECCION_RANKING, j);
           }
         }
       });
@@ -40,7 +40,7 @@ export function useRanking() {
 
   const agregar = React.useCallback((nombre: string, aciertos: number, total: number): string => {
     const id = nuevoId("J");
-    void obtenerSync().guardar(EVENTO_ID, COLECCION_RANKING, {
+    void obtenerSync().guardar(eventoActual(), COLECCION_RANKING, {
       id,
       nombre,
       aciertos,

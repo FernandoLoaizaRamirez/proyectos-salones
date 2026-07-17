@@ -282,3 +282,32 @@ export function obtenerSync(): ProveedorSync {
 export function estaConectado(): boolean {
   return obtenerSync().nombre === "servidor";
 }
+
+/* ================================================================== */
+/* Evento actual — cada evento vive en su propia "burbuja"             */
+/* ================================================================== */
+
+/**
+ * Lee el código del evento desde el enlace (?e=...). Así cada evento real tiene
+ * su propio espacio: el salón recibe enlaces como  /firmar?e=boda-garcia-x7k2
+ * y su contenido no se mezcla con el de nadie más. Sin ?e= se usa el evento de
+ * demostración ("demo"), que es el de las vitrinas públicas.
+ *
+ * El código funciona como una "llave por enlace": al ser aleatorio y difícil de
+ * adivinar, solo quien recibió el enlace/QR puede ver o escribir ese evento.
+ */
+export function eventoActual(porDefecto = "demo"): string {
+  if (!hayNavegador()) return porDefecto;
+  const e = new URLSearchParams(window.location.search).get("e");
+  // Solo letras, números y guiones, para que el código viaje limpio en el enlace.
+  return e && /^[a-z0-9-]{1,60}$/i.test(e) ? e : porDefecto;
+}
+
+/**
+ * Sufijo para propagar el evento actual a otros enlaces de la misma app
+ * (p. ej. `${origin}/firmar${sufijoEvento()}`). Devuelve "" en el evento demo.
+ */
+export function sufijoEvento(): string {
+  const e = eventoActual();
+  return e === "demo" ? "" : `?e=${e}`;
+}

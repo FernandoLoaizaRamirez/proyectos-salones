@@ -17,6 +17,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { Button, Card, cn } from "@salones/ui";
+import { sufijoEvento } from "@salones/sync";
 import { QR } from "@/components/qr";
 import { useCanciones } from "@/lib/use-canciones";
 import { evento, porVotos, plataformaDeLink, EstadoCancion, type Cancion } from "@/lib/playlist";
@@ -38,7 +39,8 @@ export function DjCliente() {
   const [copiado, setCopiado] = React.useState(false);
 
   React.useEffect(() => {
-    setUrl(`${window.location.origin}/pedir`);
+    // El enlace para pedir lleva el código del evento actual (?e=...).
+    setUrl(`${window.location.origin}/pedir${sufijoEvento()}`);
   }, []);
 
   const cola = canciones.filter((c) => c.estado === EstadoCancion.Pendiente);

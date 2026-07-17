@@ -3,7 +3,7 @@
 import * as React from "react";
 import { Plus, Check, Trash2, MessageCircle, Clock } from "lucide-react";
 import { Button, Card, cn } from "@salones/ui";
-import { obtenerSync } from "@salones/sync";
+import { obtenerSync, eventoActual, sufijoEvento } from "@salones/sync";
 import {
   invitadosIniciales,
   respuestasIniciales,
@@ -12,7 +12,6 @@ import {
   nuevoId,
   codificar,
   etiquetaEstado,
-  EVENTO_ID,
   COLECCION_RESPUESTAS,
   type Invitado,
   type Estado,
@@ -74,18 +73,19 @@ export function RsvpCliente() {
   // actualiza solo con lo que confirma cada invitado. En local, entre pestañas;
   // con el servicio gestionado, desde el teléfono de cada invitado.
   React.useEffect(() => {
+    const eventoId = eventoActual();
     const sync = obtenerSync();
-    const cancelar = sync.suscribir<RespuestaItem>(EVENTO_ID, COLECCION_RESPUESTAS, (items) => {
+    const cancelar = sync.suscribir<RespuestaItem>(eventoId, COLECCION_RESPUESTAS, (items) => {
       setEstados(
         Object.fromEntries(items.map((r) => [r.id, { estado: r.estado, personas: r.personas }])),
       );
     });
     // Solo en la demo local: sembramos respuestas de ejemplo si no hay ninguna.
     if (sync.nombre === "local") {
-      sync.listar<RespuestaItem>(EVENTO_ID, COLECCION_RESPUESTAS).then((items) => {
+      sync.listar<RespuestaItem>(eventoId, COLECCION_RESPUESTAS).then((items) => {
         if (items.length === 0) {
           for (const [id, r] of Object.entries(respuestasIniciales)) {
-            void sync.guardar(EVENTO_ID, COLECCION_RESPUESTAS, { id, ...r });
+            void sync.guardar(eventoId, COLECCION_RESPUESTAS, { id, ...r });
           }
         }
       });
@@ -127,16 +127,20 @@ export function RsvpCliente() {
   };
   const eliminar = (id: string) => {
     setInvitados((l) => l.filter((i) => i.id !== id));
-    void obtenerSync().eliminar(EVENTO_ID, COLECCION_RESPUESTAS, id);
+    void obtenerSync().eliminar(eventoActual(), COLECCION_RESPUESTAS, id);
   };
 
   const marcar = (inv: Invitado, estado: Estado) => {
     const personas =
       estado === EstadoRSVP.Confirmado ? estadosRef.current[inv.id]?.personas || inv.cupos : 0;
-    void obtenerSync().guardar(EVENTO_ID, COLECCION_RESPUESTAS, { id: inv.id, estado, personas });
+    void obtenerSync().guardar(eventoActual(), COLECCION_RESPUESTAS, {
+      id: inv.id,
+      estado,
+      personas,
+    });
   };
   const cambiarPersonas = (id: string, personas: number) => {
-    void obtenerSync().guardar(EVENTO_ID, COLECCION_RESPUESTAS, {
+    void obtenerSync().guardar(eventoActual(), COLECCION_RESPUESTAS, {
       id,
       estado: EstadoRSVP.Confirmado,
       personas,
@@ -144,7 +148,8 @@ export function RsvpCliente() {
   };
 
   const compartir = (inv: Invitado) => {
-    const url = `${window.location.origin}/confirmar#${codificar(inv)}`;
+    // El enlace lleva el código del evento (?e=...) y los datos del invitado (#...).
+    const url = `${window.location.origin}/confirmar${sufijoEvento()}#${codificar(inv)}`;
     const msg = `¡Hola! Nos encantaría contar contigo en ${evento.nombre} (${evento.fecha}). Por favor confirma tu asistencia aquí antes del ${evento.fechaLimite}:\n${url}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, "_blank", "noopener,noreferrer");
   };

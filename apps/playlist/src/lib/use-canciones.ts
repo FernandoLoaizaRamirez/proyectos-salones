@@ -1,11 +1,10 @@
 "use client";
 
 import * as React from "react";
-import { obtenerSync } from "@salones/sync";
+import { obtenerSync, eventoActual } from "@salones/sync";
 import {
   cancionesIniciales,
   EstadoCancion,
-  EVENTO_ID,
   COLECCION_CANCIONES,
   type Cancion,
   type EstadoCancion as Estado,
@@ -41,16 +40,17 @@ export function useCanciones() {
       setMisVotos([]);
     }
 
+    const eventoId = eventoActual();
     const sync = obtenerSync();
-    const cancelar = sync.suscribir<Cancion>(EVENTO_ID, COLECCION_CANCIONES, setCanciones);
+    const cancelar = sync.suscribir<Cancion>(eventoId, COLECCION_CANCIONES, setCanciones);
     setCargado(true);
 
     // Solo en la demo local: si la lista está vacía, la sembramos con ejemplos.
     if (sync.nombre === "local") {
-      sync.listar<Cancion>(EVENTO_ID, COLECCION_CANCIONES).then((items) => {
+      sync.listar<Cancion>(eventoId, COLECCION_CANCIONES).then((items) => {
         if (items.length === 0) {
           for (const c of cancionesIniciales()) {
-            void sync.guardar(EVENTO_ID, COLECCION_CANCIONES, c);
+            void sync.guardar(eventoId, COLECCION_CANCIONES, c);
           }
         }
       });
@@ -76,7 +76,7 @@ export function useCanciones() {
         ...(datos.link ? { link: datos.link } : {}),
         ...(datos.pedidaPor ? { pedidaPor: datos.pedidaPor } : {}),
       };
-      void obtenerSync().guardar(EVENTO_ID, COLECCION_CANCIONES, c);
+      void obtenerSync().guardar(eventoActual(), COLECCION_CANCIONES, c);
       // El autor de la canción cuenta como su primer voto (en este dispositivo).
       setMisVotos((v) => (v.includes(c.id) ? v : [...v, c.id]));
     },
@@ -87,18 +87,21 @@ export function useCanciones() {
     if (misVotosRef.current.includes(id)) return;
     const actual = cancionesRef.current.find((c) => c.id === id);
     if (!actual) return;
-    void obtenerSync().guardar(EVENTO_ID, COLECCION_CANCIONES, { ...actual, votos: actual.votos + 1 });
+    void obtenerSync().guardar(eventoActual(), COLECCION_CANCIONES, {
+      ...actual,
+      votos: actual.votos + 1,
+    });
     setMisVotos((v) => (v.includes(id) ? v : [...v, id]));
   }, []);
 
   const setEstado = React.useCallback((id: string, estado: Estado) => {
     const actual = cancionesRef.current.find((c) => c.id === id);
     if (!actual) return;
-    void obtenerSync().guardar(EVENTO_ID, COLECCION_CANCIONES, { ...actual, estado });
+    void obtenerSync().guardar(eventoActual(), COLECCION_CANCIONES, { ...actual, estado });
   }, []);
 
   const eliminar = React.useCallback((id: string) => {
-    void obtenerSync().eliminar(EVENTO_ID, COLECCION_CANCIONES, id);
+    void obtenerSync().eliminar(eventoActual(), COLECCION_CANCIONES, id);
   }, []);
 
   return { canciones, cargado, yaVote, agregar, votar, setEstado, eliminar };

@@ -13,11 +13,10 @@ import {
   Loader2,
 } from "lucide-react";
 import { Button, EmptyState, cn } from "@salones/ui";
-import { obtenerSync, estaConectado } from "@salones/sync";
+import { obtenerSync, estaConectado, eventoActual } from "@salones/sync";
 import {
   fotosEjemplo,
   comprimirImagen,
-  EVENTO_ID,
   COLECCION_FOTOS,
   type Archivo,
 } from "@/lib/album-data";
@@ -39,7 +38,7 @@ export function Album() {
   // actualiza solo con las fotos que sube cada invitado desde su teléfono.
   React.useEffect(() => {
     if (!estaConectado()) return;
-    return obtenerSync().suscribir<Archivo>(EVENTO_ID, COLECCION_FOTOS, setArchivos);
+    return obtenerSync().suscribir<Archivo>(eventoActual(), COLECCION_FOTOS, setArchivos);
   }, []);
 
   const agregar = React.useCallback(async (lista: FileList | null) => {
@@ -62,14 +61,15 @@ export function Album() {
     // Modo servidor: cada foto sube (comprimida) al almacenamiento central y se
     // anota en la colección; el álbum de todos se actualiza solo.
     const sync = obtenerSync();
+    const eventoId = eventoActual();
     setErrorSubida("");
     setSubiendo((n) => n + validos.length);
     for (const a of validos) {
       try {
         const blob = a.type.startsWith("image/") ? await comprimirImagen(a) : a;
         const tipo = blob.type || a.type;
-        const url = await sync.subirArchivo(EVENTO_ID, a.name, blob, tipo);
-        await sync.guardar(EVENTO_ID, COLECCION_FOTOS, {
+        const url = await sync.subirArchivo(eventoId, a.name, blob, tipo);
+        await sync.guardar(eventoId, COLECCION_FOTOS, {
           id: "F-" + Math.random().toString(36).slice(2, 10).toUpperCase(),
           nombre: a.name,
           url,
@@ -87,7 +87,7 @@ export function Album() {
   const eliminar = React.useCallback((id: string) => {
     if (estaConectado()) {
       // Se quita del álbum compartido; la suscripción refresca la vista sola.
-      void obtenerSync().eliminar(EVENTO_ID, COLECCION_FOTOS, id);
+      void obtenerSync().eliminar(eventoActual(), COLECCION_FOTOS, id);
       return;
     }
     setArchivos((prev) => {

@@ -14,7 +14,7 @@ import {
   PenLine,
 } from "lucide-react";
 import { Button, Card, EmptyState, cn } from "@salones/ui";
-import { obtenerSync } from "@salones/sync";
+import { obtenerSync, eventoActual, sufijoEvento } from "@salones/sync";
 import { QR } from "@/components/qr";
 import { ModoPantalla } from "@/components/modo-pantalla";
 import {
@@ -22,7 +22,6 @@ import {
   mensajesIniciales,
   tiempoRelativo,
   exportarRecuerdo,
-  EVENTO_ID,
   COLECCION_MENSAJES,
   type Mensaje,
 } from "@/lib/muro";
@@ -41,19 +40,21 @@ export function MuroCliente() {
   // gestionado, entre los teléfonos de todos los invitados. Mismo código.
   React.useEffect(() => {
     setAhora(Date.now());
-    setUrlFirmar(`${window.location.origin}/firmar`);
+    // El enlace para firmar lleva el código del evento actual (?e=...).
+    setUrlFirmar(`${window.location.origin}/firmar${sufijoEvento()}`);
 
+    const eventoId = eventoActual();
     const sync = obtenerSync();
-    const cancelar = sync.suscribir<Mensaje>(EVENTO_ID, COLECCION_MENSAJES, setMensajes);
+    const cancelar = sync.suscribir<Mensaje>(eventoId, COLECCION_MENSAJES, setMensajes);
     setCargado(true);
 
     // Solo en la demo local: si el muro está vacío, lo llenamos con ejemplos
     // para que no se vea vacío. Conectado al servidor no se siembra nada.
     if (sync.nombre === "local") {
-      sync.listar<Mensaje>(EVENTO_ID, COLECCION_MENSAJES).then((items) => {
+      sync.listar<Mensaje>(eventoId, COLECCION_MENSAJES).then((items) => {
         if (items.length === 0) {
           for (const m of mensajesIniciales()) {
-            void sync.guardar(EVENTO_ID, COLECCION_MENSAJES, m);
+            void sync.guardar(eventoId, COLECCION_MENSAJES, m);
           }
         }
       });
@@ -70,7 +71,7 @@ export function MuroCliente() {
   // Quitar un mensaje (moderación del anfitrión): se borra del lugar central y
   // la suscripción refresca la vista sola.
   const eliminar = (id: string) => {
-    void obtenerSync().eliminar(EVENTO_ID, COLECCION_MENSAJES, id);
+    void obtenerSync().eliminar(eventoActual(), COLECCION_MENSAJES, id);
   };
 
   const copiar = async () => {

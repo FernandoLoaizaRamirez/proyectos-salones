@@ -1,5 +1,15 @@
 packages:
   - "apps/*"
   - "packages/*"
+
 allowBuilds:
+  esbuild: true
   sharp: true
+
+# Paquetes autorizados a correr su script de instalación (build). pnpm los bloquea
+# por defecto como medida de seguridad; aquí se permiten solo los de confianza:
+#   esbuild → lo usa vitest para las pruebas
+#   sharp   → optimización de imágenes
+onlyBuiltDependencies:
+  - esbuild
+  - sharp

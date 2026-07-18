@@ -4,6 +4,12 @@
  * Aquí vive la "fuente de verdad" del dominio: qué es un Evento, un Invitado,
  * una Mesa, etc. Todas las apps usan estos tipos para hablar el mismo idioma,
  * aunque cada una guarde sus datos por separado.
+ *
+ * A partir de la plataforma multi-cliente, este paquete deja de ser decorativo y
+ * pasa a ser protagonista: además del dominio del evento, define la TENENCIA
+ * (Tenant / User / Role — ver ./tenencia) y el motor de ENTITLEMENTS
+ * (Plan / Feature / resolveEntitlements — ver ./entitlements). Todo es código
+ * PURO (solo depende de `zod`), así que corre igual en el cliente y en el servidor.
  */
 import { z } from "zod";
 
@@ -103,3 +109,10 @@ export const EventoSchema = z.object({
   anfitrionId: z.string().optional(),
 });
 export type Evento = z.infer<typeof EventoSchema>;
+
+/* ------------------------------------------------------------------ */
+/* Plataforma multi-cliente: tenencia + entitlements                  */
+/* ------------------------------------------------------------------ */
+
+export * from "./tenencia";
+export * from "./entitlements";

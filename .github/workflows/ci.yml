@@ -1,0 +1,36 @@
+name: CI
+
+# Se ejecuta en cada push a main y en cada Pull Request. Es la primera "malla de
+# seguridad" automática del proyecto: instala y corre las pruebas.
+#
+# Nota: el `lint` NO se incluye todavía porque las apps usan `next lint`, comando
+# que Next.js 16 eliminó (queda roto en todo el repo, deuda previa). Se volverá a
+# activar cuando se migren los scripts de lint a ESLint directo.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Traer el código
+        uses: actions/checkout@v4
+
+      - name: Instalar pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.9.0
+
+      - name: Instalar Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Instalar dependencias
+        run: pnpm install --frozen-lockfile
+
+      - name: Correr pruebas
+        run: pnpm test

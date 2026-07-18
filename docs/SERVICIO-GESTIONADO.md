@@ -64,6 +64,32 @@ automático**:
   moderación con aprobación previa, borrar/exportar todo al cerrar un evento,
   y migrar el brindis a este proyecto.
 
+## Evolución a plataforma multi-cliente (Fase 0 — hecho)
+
+A partir de aquí, el servicio empieza a convertirse en una **plataforma para
+varios clientes** (cada salón dueño de sus datos), sin romper nada de lo de
+arriba. La Fase 0 es **aditiva** (solo agrega; no cambia lo que ya funciona):
+
+- **El esquema de la base de datos ya está bajo control de versiones** en
+  [`supabase/migrations/`](../supabase/migrations/) (antes solo vivía en este
+  documento). La migración `0001` es la foto de lo actual; la `0002` y la `0003`
+  son lo nuevo.
+- **Tablas nuevas del "plano de control"** (`0002`): `tenants` (el salón/cliente),
+  `tenant_members` (staff + rol), `events`, `guests`, y el catálogo comercial
+  (`features`, `plans`, `plan_features`, `tenant_entitlements`, `event_overrides`).
+  Nacen cerradas (solo el backend las toca) hasta que la Fase 1 agregue el login.
+- **La tabla `items` gana columnas** (`0003`): `tenant_id`, `module` y `created_by`.
+  Son columnas nuevas con valor por defecto, así que **las 5 apps en vivo siguen
+  igual** (el candado `x-evento` no se toca). El nombre objetivo `event_items`
+  llega en la Fase 1, con la migración de seguridad.
+- **`@salones/core` ahora es protagonista**: define la tenencia (`Tenant`, `User`,
+  `Role`) y el motor de funciones (`resolveEntitlements`), con pruebas automáticas
+  y un primer CI en GitHub Actions.
+
+El detalle completo (Fase 0 hecha + Fase 1 planeada: login del staff, cobros con
+Stripe apagados, y el cambio del candado `x-evento` por un token firmado) está en
+[`FASE-0-1-PLATAFORMA.md`](FASE-0-1-PLATAFORMA.md).
+
 ## Cómo encender el servidor real (una sola vez)
 
 > Esto lo haces tú porque implica crear una cuenta. Son ~5 minutos.
@@ -115,6 +141,11 @@ insert into storage.buckets (id, name, public) values ('media', 'media', true) o
 update storage.buckets set file_size_limit = 26214400, allowed_mime_types = array['image/*','video/*'] where id = 'media';
 create policy "subida publica media"  on storage.objects for insert with check (bucket_id = 'media');
 ```
+
+> **Nota (Fase 0):** este bloque es ahora la migración
+> [`0001_estado_actual.sql`](../supabase/migrations/0001_estado_actual.sql). El
+> esquema completo y al día vive en [`supabase/migrations/`](../supabase/migrations/);
+> aplícalas en orden (`0001` → `0002` → `0003`). Ver [`supabase/README.md`](../supabase/README.md).
 
 ### Las variables de entorno
 

@@ -177,7 +177,9 @@ function crearProveedorLocal(): ProveedorSync {
  *         creado timestamptz default now())
  */
 function crearProveedorServidor(url: string, anon: string): ProveedorSync {
-  const base = `${url.replace(/\/$/, "")}/rest/v1/items`;
+  const raiz = url.replace(/\/$/, "");
+  const base = `${raiz}/rest/v1/items`;
+  const funciones = `${raiz}/functions/v1`;
   // La llave puede ser "legacy" (un JWT que empieza con eyJ) o del formato nuevo
   // (sb_publishable_...). El encabezado Authorization solo admite JWTs; con las
   // llaves nuevas basta el encabezado apikey.
@@ -185,19 +187,54 @@ function crearProveedorServidor(url: string, anon: string): ProveedorSync {
     apikey: anon,
     ...(anon.startsWith("eyJ") ? { Authorization: `Bearer ${anon}` } : {}),
   };
+
+  /* ---- Pase firmado por evento (migración x-evento → token, Fase 1) --------
+   * Antes de cada petición se pide (y se cachea) un PASE a la Edge Function
+   * `token`: un JWT corto con el claim del evento. Se manda como Authorization
+   * para que la RLS acote el acceso por ese claim (ver migración 0006). Es
+   * NO-FATAL: si la función aún no existe o falla, se sigue por el candado
+   * viejo (encabezado x-evento), así que esta versión es segura de desplegar
+   * ANTES de que el pase esté encendido en el servidor. */
+  const pases = new Map<string, { token: string; expira: number }>();
+  const MARGEN_MS = 60_000; // renovar 1 min antes de que caduque
+
+  async function obtenerPase(evento: string): Promise<string | null> {
+    const guardado = pases.get(evento);
+    if (guardado && guardado.expira - MARGEN_MS > Date.now()) return guardado.token;
+    try {
+      const res = await fetch(`${funciones}/token?e=${encodeURIComponent(evento)}`, {
+        headers: auth,
+      });
+      if (!res.ok) return null;
+      const { token, exp } = (await res.json()) as { token?: string; exp?: number };
+      if (!token) return null;
+      pases.set(evento, { token, expira: (exp ?? 0) * 1000 });
+      return token;
+    } catch {
+      return null; // sin red o función ausente: se sigue por el header
+    }
+  }
+
+  /** Authorization efectivo: el pase del evento si lo hay; si no, el de base. */
+  async function autorizacion(evento: string): Promise<Record<string, string>> {
+    const pase = await obtenerPase(evento);
+    if (pase) return { apikey: anon, Authorization: `Bearer ${pase}` };
+    return { ...auth };
+  }
+
   /**
    * La llave del evento viaja TAMBIÉN como encabezado (x-evento) en cada
-   * petición. Así el servidor puede exigirla con sus políticas (Fase 5): sin la
-   * llave correcta no se puede leer ni escribir nada, ni siquiera conociendo la
-   * llave pública del proyecto.
+   * petición: así conviven el pase nuevo y el candado viejo hasta el corte
+   * final (ver docs/MIGRACION-TOKEN-FIRMADO.md). Con cualquiera de los dos, el
+   * servidor exige la llave correcta: sin ella no se lee ni escribe nada.
    */
-  const headersDe = (evento: string): Record<string, string> => ({
-    ...auth,
+  const headersDe = async (evento: string): Promise<Record<string, string>> => ({
+    ...(await autorizacion(evento)),
     "x-evento": evento,
     "Content-Type": "application/json",
   });
   /** Almacenamiento central de fotos/videos (bucket "media" del proyecto). */
-  const almacen = `${url.replace(/\/$/, "")}/storage/v1`;
+  const almacen = `${raiz}/storage/v1`;
   const BUCKET = "media";
   const INTERVALO_MS = 3000;
 
@@ -206,7 +243,7 @@ function crearProveedorServidor(url: string, anon: string): ProveedorSync {
 
   async function pedir<T extends ItemSync>(evento: string, coleccion: string): Promise<T[]> {
     const q = `${base}?${filtro(evento, coleccion)}&select=id,dato&order=creado.desc`;
-    const res = await fetch(q, { headers: headersDe(evento) });
+    const res = await fetch(q, { headers: await headersDe(evento) });
     if (!res.ok) throw new Error(`sync/listar ${res.status}`);
     const filas = (await res.json()) as { id: string; dato: Record<string, unknown> }[];
     return filas.map((f) => ({ ...(f.dato ?? {}), id: f.id })) as T[];
@@ -221,14 +258,17 @@ function crearProveedorServidor(url: string, anon: string): ProveedorSync {
       const { id, ...dato } = item;
       const res = await fetch(base, {
         method: "POST",
-        headers: { ...headersDe(evento), Prefer: "resolution=merge-duplicates,return=minimal" },
+        headers: {
+          ...(await headersDe(evento)),
+          Prefer: "resolution=merge-duplicates,return=minimal",
+        },
         body: JSON.stringify({ evento, coleccion, id, dato }),
       });
       if (!res.ok) throw new Error(`sync/guardar ${res.status}`);
     },
     async eliminar(evento, coleccion, id) {
       const q = `${base}?${filtro(evento, coleccion)}&id=eq.${encodeURIComponent(id)}`;
-      const res = await fetch(q, { method: "DELETE", headers: headersDe(evento) });
+      const res = await fetch(q, { method: "DELETE", headers: await headersDe(evento) });
       if (!res.ok) throw new Error(`sync/eliminar ${res.status}`);
     },
     suscribir(evento, coleccion, cb) {
@@ -261,7 +301,11 @@ function crearProveedorServidor(url: string, anon: string): ProveedorSync {
         .slice(2, 8)}.${ext}`;
       const res = await fetch(`${almacen}/object/${BUCKET}/${ruta}`, {
         method: "POST",
-        headers: { ...auth, "x-evento": evento, "Content-Type": tipo || "application/octet-stream" },
+        headers: {
+          ...(await autorizacion(evento)),
+          "x-evento": evento,
+          "Content-Type": tipo || "application/octet-stream",
+        },
         body: blob,
       });
       if (!res.ok) throw new Error(`sync/subir ${res.status}`);

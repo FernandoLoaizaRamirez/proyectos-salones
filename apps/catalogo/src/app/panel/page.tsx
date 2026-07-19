@@ -13,6 +13,7 @@ import Link from "next/link";
 import { KeyRound, LogOut, Loader2 } from "lucide-react";
 import { Button, Card } from "@salones/ui";
 import { obtenerSupabase } from "@/lib/supabase";
+import { TarjetaPersonalizacion } from "./tarjeta-personalizacion";
 
 export default function Panel() {
   const router = useRouter();
@@ -75,6 +76,8 @@ export default function Panel() {
           <Button size="sm">Abrir</Button>
         </Link>
       </Card>
+
+      <TarjetaPersonalizacion />
     </main>
   );
 }

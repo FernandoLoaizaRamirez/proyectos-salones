@@ -15,6 +15,13 @@ Se aplican **en orden**. Cada una es idempotente/aditiva (segura de correr):
 | `0001_estado_actual.sql` | Reproduce lo que YA existe: tabla `items`, candado `x-evento` (Fase 5), bucket `media`. | No cambia nada nuevo. |
 | `0002_plano_de_control.sql` | Crea las tablas nuevas de la plataforma (tenants, eventos, planes, funciones, entitlements…) + su semilla. | Solo agrega tablas nuevas. |
 | `0003_items_multitenant.sql` | Agrega a `items` las columnas `tenant_id`, `module`, `created_by` (aditivo). | Columnas nuevas con default; no rompe las apps. |
+| `0005_pagos.sql` | Crea la tabla `subscriptions` (cobros Stripe), con RLS cerrada. | Solo agrega una tabla nueva; cobros apagados. |
+| `0006_branding.sql` | Crea la tabla `tenant_branding` (marca por salón) con **lectura pública** + semilla del salón demo. | Solo agrega una tabla nueva; branding = dato público. |
+
+> **Ojo con la lectura pública de `0006`:** es la primera tabla del plano de
+> control que se puede leer con la llave pública (anon). Es a propósito: el
+> branding (nombre, logo, colores) no es secreto. La **escritura** sigue cerrada
+> (solo el rol de servicio); las demás tablas del plano de control siguen cerradas.
 
 ## Cómo aplicarlas
 

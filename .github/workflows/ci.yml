@@ -34,3 +34,16 @@ jobs:
 
       - name: Correr pruebas
         run: pnpm test
+        # La suite de AISLAMIENTO (tests/aislamiento/) prueba contra el Supabase
+        # real y necesita estas dos variables PÚBLICAS. Si faltan, esos tests se
+        # SALTAN solos (los unitarios siguen corriendo); con ellas, se ejecutan.
+        #
+        # Crea estos dos secrets en GitHub una sola vez:
+        #   Repo → Settings → Secrets and variables → Actions → New repository secret
+        #     · NEXT_PUBLIC_SUPABASE_URL       = https://cpbfisylcquuahrmyaca.supabase.co
+        #     · NEXT_PUBLIC_SUPABASE_ANON_KEY  = la llave "publishable/anon" pública del proyecto
+        #   (Son públicas por diseño —viajan en el navegador—; van como secrets solo
+        #    por comodidad y para no fijarlas en el archivo.)
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}

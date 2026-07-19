@@ -1,0 +1,14 @@
+{
+  "name": "@salones/payments",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./servidor": "./src/servidor.ts"
+  },
+  "dependencies": {
+    "@salones/core": "workspace:*",
+    "stripe": "^22.3.2"
+  }
+}

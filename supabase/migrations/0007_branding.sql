@@ -1,5 +1,5 @@
 -- ============================================================================
--- 0006 · BRANDING POR SALÓN (tema en runtime — Fase 3, semilla, ADITIVO)
+-- 0007 · BRANDING POR SALÓN (tema en runtime — Fase 3, semilla, ADITIVO)
 -- ----------------------------------------------------------------------------
 -- Guarda el branding de cada salón (tenant) para pintarlo EN VIVO sin recompilar:
 -- nombre de marca, logo, colores y redondeo. El código de @salones/ui ya sabe

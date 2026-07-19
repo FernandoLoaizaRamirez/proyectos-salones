@@ -7,7 +7,7 @@
  * al tipo `BrandingSalon` de @salones/ui, que ya sabe pintarlo en runtime.
  *
  * DEGRADACIÓN ELEGANTE: si Supabase no está configurado, si la tabla aún no
- * existe (migración 0006 sin aplicar) o si el salón no tiene branding, devuelve
+ * existe (migración 0007 sin aplicar) o si el salón no tiene branding, devuelve
  * `null` y la UI cae a valores de ejemplo. Nunca lanza.
  */
 import type { BrandingSalon } from "@salones/ui";

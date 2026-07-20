@@ -345,7 +345,7 @@ function crearProveedorServidor(url: string, anon: string): ProveedorSync {
   const BUCKET = "media";
   const INTERVALO_MS = 3000;
 
-  /* ---- Diagnóstico (migración 0011) ---------------------------------------
+  /* ---- Diagnóstico (migración 0012) ---------------------------------------
    * Antes, cuando algo fallaba aquí dentro, el error se tragaba en silencio
    * (`catch {}`) y el invitado veía "no hay mensajes" en vez de un aviso. El
    * operador se enteraba por un WhatsApp enfadado. Ahora los fallos dejan

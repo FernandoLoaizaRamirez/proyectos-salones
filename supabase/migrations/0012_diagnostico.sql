@@ -1,5 +1,5 @@
 -- ============================================================================
--- 0011 · DIAGNOSTICO — que los fallos dejen rastro
+-- 0012 · DIAGNOSTICO — que los fallos dejen rastro
 -- ----------------------------------------------------------------------------
 -- EL PROBLEMA:
 --   Hoy, si algo se rompe un sabado a las 11 de la noche, nadie se entera. No

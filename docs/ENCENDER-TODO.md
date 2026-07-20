@@ -13,7 +13,7 @@
 | | Estado |
 |---|---|
 | Migraciones **0001, 0002, 0003, 0006, 0007** | ✅ aplicadas |
-| Migraciones **0005, 0008, 0009, 0010, 0011** | ❌ faltan |
+| Migraciones **0005, 0008, 0009, 0010, 0012** | ❌ faltan |
 | Funciones **evento-config, media-subir, evento-cierre, diagnostico** | ❌ sin desplegar |
 | Función **`token`** (del primer intento fallido) | ⚠️ sigue viva, hay que borrarla |
 | PR **#4** (pase firmado) y **#17** (todo lo de hoy) | abiertos, sin fusionar |
@@ -43,7 +43,13 @@ dice *Success*.
 
 - [ ] **A4 · `0010_candado_fotos.sql`** — **hasta antes del "BLOQUE FINAL"**.
 
-- [ ] **A5 · `0011_diagnostico.sql`** — entera. No tiene bloque final.
+- [ ] **A5 · `0012_diagnostico.sql`** — entera. No tiene bloque final.
+
+> ℹ️ **Por qué salta del 0010 al 0012.** Mientras se construía esto, otra tarea
+> creó su propia `0011_invitados_cupos.sql` (los cupos por invitación, PR #20).
+> Dos migraciones no pueden llevar el mismo número, así que esta se renumeró a
+> `0012`. Son independientes y el orden entre ellas da igual: si el PR #20 ya
+> está fusionado, aplica también su `0011`.
 
 > Los archivos están en `supabase/migrations/` de la rama `feat/llave-anfitrion`
 > (PR #17).
@@ -156,7 +162,7 @@ explica su parte en detalle:
 | RLS por salón (0008) | [`RLS-TENANT-ROL.md`](RLS-TENANT-ROL.md) *(en `main`)* |
 | Llave de anfitrión (0009) | [`LLAVE-ANFITRION.md`](LLAVE-ANFITRION.md) |
 | Candado de fotos (0010) | [`CANDADO-FOTOS.md`](CANDADO-FOTOS.md) |
-| Diagnóstico (0011) | [`DIAGNOSTICO.md`](DIAGNOSTICO.md) |
+| Diagnóstico (0012) | [`DIAGNOSTICO.md`](DIAGNOSTICO.md) |
 | Cerrar un evento | [`CIERRE-DE-EVENTO.md`](CIERRE-DE-EVENTO.md) |
 | Documentos legales | [`LEGAL.md`](LEGAL.md) |
 | Portal del invitado | [`PORTAL-EVENTO-CONFIG.md`](PORTAL-EVENTO-CONFIG.md) *(en `main`)* |

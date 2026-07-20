@@ -1,6 +1,6 @@
 # Enterarte cuando algo falla
 
-> Migración `0011_diagnostico.sql` · Edge Function `diagnostico`
+> Migración `0012_diagnostico.sql` · Edge Function `diagnostico`
 > Pantalla: **Panel → ¿Está todo bien?** (`/panel/diagnostico`)
 
 ---
@@ -64,7 +64,7 @@ te puede romper. Si algún día creces mucho, Sentry tendrá sentido; hoy no.
 
 ## 4. Encendido
 
-1. **SQL Editor** → pega `supabase/migrations/0011_diagnostico.sql` entero. Es
+1. **SQL Editor** → pega `supabase/migrations/0012_diagnostico.sql` entero. Es
    aditiva y no toca nada de lo que ya existe.
 2. Despliega la función:
    ```
@@ -90,7 +90,7 @@ te puede romper. Si algún día creces mucho, Sentry tendrá sentido; hoy no.
 
 ## 6. Para el que lea el código
 
-- `supabase/migrations/0011_diagnostico.sql` — tabla `app_errores`, **RLS
+- `supabase/migrations/0012_diagnostico.sql` — tabla `app_errores`, **RLS
   activada y sin políticas = cerrada**. Solo escribe la función, con la llave de
   servicio. Con candados de tamaño para que nadie la llene de texto.
 - `supabase/functions/diagnostico/index.ts` — `POST` registra (público),

@@ -3,7 +3,7 @@ import { describe, it, expect, beforeAll } from "vitest";
 /**
  * PRUEBAS DEL DIAGNÓSTICO contra el Supabase REAL.
  * ---------------------------------------------------------------------------
- * Verifican la tabla `app_errores` (migración 0011) y la Edge Function
+ * Verifican la tabla `app_errores` (migración 0012) y la Edge Function
  * `diagnostico`.
  *
  * Lo que comprueban:
@@ -33,7 +33,7 @@ const hayEnv = Boolean(URL_ENV && ANON_ENV);
 const suite = hayEnv ? describe : describe.skip;
 const RED = 20000;
 
-suite("Diagnóstico (migración 0011 + función diagnostico)", () => {
+suite("Diagnóstico (migración 0012 + función diagnostico)", () => {
   const url = (URL_ENV ?? "").replace(/\/$/, "");
   const anon = ANON_ENV ?? "";
   const rest = `${url}/rest/v1`;

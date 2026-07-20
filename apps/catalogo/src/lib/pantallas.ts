@@ -82,6 +82,8 @@ export const PANTALLAS: PantallaAnfitrion[] = [
     appId: "dinamicas",
     ruta: "/",
     coleccion: "ranking",
+    // MIGRADA: ya vive dentro del panel.
+    rutaInterna: "juegos",
   },
   {
     clave: F.Album,

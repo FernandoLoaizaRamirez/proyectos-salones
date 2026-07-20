@@ -11,7 +11,7 @@
 import Link from "next/link";
 import { BrandingScope, type BrandingSalon } from "@salones/ui";
 import { tieneFuncion } from "@salones/core";
-import { ArrowUpRight, PartyPopper } from "lucide-react";
+import { ArrowUpRight, PartyPopper, SearchX } from "lucide-react";
 import { MODULOS, enlaceModulo, esInterno } from "@/lib/modulos";
 import type { ConfigEvento } from "@/lib/config-evento";
 
@@ -19,6 +19,19 @@ const CLASES_TARJETA =
   "group block rounded-[var(--radius)] border border-border bg-card p-5 transition hover:border-ring hover:shadow-sm";
 
 export function PortalHome({ config }: { config: ConfigEvento }) {
+  // Enlace roto o código mal escrito: mejor decirlo claro que fingir un portal.
+  if (config.estado === "no-encontrado") {
+    return (
+      <main className="mx-auto flex min-h-screen max-w-lg flex-col items-center justify-center px-6 text-center">
+        <SearchX className="size-10 text-muted-foreground" />
+        <h1 className="mt-4 text-2xl font-semibold tracking-tight">No encontramos este evento</h1>
+        <p className="mt-2 text-muted-foreground">
+          Revisa el enlace que te compartieron: puede que el código esté incompleto.
+        </p>
+      </main>
+    );
+  }
+
   const disponibles = MODULOS.filter((m) => tieneFuncion(config.entitlements, m.clave));
   const branding: BrandingSalon = config.branding ?? { nombre: config.nombre };
 
@@ -29,7 +42,10 @@ export function PortalHome({ config }: { config: ConfigEvento }) {
           <PartyPopper className="size-4" />
           Portal del evento
         </div>
-        <h1 className="mt-1 text-3xl font-semibold tracking-tight">{branding.nombre}</h1>
+        <h1 className="mt-1 text-3xl font-semibold tracking-tight">{config.nombre}</h1>
+        {config.salon ? (
+          <p className="mt-1 text-sm text-muted-foreground">En {config.salon}</p>
+        ) : null}
         <p className="mt-2 max-w-xl text-muted-foreground">
           Todo lo del evento, en un solo lugar. Elige una experiencia:
         </p>
@@ -81,6 +97,13 @@ export function PortalHome({ config }: { config: ConfigEvento }) {
             Este evento aún no tiene experiencias activas.
           </p>
         )}
+
+        {config.estado === "demo" ? (
+          <p className="mt-10 text-xs text-muted-foreground">
+            Modo demostración: se muestran todas las experiencias. Al conectar el servicio, cada
+            evento mostrará solo las que tenga contratadas.
+          </p>
+        ) : null}
       </main>
     </BrandingScope>
   );

@@ -127,6 +127,9 @@ importers:
       '@salones/payments':
         specifier: workspace:*
         version: link:../../packages/payments
+      '@salones/sync':
+        specifier: workspace:*
+        version: link:../../packages/sync
       '@salones/ui':
         specifier: workspace:*
         version: link:../../packages/ui

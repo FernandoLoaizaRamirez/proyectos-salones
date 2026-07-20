@@ -60,6 +60,8 @@ export const PANTALLAS: PantallaAnfitrion[] = [
     appId: "muro",
     ruta: "/",
     coleccion: "mensajes",
+    // MIGRADA: ya vive dentro del panel.
+    rutaInterna: "muro",
   },
   {
     clave: F.Playlist,

@@ -113,9 +113,10 @@ Mientras digan `PENDIENTE`, las páginas muestran el aviso ámbar.
 
 Esto cubre lo escrito. Quedan cosas que son **de sistema**, no de texto:
 
-- **No hay borrado ni entrega automáticos al cerrar un evento.** El aviso promete
-  que el contenido se elimina cuando el salón lo pide; hoy eso es a mano. Es el
-  tapón 3 de la auditoría.
+- ~~No hay borrado ni entrega al cerrar un evento.~~ **Resuelto**: ya existe
+  *Panel → Cerrar un evento*. Ver [`CIERRE-DE-EVENTO.md`](CIERRE-DE-EVENTO.md).
+  Queda pendiente poner un **número concreto de días** de conservación en el
+  texto del aviso (ahora dice "un periodo razonable").
 - **No hay registro de consentimiento.** No se guarda quién vio el aviso ni
   cuándo. Para el nivel de datos actual es defendible, pero si un día hace falta
   probarlo, no se puede.

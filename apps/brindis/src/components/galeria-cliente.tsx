@@ -3,7 +3,14 @@
 import * as React from "react";
 import { RefreshCw, Download, Loader2, Film, Sparkles } from "lucide-react";
 import { Button, Card, cn } from "@salones/ui";
-import { listarBrindis, type VideoNube } from "@/lib/supabase";
+import { obtenerSync, estaConectado, eventoActual } from "@salones/sync";
+import {
+  listarBrindis,
+  ordenarBrindis,
+  nombreArchivo,
+  COLECCION_BRINDIS,
+  type BrindisSubido,
+} from "@/lib/nube";
 
 /** Descarga un video (aunque esté en otro dominio) o lo abre si no se puede. */
 async function descargar(url: string, nombre: string) {
@@ -30,8 +37,14 @@ const TEXTO_ESTADO: Record<string, string> = {
 };
 
 export function GaleriaCliente() {
-  const [videos, setVideos] = React.useState<VideoNube[]>([]);
-  const [cargando, setCargando] = React.useState(true);
+  // Sin servicio gestionado no hay galería común: los brindis se quedan en el
+  // teléfono de cada invitado (ver src/lib/nube.ts).
+  const conectado = estaConectado();
+  const [videos, setVideos] = React.useState<BrindisSubido[]>([]);
+  const [cargando, setCargando] = React.useState(conectado);
+  // El código del evento se lee del enlace (?e=...), y solo hay enlace en el
+  // navegador: por eso se resuelve ya montado, no al pintar.
+  const eventoRef = React.useRef("demo");
 
   // Video recuerdo
   const [creando, setCreando] = React.useState(false);
@@ -43,18 +56,41 @@ export function GaleriaCliente() {
   const cargar = React.useCallback(async () => {
     setCargando(true);
     try {
-      setVideos(await listarBrindis());
+      setVideos(await listarBrindis(eventoRef.current));
+    } catch {
+      /* corte de red puntual: se queda lo que ya había y el sondeo reintenta */
     } finally {
       setCargando(false);
     }
   }, []);
 
+  // Galería EN VIVO del evento: se suscribe al lugar central y se actualiza sola
+  // conforme los invitados van enviando sus brindis.
   React.useEffect(() => {
-    cargar();
+    eventoRef.current = eventoActual();
+    if (!conectado) {
+      setCargando(false);
+      return;
+    }
+    // Una primera lectura que SIEMPRE termina, aunque el servidor no conteste:
+    // así la galería no se queda en "Cargando…" para siempre si se cae la red.
+    // El sondeo de abajo sigue intentándolo por su cuenta.
+    void cargar();
+    return obtenerSync().suscribir<BrindisSubido>(
+      eventoRef.current,
+      COLECCION_BRINDIS,
+      (items) => {
+        setVideos(ordenarBrindis(items));
+        setCargando(false);
+      },
+    );
+  }, [conectado, cargar]);
+
+  React.useEffect(() => {
     return () => {
       if (pollRef.current) window.clearInterval(pollRef.current);
     };
-  }, [cargar]);
+  }, []);
 
   const consultar = React.useCallback((id: string) => {
     if (pollRef.current) window.clearInterval(pollRef.current);
@@ -87,7 +123,13 @@ export function GaleriaCliente() {
     setRecuerdoUrl(null);
     setEstado("queued");
     try {
-      const r = await fetch("/api/recuerdo", { method: "POST" });
+      // El servidor no ve el enlace del navegador: hay que decirle de qué evento
+      // se juntan los brindis.
+      const r = await fetch("/api/recuerdo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ evento: eventoRef.current }),
+      });
       const d = await r.json();
       if (!r.ok || !d.id) {
         setCreando(false);
@@ -184,13 +226,15 @@ export function GaleriaCliente() {
           <Film className="mx-auto size-8 text-muted-foreground" />
           <p className="mt-3 font-medium">Aún no hay brindis</p>
           <p className="mt-1 text-sm text-muted-foreground">
-            Cuando los invitados graben y toquen “Enviar a los novios”, aparecerán aquí.
+            {conectado
+              ? "Cuando los invitados graben y toquen “Enviar a los novios”, aparecerán aquí."
+              : "Esta galería junta los brindis de todos los teléfonos y necesita el Servicio gestionado. Sin él, cada video se queda en el teléfono del invitado."}
           </p>
         </Card>
       ) : (
         <div className="grid gap-5 sm:grid-cols-2">
           {videos.map((v) => (
-            <Card key={v.nombre} className="overflow-hidden p-3">
+            <Card key={v.id} className="overflow-hidden p-3">
               <video
                 src={v.url}
                 controls
@@ -209,7 +253,7 @@ export function GaleriaCliente() {
                       })
                     : ""}
                 </span>
-                <Button size="sm" variant="ghost" onClick={() => descargar(v.url, v.nombre)}>
+                <Button size="sm" variant="ghost" onClick={() => descargar(v.url, nombreArchivo(v))}>
                   <Download className="size-4" /> Descargar
                 </Button>
               </div>

@@ -29,8 +29,8 @@ export default function Page() {
 
       <footer className="border-t border-border">
         <div className="mx-auto max-w-3xl px-6 py-8 text-center text-xs text-muted-foreground">
-          {evento.lugar} · Demo de {evento.organizador.nombre}. Los videos se graban y quedan en tu
-          teléfono; no se suben a ningún servidor en esta demostración.
+          {evento.lugar} · Demo de {evento.organizador.nombre}. Tu brindis se graba en tu teléfono;
+          solo sale de ahí cuando tú lo envías o lo compartes.
         </div>
       </footer>
     </main>

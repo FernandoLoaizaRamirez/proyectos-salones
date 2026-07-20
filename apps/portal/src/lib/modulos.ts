@@ -77,6 +77,8 @@ export const MODULOS: ModuloManifest[] = [
     acento: "from-yellow-500 to-orange-600",
     urlBase: "https://proyectos-salones-dinamicas.vercel.app",
     rutaInvitado: "/jugar",
+    // MIGRADO: ya vive dentro del portal.
+    rutaInterna: "/dinamicas",
   },
   {
     clave: F.Album,

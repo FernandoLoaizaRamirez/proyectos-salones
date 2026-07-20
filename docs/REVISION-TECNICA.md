@@ -290,9 +290,10 @@ para el visitante no cambió nada hasta encender el servidor.
 > salió de un punto anterior al PR #7 le falta `rls-tenant.test.ts`, así que
 > **fusionada contra el `main` de hoy el total queda en 104**.
 >
-> Sigue sin haber **e2e automatizado** ni **gate de typecheck en CI**: eso es lo
-> que queda de la deuda #9. `lint` también sigue fuera, porque las apps usan
-> `next lint` y Next.js 16 eliminó ese comando.
+> Sigue sin haber **e2e automatizado**. El **gate de typecheck y build** tampoco
+> está en `main`, pero llega en el **PR #25** (un segundo trabajo que corre
+> `pnpm typecheck` sobre los paquetes y `pnpm build` sobre las 14 apps). `lint`
+> sigue fuera, porque las apps usan `next lint` y Next.js 16 eliminó ese comando.
 
 Lo que sigue describe la verificación **manual** de aquella ronda, que es la que
 las pruebas de `tests/aislamiento/` automatizaron después:
@@ -334,8 +335,8 @@ Ordenadas ~por impacto. Las marco con severidad para priorizar la revisión.
 | 6 | Validación | `dato` jsonb acepta cualquier forma. RLS solo valida evento y tamaño. Un cliente con código válido puede escribir JSON arbitrario. Zod solo corre en cliente (y `@salones/sync` ni eso). | Media | 🔴 sigue igual. |
 | 7 | Imágenes/video | Compresión por canvas puede **ignorar la orientación EXIF** en algunos navegadores (fotos rotadas). Video **no** se comprime (crudo, ≤25 MB; un brindis de 60 s @2.5 Mbps ≈ 19 MB, cerca del límite). Sin thumbnails. | Baja/Media | 🔴 sigue igual. |
 | 8 | Brindis desalineado | `brindis` es un **stack paralelo**: proyecto Supabase **distinto** (`ojtnzirtyxdpmsjfqixr`), usa el **SDK** `@supabase/supabase-js` (no REST), bucket `brindis`, **llaves hardcodeadas** como fallback en el código, env con **otro nombre** (`NEXT_PUBLIC_SUPABASE_KEY` vs `..._ANON_KEY`), render de video con **Shotstack** (API route server-side), y **no** usa `@salones/sync` ni `?e=` ni el candado de la Fase 5. Consume un 2º proyecto Free. Candidato a unificar. | Media | 🔴 sigue igual, y **queda fuera de todo lo nuevo**: ni pase firmado, ni candado de fotos, ni fotos privadas. |
-| 9 | Sin tests / CI | No hay unit/integration/e2e ni gate de typecheck en CI (solo `turbo lint`). | Media | 🟢 en su mayor parte: **58 pruebas + CI** (ver §8). Falta el **gate de typecheck** y el **e2e**. |
-| 10 | Paquetes sin build | `@salones/sync` se consume como fuente TS; no se typechequea aislado (`tsc --noEmit`) ni tiene tests propios. | Baja | 🔴 sigue igual (ahora también `@salones/payments`, aunque este sí tiene pruebas propias). |
+| 9 | Sin tests / CI | No hay unit/integration/e2e ni gate de typecheck en CI (solo `turbo lint`). | Media | 🟢 en su mayor parte: **58 pruebas + CI** (ver §8). El **gate de typecheck y build** viene en el **PR #25**, sin fusionar. Solo el **e2e** queda sin construir. |
+| 10 | Paquetes sin build | `@salones/sync` se consume como fuente TS; no se typechequea aislado (`tsc --noEmit`) ni tiene tests propios. | Baja | 🟡 **PR #25**: da `tsconfig.json` propio a los 4 paquetes y los mete en `pnpm typecheck`. Sin fusionar. Se siguen consumiendo como fuente TS, que era la otra mitad de la deuda. |
 | 11 | Manejo de errores | El polling se traga los errores en silencio; una mala config de RLS se ve como UI vacía sin señal. Los `catch {}` ocultan causas. | Baja | 🟡 **PR #17**: `reportar()` en `@salones/sync` + tabla `app_errores` (`0012`) + pantalla "¿Está todo bien?". Sin fusionar. |
 | 12 | Código muerto | `export const EVENTO_ID = "demo"` quedó en 5 libs (muro, playlist, rsvp, dinámicas, álbum) tras migrar a `eventoActual()`. Ya no se usa. Limpieza. | Trivial | 🔴 sigue en las 5. |
 | 13 | Multi-tab local | En modo local, borrar/guardar avisa a la misma pestaña vía un `Set` de escuchas además de `BroadcastChannel`. Funciona, pero es lógica sutil que conviene testear. | Baja | 🔴 sigue igual. |

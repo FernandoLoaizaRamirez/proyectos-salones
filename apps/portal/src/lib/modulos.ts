@@ -68,6 +68,8 @@ export const MODULOS: ModuloManifest[] = [
     acento: "from-teal-500 to-emerald-600",
     urlBase: "https://rsvp-umber-pi.vercel.app",
     rutaInvitado: "/",
+    // MIGRADO: ya vive dentro del portal.
+    rutaInterna: "/rsvp",
   },
   {
     clave: F.Dinamicas,

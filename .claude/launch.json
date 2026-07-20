@@ -91,6 +91,13 @@
       "runtimeArgs": ["--filter", "brindis", "dev"],
       "autoPort": true,
       "port": 3013
+    },
+    {
+      "name": "portal",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "portal", "dev"],
+      "autoPort": true,
+      "port": 3014
     }
   ]
 }

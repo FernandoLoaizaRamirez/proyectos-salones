@@ -32,7 +32,8 @@ export type PantallaAnfitrion = {
   /** Colección del "lugar central" que alimenta su contador. */
   coleccion: string;
   /**
-   * Si la pantalla YA vive dentro de este panel, su ruta interna. Cuando exista,
+   * Si la pantalla YA vive dentro de este panel, su ruta DENTRO del evento
+   * (p. ej. "confirmaciones" → /eventos/<codigo>/confirmaciones). Cuando existe,
    * manda sobre el puente (igual que `rutaInterna` en el portal del invitado).
    */
   rutaInterna?: string;
@@ -48,6 +49,8 @@ export const PANTALLAS: PantallaAnfitrion[] = [
     appId: "rsvp",
     ruta: "/",
     coleccion: "respuestas",
+    // MIGRADA: ya vive dentro del panel.
+    rutaInterna: "confirmaciones",
   },
   {
     clave: F.Muro,
@@ -88,7 +91,7 @@ export const PANTALLAS: PantallaAnfitrion[] = [
 ];
 
 /** Dirección de la app de un producto del catálogo (sin la barra final). */
-function baseDeApp(appId: string): string {
+export function baseDeApp(appId: string): string {
   return (productos.find((p) => p.id === appId)?.demoUrl ?? "").replace(/\/$/, "");
 }
 
@@ -102,10 +105,11 @@ export function esInterna(p: PantallaAnfitrion): boolean {
  * si no, el puente a su app con el código del evento (`?e=`).
  */
 export function enlacePantalla(p: PantallaAnfitrion, codigo: string): string {
-  const sufijo = `?e=${encodeURIComponent(codigo)}`;
-  if (p.rutaInterna) return `${p.rutaInterna}${sufijo}`;
+  if (p.rutaInterna) {
+    return `/eventos/${encodeURIComponent(codigo)}/${p.rutaInterna}`;
+  }
   const base = baseDeApp(p.appId);
-  return base ? `${base}${p.ruta}${sufijo}` : "";
+  return base ? `${base}${p.ruta}?e=${encodeURIComponent(codigo)}` : "";
 }
 
 /**

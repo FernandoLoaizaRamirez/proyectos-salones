@@ -57,8 +57,23 @@ export async function obtenerEvento(
 /* Cómo va el evento                                                   */
 /* ------------------------------------------------------------------ */
 
-/** Confirmación de asistencia tal como la guardan el portal y la app de RSVP. */
-type Respuesta = ItemSync & { estado?: string; personas?: number };
+/**
+ * Confirmación de asistencia tal como la guardan el portal y la app de RSVP.
+ * `nombre` solo viene en las que llegaron por el enlace general del evento (ahí
+ * el id no está en la lista del anfitrión, así que el nombre es lo único que
+ * identifica a quien contestó).
+ */
+export type RespuestaItem = ItemSync & {
+  estado?: string;
+  personas?: number;
+  nombre?: string;
+  fecha?: number;
+};
+
+type Respuesta = RespuestaItem;
+
+/** La colección donde viven las confirmaciones (la misma que usan las apps). */
+export const COLECCION_RESPUESTAS = "respuestas";
 
 /** Números de un evento, para el panel del anfitrión. */
 export type ResumenEvento = {

@@ -1,19 +1,21 @@
 "use client";
 
 /**
- * DEMO de branding por salón (semilla de la Fase 3).
+ * BRANDING del salón en el panel (Fase 3).
  *
- * Muestra cómo el tema de un salón —color, acento, redondeo y logo— se aplica
- * EN VIVO a una sección, sin recompilar, usando <BrandingScope> de @salones/ui.
- * Los datos son de EJEMPLO (todavía no vienen de la base de datos): cuando la
- * Fase 3 esté completa, este branding se leerá de `tenant_branding`.
+ * Lee el branding del salón desde la base (`tenant_branding`) y lo aplica EN
+ * VIVO a una vista previa con <BrandingScope> de @salones/ui, sin recompilar. Si
+ * la base no está disponible o el salón aún no tiene branding, cae a un tema de
+ * EJEMPLO (degradación elegante). Los temas de abajo permiten probar otros al
+ * vuelo (todavía NO se guardan).
  */
 import * as React from "react";
-import { Palette, Check } from "lucide-react";
+import { Palette, Check, Loader2 } from "lucide-react";
 import { Button, Card, BrandingScope, type BrandingSalon } from "@salones/ui";
+import { obtenerBrandingSalon } from "@/lib/branding";
 
-/** Tema inicial de ejemplo. */
-const TEMA_VINO: BrandingSalon = {
+/** Tema de respaldo si la base no responde (degradación elegante). */
+const TEMA_EJEMPLO: BrandingSalon = {
   nombre: "Hacienda Santa Renata",
   primario: "oklch(0.45 0.11 15)",
   primarioTexto: "oklch(0.98 0.01 90)",
@@ -21,9 +23,9 @@ const TEMA_VINO: BrandingSalon = {
   radio: "0.4rem",
 };
 
-/** Un par de temas de ejemplo (colores, acento y redondeo). */
+/** Temas para probar al vuelo (colores, acento y redondeo). */
 const TEMAS: { etiqueta: string; branding: BrandingSalon }[] = [
-  { etiqueta: "Vino & Oro", branding: TEMA_VINO },
+  { etiqueta: "Vino & Oro", branding: TEMA_EJEMPLO },
   {
     etiqueta: "Océano",
     branding: {
@@ -53,8 +55,53 @@ const RADIOS: { etiqueta: string; valor: string }[] = [
   { etiqueta: "Redondo", valor: "1.5rem" },
 ];
 
+/** Etiqueta que dice de dónde salió el branding: la base o un ejemplo. */
+function FuenteBadge({ cargando, fuente }: { cargando: boolean; fuente: "base" | "ejemplo" }) {
+  if (cargando) {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+        <Loader2 className="size-3 animate-spin" /> Cargando marca…
+      </span>
+    );
+  }
+  if (fuente === "base") {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-primary bg-muted px-2 py-0.5 text-xs font-medium text-primary">
+        <span className="size-1.5 rounded-full bg-primary" aria-hidden /> Desde la base
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+      Datos de ejemplo
+    </span>
+  );
+}
+
 export function TarjetaPersonalizacion() {
-  const [branding, setBranding] = React.useState<BrandingSalon>(TEMA_VINO);
+  const [branding, setBranding] = React.useState<BrandingSalon>(TEMA_EJEMPLO);
+  const [fuente, setFuente] = React.useState<"base" | "ejemplo">("ejemplo");
+  const [cargando, setCargando] = React.useState(true);
+
+  // Al montar, lee la marca real del salón desde la base. Si no hay (o falla),
+  // se queda con el tema de ejemplo.
+  React.useEffect(() => {
+    let vigente = true;
+    obtenerBrandingSalon()
+      .then((real) => {
+        if (vigente && real) {
+          setBranding(real);
+          setFuente("base");
+        }
+      })
+      .finally(() => {
+        if (vigente) setCargando(false);
+      });
+    return () => {
+      vigente = false;
+    };
+  }, []);
+
   const inicial = branding.nombre.trim().slice(0, 1).toUpperCase() || "S";
 
   return (
@@ -62,10 +109,13 @@ export function TarjetaPersonalizacion() {
       <div className="flex items-start gap-4">
         <Palette className="size-8 shrink-0 text-primary" />
         <div className="min-w-0 flex-1">
-          <h2 className="font-semibold">Personalización</h2>
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="font-semibold">Personalización</h2>
+            <FuenteBadge cargando={cargando} fuente={fuente} />
+          </div>
           <p className="text-sm text-muted-foreground">
-            Vista previa del tema de un salón: color, esquinas y logo se aplican en vivo, sin
-            recompilar. Datos de ejemplo (todavía no de la base).
+            La marca del salón (color, esquinas y logo) se lee de la base y se aplica en vivo, sin
+            recompilar. Los temas de abajo dejan probar otros al vuelo (todavía no se guardan).
           </p>
         </div>
       </div>
@@ -74,7 +124,7 @@ export function TarjetaPersonalizacion() {
         {/* -------- Controles -------- */}
         <div className="space-y-4">
           <div>
-            <span className="text-xs font-medium text-muted-foreground">Tema de ejemplo</span>
+            <span className="text-xs font-medium text-muted-foreground">Probar un tema</span>
             <div className="mt-2 flex flex-wrap gap-2">
               {TEMAS.map((t) => {
                 const activo = t.branding.primario === branding.primario;

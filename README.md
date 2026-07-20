@@ -5,8 +5,15 @@ Suite modular de aplicaciones para salones de eventos (bodas, XV años, corporat
 Cada aplicación **funciona por sí sola** y, cuando el cliente contrata varias,
 **trabajan mejor juntas** sin depender unas de otras.
 
-Todas están publicadas y en vivo. La vitrina de venta que las reúne es el
-**catálogo**: **https://suite-salones.vercel.app**
+Las **12 apps de la suite** están publicadas y en vivo. La vitrina de venta que
+las reúne es el **catálogo**: **https://suite-salones.vercel.app**
+
+> **Estado (20 jul 2026).** El repo tiene **14 carpetas en `apps/`**: las 12 apps
+> vendibles de abajo, más el **catálogo** (la vitrina y el panel del salón) y el
+> **portal del invitado** (`apps/portal`, la Fase 2 de la plataforma). El portal
+> es reciente y **todavía no tiene dirección pública fija** —se configura con
+> `NEXT_PUBLIC_PORTAL_URL`—, así que no aparece en la tabla de demos.
+> Ver [Estado actual](#estado-actual).
 
 ## Las aplicaciones
 
@@ -35,8 +42,12 @@ Todas están publicadas y en vivo. La vitrina de venta que las reúne es el
 > Las **7 apps nuevas** (mesas, muro, playlist, photobooth, mi-mesa, dinámicas y
 > brindis) usan la cámara y el micrófono del propio teléfono y funcionan solas en
 > cada dispositivo. Además, el **servicio gestionado** (ya encendido en las
-> demos) junta en un solo lugar lo que mandan muchos teléfonos: hoy el muro, la
-> playlist, el RSVP y el ranking de dinámicas; fotos y video vienen en camino.
+> demos) junta en un solo lugar lo que mandan muchos teléfonos: el muro, la
+> playlist, el RSVP, el ranking de dinámicas **y las fotos del álbum**.
+>
+> El **brindis** guarda sus videos aparte, en su propio proyecto de Supabase, y
+> **no** pasa por el servicio gestionado (ver deuda #8 en
+> [`docs/REVISION-TECNICA.md`](docs/REVISION-TECNICA.md)).
 
 ## Estructura
 
@@ -55,11 +66,15 @@ Proyectos-Salones/
 │   ├── mi-mesa/          # Buscador de "¿en qué mesa me toca?"
 │   ├── dinamicas/        # Trivia, bingo y rompehielos
 │   ├── brindis/          # Brindis en video
-│   └── catalogo/         # Vitrina-tienda que reúne todo (suite-salones)
+│   ├── catalogo/         # Vitrina-tienda + panel del salón (suite-salones)
+│   └── portal/           # Portal del invitado: los 5 módulos en un solo enlace
 ├── packages/             # Piezas compartidas (los "cimientos")
 │   ├── config/           # Reglas comunes (TypeScript, formato)
 │   ├── ui/               # Sistema de diseño (la cara de la familia)
-│   └── core/             # Vocabulario común de datos (Evento, Invitado…)
+│   ├── core/             # Vocabulario común de datos (Evento, Invitado…)
+│   ├── sync/             # El "lugar central": local o servidor, misma interfaz
+│   └── payments/         # Cobros con Stripe (cableados pero APAGADOS)
+├── supabase/             # Migraciones SQL y Edge Functions del servidor
 └── docs/                 # Documentación
 ```
 
@@ -83,20 +98,79 @@ pnpm --filter photobooth build   # compilar una app
 
 ## Estado actual
 
-- ✅ Cimientos: reglas comunes, sistema de diseño y vocabulario de datos.
-- ✅ **12 aplicaciones** construidas, publicadas en Vercel y enlazadas en el catálogo.
+> Medido contra la rama `main` el **20 de julio de 2026**. Lo marcado como
+> pendiente está construido pero **en Pull Requests todavía sin fusionar**, o
+> aplicado a medias en Supabase.
+>
+> ⚠️ **"Fusionado" no quiere decir "desplegado".** Ese día se agotó la cuota de
+> Vercel, así que lo que entró a `main` en las últimas rondas **puede no estar
+> todavía en vivo**. Las demos de arriba llevan tiempo publicadas; el portal y el
+> panel del anfitrión son lo más reciente.
+
+### Ya está hecho y fusionado
+
+- ✅ Cimientos: `config`, `ui`, `core`, **`sync`** (el lugar central) y
+  **`payments`** (Stripe cableado pero apagado por bandera).
+- ✅ **14 carpetas en `apps/`**: las 12 apps vendibles + catálogo + portal.
 - ✅ Catálogo-tienda con precios en 3 modelos (gestionado / renta / compra) y paquetes.
-- ✅ **Servicio gestionado (fases 1 y 2) en producción**: servidor central
-  (Supabase) encendido; el Muro, la Playlist, el RSVP y el ranking de Dinámicas
-  ya juntan el contenido de muchos teléfonos en vivo.
-- ⏳ Pendiente: fase 3 del gestionado (fotos del álbum y videos del brindis),
-  fase 4 (un QR por evento, cuentas y moderación) y un dominio propio con
-  **subdominios**.
+- ✅ **Servicio gestionado completo (fases 1 a 5)**: servidor central (Supabase)
+  encendido; muro, playlist, RSVP, ranking de dinámicas **y fotos del álbum**;
+  un evento por enlace (`?e=`) y aislamiento entre eventos hecho **en la base de
+  datos** (RLS con el encabezado `x-evento`).
+- ✅ **Plataforma, Fase 0**: plano de control en migraciones versionadas
+  (`tenants`, `plans`, `features`, `entitlements`…).
+- ✅ **Plataforma, Fase 1** salvo un paso: login del staff, RLS por salón y rol,
+  alta de eventos autenticada, cobros listos-pero-apagados y pruebas de
+  aislamiento en CI. **Falta el token firmado** (ver abajo).
+- ✅ **Fase 2 — portal del invitado**: los 5 módulos (muro, playlist, RSVP,
+  dinámicas, álbum) abren **dentro** de `apps/portal`, no como enlaces sueltos.
+- ✅ **Fase 2b — panel del anfitrión**: `/eventos` y el tablero de cada evento.
+  **2 de las 5 pantallas** (confirmaciones y muro proyectado) ya viven dentro.
+- ✅ **Fase 3 (semilla)**: branding por salón con variables CSS en runtime.
+- ✅ **58 pruebas automatizadas** y CI en cada push y PR.
+
+### Construido pero pendiente de fusionar
+
+| Qué | Dónde | Qué trae |
+|---|---|---|
+| **Pase firmado** | PR #4 · rama `feat/token-firmado` | Migración `0006`: el candado deja de ser la llave en crudo y pasa a un pase que caduca a los 30 min. |
+| **Seguridad y operación** | PR #17 · rama `feat/llave-anfitrion` | Llave de anfitrión (`0009`), candado de subida de fotos (`0010`), fotos privadas (`0013`), diagnóstico (`0012`), capa legal y cierre de evento. |
+| **Las 3 pantallas que faltan** | PRs #22 → #23 → #24 | Panel del DJ, tablero de juegos y álbum, dentro del panel. **Fusionar en ese orden** (van apilados). |
+
+> ⚠️ Los runbooks de todo lo de arriba viven **en la rama de su PR**, no en
+> `main`. La lista maestra para encender todo es `docs/ENCENDER-TODO.md`, en la
+> rama del **PR #17**.
+
+### Todavía sin construir
+
+- ⏳ **Subdominios por salón** (`salon.suite-salones.app`) — la Fase 3 de verdad;
+  hoy solo está reservado el campo `slug`.
+- ⏳ **Planes de pago de la infraestructura**: Vercel Pro (el plan gratis prohíbe
+  el uso comercial) y Supabase Pro (respaldos; el plan gratis da ~1 GB, que una
+  sola boda con fotos y videos se come).
+- ⏳ **Encendido en Supabase**: según la lista de encendido, medida contra el
+  proyecto real el 20 jul 2026, faltaban migraciones por aplicar y Edge Functions
+  por desplegar. *(El estado del servidor no se puede leer desde el repo; esa
+  lista es la única fuente.)*
 
 ## Documentación
 
+**Cómo está armado**
+
 - [`docs/ARQUITECTURA.md`](docs/ARQUITECTURA.md) — cómo está armado todo por dentro.
+- [`docs/REVISION-TECNICA.md`](docs/REVISION-TECNICA.md) — estado técnico, decisiones y deuda conocida.
 - [`docs/SERVICIO-GESTIONADO.md`](docs/SERVICIO-GESTIONADO.md) — el "lugar central" que junta el contenido de muchos teléfonos.
+
+**La plataforma multi-cliente**
+
+- [`docs/EVALUACION-VISION-PLATAFORMA.md`](docs/EVALUACION-VISION-PLATAFORMA.md) — la hoja de ruta a SaaS.
+- [`docs/FASE-0-1-PLATAFORMA.md`](docs/FASE-0-1-PLATAFORMA.md) — el registro de lo construido en las fases 0 y 1.
+- [`docs/RLS-TENANT-ROL.md`](docs/RLS-TENANT-ROL.md) — el candado por salón y rol (migración `0008`).
+- [`docs/PORTAL-EVENTO-CONFIG.md`](docs/PORTAL-EVENTO-CONFIG.md) — la función que configura el portal del invitado.
+
+**Operación**
+
+- [`docs/ENCENDER-FASE-1.md`](docs/ENCENDER-FASE-1.md) — checklist para encender la Fase 1 en Supabase.
 - [`docs/DEPLOY-VERCEL.md`](docs/DEPLOY-VERCEL.md) — cómo se publica cada app en Vercel.
 - [`docs/GUIA-WHITE-LABEL.md`](docs/GUIA-WHITE-LABEL.md) — cómo personalizar una app con los datos de un cliente.
 </content>

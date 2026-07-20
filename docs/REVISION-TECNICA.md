@@ -12,13 +12,36 @@ Este es el complemento técnico.
 
 ---
 
+> ## ⚠️ Léase primero: este documento es de una ronda anterior
+>
+> Se escribió al cerrar el **servicio gestionado** (fases 1 a 5) y describe **ese**
+> momento. Después vinieron la plataforma multi-cliente (Fases 0, 1, 2 y 2b) y
+> varias rondas de seguridad. **Revisado el 20 jul 2026** contra `main`: se
+> corrigieron los datos que ya eran falsos y se marcó qué deuda de la §9 sigue
+> viva. Lo que no lleva nota sigue siendo válido.
+>
+> **Los tres cambios grandes desde entonces:**
+>
+> 1. **Sí hay pruebas automatizadas.** La §8 decía que no; hoy son **58** con CI
+>    en cada push y PR. La §8 ya está corregida.
+> 2. **La deuda #2 (AuthZ) y la #3 (secreto de evento) están resueltas en
+>    código**, pero **en PRs sin fusionar** (#4 y #17). Siguen abiertas en
+>    producción.
+> 3. **Ya no son 12 apps ni 4 paquetes**: son **14 apps** y **5 paquetes**.
+>
+> El registro de lo construido después vive en
+> [`FASE-0-1-PLATAFORMA.md`](FASE-0-1-PLATAFORMA.md).
+
+---
+
 ## 1. Contexto en una frase
 
-Suite de **12 apps web** para eventos (bodas, XV, corporativos). Cada app se
-despliega sola en Vercel y funciona por sí misma. Esta ronda agregó un **backend
-compartido opcional** (`@salones/sync` + Supabase) que permite juntar en vivo el
-contenido que mandan muchos teléfonos (mensajes, canciones, RSVP, ranking de
-trivia, fotos), sin reescribir las apps.
+Suite de apps web para eventos (bodas, XV, corporativos) — **12 vendibles cuando
+se escribió esto; hoy `apps/` tiene 14 carpetas** (las 12 + el catálogo + el
+portal del invitado). Cada app se despliega sola en Vercel y funciona por sí
+misma. Esta ronda agregó un **backend compartido opcional** (`@salones/sync` +
+Supabase) que permite juntar en vivo el contenido que mandan muchos teléfonos
+(mensajes, canciones, RSVP, ranking de trivia, fotos), sin reescribir las apps.
 
 El diseño clave es un **interruptor por variables de entorno**: sin credenciales
 de Supabase, las apps corren en "modo local" (como antes); con credenciales,
@@ -59,6 +82,22 @@ apps/
   sitio-salon, album-fotos, invitaciones, rsvp, pases-qr, mesas, muro,
   playlist, photobooth, mi-mesa, dinamicas, brindis, catalogo   (12 apps)
 ```
+
+> **Al día (20 jul 2026).** Se sumaron un paquete y una app, y hay directorios
+> nuevos en la raíz:
+>
+> ```
+> packages/payments/   @salones/payments — Stripe: planes + webhook puro (APAGADO por bandera)
+> apps/portal/         Portal del invitado (Fase 2): los 5 módulos abren por dentro
+> supabase/            migrations/*.sql + functions/ (Edge Functions en Deno)
+> tests/aislamiento/   pruebas adversariales contra el Supabase real
+> .github/workflows/   ci.yml
+> ```
+>
+> Son **5 paquetes y 14 apps**. La convención de "código fuente TS sin build" no
+> cambió: `@salones/payments` la sigue igual, con la parte que usa el SDK de
+> Stripe como valor aislada en `@salones/payments/servidor` para que el SDK de
+> Node no entre en bundles del navegador.
 
 **Convención de paquetes compartidos:** se consumen como **código fuente TS**
 (`"exports": { ".": "./src/index.ts" }`, `"type": "module"`), sin build propio.
@@ -180,6 +219,22 @@ el backlog contempla llave de anfitrión / cuentas (ver §9, deuda #2). **Nos
 interesa la opinión del revisor sobre si este modelo es suficiente y qué
 endurecer primero.**
 
+> **Al día (20 jul 2026).** Esta sección **sigue describiendo producción**: el
+> candado en vivo es `x-evento` y cualquiera con el enlace puede borrar. Pero ya
+> no es el diseño final. Hay construido, **en PRs sin fusionar**, el sucesor en
+> dos capas:
+>
+> - **PR #4** — el enlace deja de viajar en crudo: se cambia por un **pase
+>   firmado que caduca a los 30 min**, emitido y verificado dentro de Postgres.
+> - **PR #17** — una **segunda llave privada** (`&a=`) separa anfitrión de
+>   invitado, de modo que ver y aportar siguen abiertos pero **borrar y moderar**
+>   no. Cierra `delete`, no `update` (los votos de playlist y las respuestas de
+>   RSVP son updates; cerrarlos exigiría un `created_by`).
+>
+> 🚨 **Trampa al aplicarlos:** el "BLOQUE FINAL" de la `0006` **no se corre
+> nunca**. Hace media faena —deja bien el candado del pase pero mantiene el
+> borrado abierto a cualquiera— y lo sustituye el de la `0009`.
+
 ---
 
 ## 7. Qué cambió, por fase (con commits)
@@ -210,8 +265,38 @@ para el visitante no cambió nada hasta encender el servidor.
 
 ## 8. Verificación realizada
 
-**No hay suite de pruebas automatizadas.** La verificación fue manual pero
-sistemática:
+> ### ✅ Corregido — sí hay suite automatizada
+>
+> Cuando se escribió esta sección era cierto que no la había. **Ya no.** En `main`
+> corren **58 pruebas** con `vitest`, y el CI
+> ([`.github/workflows/ci.yml`](../.github/workflows/ci.yml)) las ejecuta en cada
+> push a `main` y en cada PR:
+>
+> | Archivo | Casos | Qué cubre |
+> |---|---|---|
+> | `packages/core/src/entitlements.test.ts` | 7 | El motor puro de entitlements. |
+> | `packages/core/src/entitlements.borde.test.ts` | 12 | Sus casos borde. |
+> | `packages/payments/src/webhook.test.ts` | 19 | La lógica pura del webhook de Stripe. |
+> | `tests/aislamiento/rls.test.ts` | 13 | Lo que antes se hacía a mano con `curl` (abajo), automatizado. |
+> | `tests/aislamiento/rls-tenant.test.ts` | 7 | Que la `0008` no filtrara las tablas del plano de control a la llave pública. |
+>
+> **Las 20 de `tests/aislamiento/` tocan la red**: hablan con el Supabase real.
+> Si faltan `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_ANON_KEY` **se
+> saltan solas** (para que `pnpm test` en local no falle); en CI se inyectan
+> desde los secrets del repo. Ninguna escribe datos.
+>
+> El PR #17 añade 6 suites más (capa legal, llave de anfitrión, candado de fotos,
+> fotos privadas, cierre de evento y diagnóstico): **su rama corre 97**, y como
+> salió de un punto anterior al PR #7 le falta `rls-tenant.test.ts`, así que
+> **fusionada contra el `main` de hoy el total queda en 104**.
+>
+> Sigue sin haber **e2e automatizado**. El **gate de typecheck y build** tampoco
+> está en `main`, pero llega en el **PR #25** (un segundo trabajo que corre
+> `pnpm typecheck` sobre los paquetes y `pnpm build` sobre las 14 apps). `lint`
+> sigue fuera, porque las apps usan `next lint` y Next.js 16 eliminó ese comando.
+
+Lo que sigue describe la verificación **manual** de aquella ronda, que es la que
+las pruebas de `tests/aislamiento/` automatizaron después:
 
 - **E2E funcional:** se levantó cada app (`next dev`) y se manejó con un navegador
   headless (rellenar formularios, jugar la trivia, etc.), comprobando la
@@ -222,8 +307,9 @@ sistemática:
   listar el bucket (→ `[]`), usar la llave de un evento para leer otro (→ `[]`),
   y confirmar que las apps legítimas y la URL pública de una foto siguen vivas.
 
-Esto da confianza en los caminos felices y en el modelo de acceso, pero **no
-sustituye tests** (ver deuda #13).
+Esto daba confianza en los caminos felices y en el modelo de acceso, pero no
+sustituía tests. De ahí salieron las suites de `tests/aislamiento/` del recuadro
+de arriba.
 
 ---
 
@@ -231,21 +317,34 @@ sustituye tests** (ver deuda #13).
 
 Ordenadas ~por impacto. Las marco con severidad para priorizar la revisión.
 
-| # | Área | Descripción | Sev. |
-|---|---|---|---|
-| 1 | Realtime | La suscripción es **polling cada 3 s** (compara `JSON.stringify` completo). Simple y sin deps, pero: latencia hasta 3 s, N clientes × cada 3 s = carga, y O(n) por ciclo. **Supabase Realtime (websockets)** sería el upgrade natural. | Media |
-| 2 | AuthZ | El código de evento es **capability-por-URL**, no identidad. No hay rol anfitrión vs. invitado: un invitado puede borrar items de su evento. Falta llave de anfitrión / cuentas. | **Alta** (para vender) |
-| 3 | Secreto de evento | La seguridad depende de que el código (~60M combos) no se adivine ni se filtre. Sin TTL ni rotación. ¿Suficiente entropía? ¿firmar server-side? | Media |
-| 4 | Concurrencia | **Votos de playlist con read-modify-write** (`{...actual, votos+1}`), no atómico → lost updates con votos simultáneos. Debería ser incremento atómico (RPC/`votos = votos + 1`) o tabla de votos. | Media |
-| 5 | Storage huérfano | `subirArchivo` + `guardar` son 2 pasos no transaccionales; y `eliminar` borra la fila de `items` pero **no** el archivo del bucket. Se acumulan huérfanos; sin job de limpieza. | Media |
-| 6 | Validación | `dato` jsonb acepta cualquier forma. RLS solo valida evento y tamaño. Un cliente con código válido puede escribir JSON arbitrario. Zod solo corre en cliente (y `@salones/sync` ni eso). | Media |
-| 7 | Imágenes/video | Compresión por canvas puede **ignorar la orientación EXIF** en algunos navegadores (fotos rotadas). Video **no** se comprime (crudo, ≤25 MB; un brindis de 60 s @2.5 Mbps ≈ 19 MB, cerca del límite). Sin thumbnails. | Baja/Media |
-| 8 | Brindis desalineado | `brindis` es un **stack paralelo**: proyecto Supabase **distinto** (`ojtnzirtyxdpmsjfqixr`), usa el **SDK** `@supabase/supabase-js` (no REST), bucket `brindis`, **llaves hardcodeadas** como fallback en el código, env con **otro nombre** (`NEXT_PUBLIC_SUPABASE_KEY` vs `..._ANON_KEY`), render de video con **Shotstack** (API route server-side), y **no** usa `@salones/sync` ni `?e=` ni el candado de la Fase 5. Consume un 2º proyecto Free. Candidato a unificar. | Media |
-| 9 | Sin tests / CI | No hay unit/integration/e2e ni gate de typecheck en CI (solo `turbo lint`). | Media |
-| 10 | Paquetes sin build | `@salones/sync` se consume como fuente TS; no se typechequea aislado (`tsc --noEmit`) ni tiene tests propios. | Baja |
-| 11 | Manejo de errores | El polling se traga los errores en silencio; una mala config de RLS se ve como UI vacía sin señal. Los `catch {}` ocultan causas. | Baja |
-| 12 | Código muerto | `export const EVENTO_ID = "demo"` quedó en 5 libs (muro, playlist, rsvp, dinámicas, álbum) tras migrar a `eventoActual()`. Ya no se usa. Limpieza. | Trivial |
-| 13 | Multi-tab local | En modo local, borrar/guardar avisa a la misma pestaña vía un `Set` de escuchas además de `BroadcastChannel`. Funciona, pero es lógica sutil que conviene testear. | Baja |
+> **Columna "Hoy" añadida el 20 jul 2026.** Los 🟢 y 🔴 están comprobados contra
+> el código de `main`; los 🟡, contra la rama del PR que se cita en cada fila.
+>
+> - 🟢 **resuelto y fusionado** — ya no aplica.
+> - 🟡 **resuelto pero sin fusionar** — hay código que lo arregla en un PR abierto,
+>   así que **en producción la deuda sigue viva**.
+> - 🔴 **sigue igual** — verificado, sin cambios.
+
+| # | Área | Descripción | Sev. | Hoy |
+|---|---|---|---|---|
+| 1 | Realtime | La suscripción es **polling cada 3 s** (compara `JSON.stringify` completo). Simple y sin deps, pero: latencia hasta 3 s, N clientes × cada 3 s = carga, y O(n) por ciclo. **Supabase Realtime (websockets)** sería el upgrade natural. | Media | 🔴 sigue igual (`INTERVALO_MS = 3000`). |
+| 2 | AuthZ | El código de evento es **capability-por-URL**, no identidad. No hay rol anfitrión vs. invitado: un invitado puede borrar items de su evento. Falta llave de anfitrión / cuentas. | **Alta** (para vender) | 🟡 **PR #17**: migración `0009`, segunda llave privada `&a=` solo para quien organiza. **Sin fusionar ni aplicar: en producción cualquier invitado sigue pudiendo borrar.** |
+| 3 | Secreto de evento | La seguridad depende de que el código (~60M combos) no se adivine ni se filtre. Sin TTL ni rotación. ¿Suficiente entropía? ¿firmar server-side? | Media | 🟡 **PR #4**: migración `0006`, pase firmado **dentro de Postgres** (HMAC con pgcrypto) que **caduca a los 30 min**. Sin fusionar. |
+| 4 | Concurrencia | **Votos de playlist con read-modify-write** (`{...actual, votos+1}`), no atómico → lost updates con votos simultáneos. Debería ser incremento atómico (RPC/`votos = votos + 1`) o tabla de votos. | Media | 🔴 sigue igual (`use-canciones.ts`, `votar`). |
+| 5 | Storage huérfano | `subirArchivo` + `guardar` son 2 pasos no transaccionales; y `eliminar` borra la fila de `items` pero **no** el archivo del bucket. Se acumulan huérfanos; sin job de limpieza. | Media | 🔴 sigue igual **durante el evento**, que es cuando se acumulan. Lo único nuevo es que el **cierre de evento** (PR #17) barre los huérfanos al cerrar; sigue sin job de limpieza. |
+| 6 | Validación | `dato` jsonb acepta cualquier forma. RLS solo valida evento y tamaño. Un cliente con código válido puede escribir JSON arbitrario. Zod solo corre en cliente (y `@salones/sync` ni eso). | Media | 🔴 sigue igual. |
+| 7 | Imágenes/video | Compresión por canvas puede **ignorar la orientación EXIF** en algunos navegadores (fotos rotadas). Video **no** se comprime (crudo, ≤25 MB; un brindis de 60 s @2.5 Mbps ≈ 19 MB, cerca del límite). Sin thumbnails. | Baja/Media | 🔴 sigue igual. |
+| 8 | Brindis desalineado | `brindis` es un **stack paralelo**: proyecto Supabase **distinto** (`ojtnzirtyxdpmsjfqixr`), usa el **SDK** `@supabase/supabase-js` (no REST), bucket `brindis`, **llaves hardcodeadas** como fallback en el código, env con **otro nombre** (`NEXT_PUBLIC_SUPABASE_KEY` vs `..._ANON_KEY`), render de video con **Shotstack** (API route server-side), y **no** usa `@salones/sync` ni `?e=` ni el candado de la Fase 5. Consume un 2º proyecto Free. Candidato a unificar. | Media | 🔴 sigue igual, y **queda fuera de todo lo nuevo**: ni pase firmado, ni candado de fotos, ni fotos privadas. |
+| 9 | Sin tests / CI | No hay unit/integration/e2e ni gate de typecheck en CI (solo `turbo lint`). | Media | 🟢 en su mayor parte: **58 pruebas + CI** (ver §8). El **gate de typecheck y build** viene en el **PR #25**, sin fusionar. Solo el **e2e** queda sin construir. |
+| 10 | Paquetes sin build | `@salones/sync` se consume como fuente TS; no se typechequea aislado (`tsc --noEmit`) ni tiene tests propios. | Baja | 🟡 **PR #25**: da `tsconfig.json` propio a los 4 paquetes y los mete en `pnpm typecheck`. Sin fusionar. Se siguen consumiendo como fuente TS, que era la otra mitad de la deuda. |
+| 11 | Manejo de errores | El polling se traga los errores en silencio; una mala config de RLS se ve como UI vacía sin señal. Los `catch {}` ocultan causas. | Baja | 🟡 **PR #17**: `reportar()` en `@salones/sync` + tabla `app_errores` (`0012`) + pantalla "¿Está todo bien?". Sin fusionar. |
+| 12 | Código muerto | `export const EVENTO_ID = "demo"` quedó en 5 libs (muro, playlist, rsvp, dinámicas, álbum) tras migrar a `eventoActual()`. Ya no se usa. Limpieza. | Trivial | 🔴 sigue en las 5. |
+| 13 | Multi-tab local | En modo local, borrar/guardar avisa a la misma pestaña vía un `Set` de escuchas además de `BroadcastChannel`. Funciona, pero es lógica sutil que conviene testear. | Baja | 🔴 sigue igual. |
+
+> **Deuda nueva desde entonces**, que esta tabla no cubre: la **lectura** del
+> bucket `media` sigue abierta (quien tenga la dirección de una foto la ve, sin
+> llave y para siempre). Está resuelta en el PR #17 (migración `0013` + Edge
+> Function `media-ver`, direcciones firmadas que caducan a la hora), sin fusionar.
 
 **Lo que sí quedó bien (para balancear):** la abstracción provider es limpia y
 extensible; el progressive enhancement mapea 1:1 al modelo de negocio; el server
@@ -273,5 +372,16 @@ solo en el cliente); y el dominio comparte un solo vocabulario tipado (`@salones
    o dejarlo aparte por lo del render con Shotstack?
 8. **Modelo de "una tabla para todo":** ¿la tabla única `items(evento, coleccion,
    dato jsonb)` te parece bien para esta escala, o preferirías tablas por dominio?
+
+> **Al día (20 jul 2026): las preguntas 2 y 3 ya se contestaron y se
+> construyeron.** La respuesta fue *las tres cosas, por capas*: cuentas de staff
+> con Supabase Auth (Fase 1) para quien vende y administra; **pase firmado por
+> evento** que caduca a los 30 min (PR #4) para el candado del servidor; y
+> **llave de anfitrión separada** (PR #17) para distinguir a quien organiza de
+> quien asiste. El código de evento **no** subió de entropía: dejó de ser el
+> secreto que sostiene todo, así que la pregunta perdió peso.
+>
+> Las preguntas **1, 4, 5, 6, 7 y 8 siguen abiertas y sin construir** — son las
+> que de verdad valen una segunda opinión hoy.
 
 Cualquier otra cosa que saltes a la vista, bienvenida. Gracias por la revisión.

@@ -272,6 +272,7 @@ function crearProveedorServidor(url: string, anon: string): ProveedorSync {
     evento: string,
     ruta: string,
     cuerpo: Record<string, string>,
+    tipo: string,
   ): Promise<string | null> {
     const guardado = cache.get(evento);
     if (guardado && guardado.expira - MARGEN_MS > Date.now()) return guardado.pase;
@@ -281,18 +282,25 @@ function crearProveedorServidor(url: string, anon: string): ProveedorSync {
         headers: { ...auth, "Content-Type": "application/json" },
         body: JSON.stringify(cuerpo),
       });
-      if (!res.ok) return null;
+      if (!res.ok) {
+        // Un 404 es "la migración todavía no está aplicada": esperado durante
+        // el despliegue y no es noticia. Un 5xx sí lo es.
+        if (res.status >= 500) reportar(tipo, `la base respondió ${res.status}`, evento);
+        return null;
+      }
       const pase = (await res.json()) as unknown;
       if (typeof pase !== "string" || !pase) return null;
       cache.set(evento, { pase, expira: caducidadDe(pase) });
       return pase;
-    } catch {
-      return null; // sin red o migración sin aplicar: se sigue por el header
+    } catch (e) {
+      // Sin red. Se sigue por el header viejo mientras exista.
+      reportar(tipo, e instanceof Error ? e.message : "sin conexión", evento);
+      return null;
     }
   }
 
   const obtenerPase = (evento: string) =>
-    pedirPase(pases, evento, rpcPase, { p_codigo: evento });
+    pedirPase(pases, evento, rpcPase, { p_codigo: evento }, "sin-pase");
 
   /**
    * Pase de ANFITRIÓN: solo se puede pedir si este dispositivo tiene la llave
@@ -303,10 +311,13 @@ function crearProveedorServidor(url: string, anon: string): ProveedorSync {
     const clave = claveAnfitrion(evento);
     // "demo" es la vitrina pública: cualquiera modera la demostración.
     if (!clave && evento !== "demo") return null;
-    return pedirPase(pasesAnfitrion, evento, rpcPaseAnfitrion, {
-      p_codigo: evento,
-      p_clave: clave ?? "",
-    });
+    return pedirPase(
+      pasesAnfitrion,
+      evento,
+      rpcPaseAnfitrion,
+      { p_codigo: evento, p_clave: clave ?? "" },
+      "sin-pase-anfitrion",
+    );
   }
 
   /**
@@ -333,6 +344,65 @@ function crearProveedorServidor(url: string, anon: string): ProveedorSync {
   const almacen = `${raiz}/storage/v1`;
   const BUCKET = "media";
   const INTERVALO_MS = 3000;
+
+  /* ---- Diagnóstico (migración 0011) ---------------------------------------
+   * Antes, cuando algo fallaba aquí dentro, el error se tragaba en silencio
+   * (`catch {}`) y el invitado veía "no hay mensajes" en vez de un aviso. El
+   * operador se enteraba por un WhatsApp enfadado. Ahora los fallos dejan
+   * rastro.
+   *
+   * REGLAS DE ESTE REPORTE:
+   *   · Nunca lanza ni bloquea: si el propio reporte falla, se calla. Un fallo
+   *     al avisar de un fallo no puede tumbar la app de un invitado.
+   *   · Agrupa: el sondeo reintenta cada 3 segundos; sin agrupar, un invitado
+   *     con mala cobertura generaría cientos de avisos. Se manda uno por tipo
+   *     cada 5 minutos, con la cuenta de las veces que se repitió.
+   *   · **Nunca manda la query de la dirección**: ahí viaja la llave de
+   *     anfitrión (`?a=…`). Solo el `pathname`. El servidor la vuelve a
+   *     recortar por si acaso. */
+  const funcDiagnostico = `${raiz}/functions/v1/diagnostico`;
+  const VENTANA_MS = 5 * 60_000;
+  const vistos = new Map<string, { desde: number; veces: number }>();
+
+  /** Qué app es esta, para saber dónde mirar. Del nombre del host, sin más. */
+  const appActual = (): string => {
+    if (!hayNavegador()) return "servidor";
+    return window.location.hostname.replace(/\.vercel\.app$/, "").slice(0, 40) || "desconocida";
+  };
+
+  function reportar(tipo: string, mensaje: string, evento?: string): void {
+    if (!hayNavegador()) return;
+    const ahora = Date.now();
+    const clave = `${tipo}:${evento ?? ""}`;
+    const previo = vistos.get(clave);
+
+    if (previo && ahora - previo.desde < VENTANA_MS) {
+      previo.veces += 1;
+      return; // dentro de la ventana: se cuenta y se calla
+    }
+    const veces = previo ? previo.veces : 1;
+    vistos.set(clave, { desde: ahora, veces: 1 });
+
+    try {
+      void fetch(funcDiagnostico, {
+        method: "POST",
+        headers: { ...auth, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          app: appActual(),
+          tipo,
+          evento,
+          mensaje: String(mensaje).slice(0, 500),
+          // SOLO la ruta. La query lleva la llave de anfitrión.
+          ruta: window.location.pathname,
+          navegador: navigator.userAgent.slice(0, 200),
+          repeticiones: veces,
+        }),
+        keepalive: true,
+      }).catch(() => {});
+    } catch {
+      /* avisar de un fallo nunca puede provocar otro */
+    }
+  }
 
   /* ---- Permiso de subida (migración 0010) ---------------------------------
    * Antes de subir una foto o un video se pide permiso a la Edge Function
@@ -424,8 +494,15 @@ function crearProveedorServidor(url: string, anon: string): ProveedorSync {
             firma = nueva;
             cb(items as never);
           }
-        } catch {
-          /* error de red puntual: se reintenta en el próximo ciclo */
+        } catch (e) {
+          // Se reintenta en el próximo ciclo, pero ya no en silencio: si el
+          // muro de una boda lleva 10 minutos sin actualizarse, tiene que
+          // quedar constancia de por qué.
+          reportar(
+            "sondeo",
+            `${coleccion}: ${e instanceof Error ? e.message : "fallo de red"}`,
+            evento,
+          );
         }
       };
       revisar();
@@ -473,7 +550,11 @@ function crearProveedorServidor(url: string, anon: string): ProveedorSync {
         },
         body: blob,
       });
-      if (!res.ok) throw new Error(`sync/subir ${res.status}`);
+      if (!res.ok) {
+        // Aquí sí importa avisar: una foto que no sube es un recuerdo perdido.
+        reportar("subida", `el almacén respondió ${res.status}`, evento);
+        throw new Error(`sync/subir ${res.status}`);
+      }
       return `${almacen}/object/public/${BUCKET}/${ruta}`;
     },
   };

@@ -93,6 +93,8 @@ export const PANTALLAS: PantallaAnfitrion[] = [
     appId: "album-fotos",
     ruta: "/",
     coleccion: "fotos",
+    // MIGRADA: ya vive dentro del panel.
+    rutaInterna: "album",
   },
 ];
 

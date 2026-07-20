@@ -1,0 +1,95 @@
+-- ============================================================================
+-- 0010 · CANDADO DE LAS FOTOS Y VIDEOS (almacen `media`)
+-- ----------------------------------------------------------------------------
+-- EL AGUJERO QUE ARREGLA:
+--   El almacen tenia UNA sola regla, de la 0001:
+--
+--       create policy "subida publica media" on storage.objects for insert
+--         with check (bucket_id = 'media');
+--
+--   Traducido: "cualquiera puede subir lo que quiera a donde quiera, dentro del
+--   bucket". Y la llave publica viaja dentro del JavaScript de cada app (es
+--   publica por diseno), asi que cualquiera podia sacarla y:
+--     * meter imagenes ajenas en el album de CUALQUIER boda, o
+--     * llenar el almacen hasta reventar la cuota.
+--   El pase firmado de la 0006 protege la tabla `items`; NO protegia el almacen.
+--
+-- COMO SE ARREGLA:
+--   Las subidas dejan de ir directas. La app pide permiso a la Edge Function
+--   `media-subir`, que verifica el pase y devuelve una URL de subida FIRMADA
+--   para una ruta que **decide el servidor** (`<evento>/<marca>-<azar>.<ext>`).
+--   El cliente ya no elige carpeta => no puede escribir en la burbuja de otro.
+--
+-- POR QUE NO UNA REGLA QUE LEA EL PASE (decision de diseno, 2026-07-20):
+--   Seria lo natural (copiar el truco de `items`), pero en el almacen eso es
+--   arena: leer encabezados con `current_setting('request.headers')` dentro de
+--   politicas de `storage.objects` NO esta documentado, y en las de SELECT esta
+--   roto desde 2024 (supabase/supabase#29908, abierto). Ya nos costo una vez con
+--   el JWT HS256 de la 0006. Las URL firmadas son la via soportada.
+--
+-- ESTA MIGRACION ES ADITIVA Y NO CIERRA NADA POR SI SOLA: solo concede los
+-- permisos que la funcion necesita. El cierre esta en el BLOQUE DE CORTE del
+-- final, comentado, que se corre cuando las apps ya esten desplegadas.
+--
+-- Requiere la 0006 y la 0009 aplicadas.
+-- Runbook: docs/CANDADO-FOTOS.md
+-- ============================================================================
+
+-- --------------------------------------------------------------------------
+-- 1) La Edge Function verifica los pases con la llave de servicio.
+--    `service_role` suele heredar permisos amplios, pero lo dejamos explicito
+--    para no depender de un default: si manana cambia, la funcion sigue viva.
+--    (Ambas funciones son `security definer`: leen el secreto por su cuenta,
+--    el permiso de EJECUTAR es lo unico que hace falta conceder.)
+-- --------------------------------------------------------------------------
+grant execute on function evento_del_pase(text)           to service_role;
+grant execute on function evento_del_pase_anfitrion(text) to service_role;
+
+
+-- ============================================================================
+-- BLOQUE FINAL — EL CORTE DEL ALMACEN  ·  ¡NO CORRER TODAVIA!
+-- ----------------------------------------------------------------------------
+-- Quita la regla que deja subir a cualquiera. A partir de ahi, la UNICA forma
+-- de escribir en el bucket `media` es con una URL firmada por `media-subir`,
+-- que solo se consigue presentando un pase valido del evento.
+--
+-- CORRER SOLO CUANDO:
+--   1. La Edge Function `media-subir` este DESPLEGADA y probada, y
+--   2. las apps que suben archivos (album y muro) esten desplegadas con la
+--      @salones/sync que pide permiso antes de subir, y
+--   3. NO haya un evento en curso.
+--
+-- COMO SE VERIFICA QUE QUEDO CERRADO (docs/CANDADO-FOTOS.md):
+--   Intentar una subida directa con la llave publica debe responder 403.
+--
+-- PARA REVERTIR (si algo sale mal, deja todo como estaba):
+--
+--   create policy "subida publica media" on storage.objects for insert
+--     with check (bucket_id = 'media');
+--
+-- ----------------------------------------------------------------------------
+--
+--   drop policy if exists "subida publica media" on storage.objects;
+--
+-- ============================================================================
+
+
+-- ============================================================================
+-- LO QUE ESTA MIGRACION *NO* ARREGLA — leelo, es importante
+-- ----------------------------------------------------------------------------
+-- Cierra la ESCRITURA. La LECTURA sigue abierta: el bucket `media` es publico
+-- (`public: true` desde la 0001), y en un bucket publico el almacen ni siquiera
+-- consulta las reglas: quien tenga la direccion de una foto la ve, sin llave y
+-- para siempre.
+--
+-- Hoy eso es un "enlace no listado": las direcciones llevan un azar de 8
+-- caracteres y la LISTA de fotos si esta protegida (vive en `items`, detras del
+-- pase), asi que no se pueden ir descubriendo una por una. Pero si una direccion
+-- se filtra, no caduca nunca.
+--
+-- Cerrarlo pide: bucket privado + guardar la RUTA en vez de la direccion +
+-- firmar direcciones de lectura al vuelo. Eso toca el contenido ya guardado, asi
+-- que va en su propio incremento y con migracion de datos. No se metio aqui a
+-- proposito: mezclar las dos cosas convertiria un cambio reversible en uno que
+-- puede dejar sin fotos un album en produccion.
+-- ============================================================================

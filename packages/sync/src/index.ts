@@ -334,6 +334,51 @@ function crearProveedorServidor(url: string, anon: string): ProveedorSync {
   const BUCKET = "media";
   const INTERVALO_MS = 3000;
 
+  /* ---- Permiso de subida (migración 0010) ---------------------------------
+   * Antes de subir una foto o un video se pide permiso a la Edge Function
+   * `media-subir`, presentando el pase del evento. Ella verifica el pase y
+   * devuelve una URL de subida firmada para una ruta que decide ELLA: así el
+   * navegador no puede escribir en la carpeta de otro evento.
+   *
+   * Es NO-FATAL, igual que el pase: si la función todavía no está desplegada,
+   * devuelve null y se sigue por la subida directa de siempre. Por eso esta
+   * versión es segura de desplegar ANTES de tocar nada en el servidor. */
+  const funcMediaSubir = `${raiz}/functions/v1/media-subir`;
+
+  type PermisoSubida = { subirUrl: string; urlPublica: string };
+
+  async function pedirPermisoSubida(
+    evento: string,
+    nombre: string,
+    tipo: string,
+  ): Promise<PermisoSubida | null> {
+    try {
+      const [pase, paseAnfitrion] = await Promise.all([
+        obtenerPase(evento),
+        obtenerPaseAnfitrion(evento),
+      ]);
+      // Sin ningún pase no hay nada que presentar: se deja para el camino viejo.
+      if (!pase && !paseAnfitrion) return null;
+
+      const res = await fetch(funcMediaSubir, {
+        method: "POST",
+        headers: {
+          ...auth,
+          ...(pase ? { "x-evento-pase": pase } : {}),
+          ...(paseAnfitrion ? { "x-evento-anfitrion": paseAnfitrion } : {}),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ nombre, tipo }),
+      });
+      if (!res.ok) return null;
+      const dato = (await res.json()) as Partial<PermisoSubida>;
+      if (typeof dato.subirUrl !== "string" || typeof dato.urlPublica !== "string") return null;
+      return { subirUrl: dato.subirUrl, urlPublica: dato.urlPublica };
+    } catch {
+      return null; // sin red o función sin desplegar
+    }
+  }
+
   const filtro = (evento: string, coleccion: string) =>
     `evento=eq.${encodeURIComponent(evento)}&coleccion=eq.${encodeURIComponent(coleccion)}`;
 
@@ -391,10 +436,28 @@ function crearProveedorServidor(url: string, anon: string): ProveedorSync {
       };
     },
     async subirArchivo(evento, nombre, blob, tipo) {
-      const ext = extensionDe(nombre, tipo);
+      const mime = tipo || "application/octet-stream";
+
+      // Camino NUEVO: se pide permiso a la Edge Function `media-subir`, que
+      // verifica el pase y decide ELLA la carpeta (ver migración 0010). Así el
+      // navegador no puede escribir en la burbuja de otro evento.
+      const permiso = await pedirPermisoSubida(evento, nombre, mime);
+      if (permiso) {
+        const res = await fetch(permiso.subirUrl, {
+          method: "PUT",
+          headers: { "Content-Type": mime },
+          body: blob,
+        });
+        if (res.ok) return permiso.urlPublica;
+        // Si la subida firmada falla, se intenta el camino viejo: mientras el
+        // corte no esté hecho sigue abierto, y es mejor que perder la foto.
+      }
+
+      // Camino VIEJO (subida directa). Deja de funcionar en cuanto se corra el
+      // corte de la 0010, que es justo el objetivo.
       const ruta = `${encodeURIComponent(evento)}/${Date.now()}-${Math.random()
         .toString(36)
-        .slice(2, 8)}.${ext}`;
+        .slice(2, 8)}.${extensionDe(nombre, mime)}`;
       const [pase, paseAnfitrion] = await Promise.all([
         obtenerPase(evento),
         obtenerPaseAnfitrion(evento),
@@ -406,7 +469,7 @@ function crearProveedorServidor(url: string, anon: string): ProveedorSync {
           "x-evento": evento,
           ...(pase ? { "x-evento-pase": pase } : {}),
           ...(paseAnfitrion ? { "x-evento-anfitrion": paseAnfitrion } : {}),
-          "Content-Type": tipo || "application/octet-stream",
+          "Content-Type": mime,
         },
         body: blob,
       });

@@ -2,18 +2,21 @@
 
 /**
  * Cara del portal del evento: aplica el branding del salón y muestra las
- * experiencias (módulos) HABILITADAS para el evento, cada una como una tarjeta
- * que lleva a esa app con el código `?e=`.
+ * experiencias (módulos) HABILITADAS para el evento.
  *
  * El filtrado usa el motor de core (`tieneFuncion`) sobre los entitlements ya
- * resueltos: una función apagada NO aparece. Así el portal es "modular pero
- * unificado": una sola pantalla que compone lo que el evento tiene contratado.
+ * resueltos: una función apagada NO aparece. Los módulos ya migrados al portal
+ * (p. ej. el muro) abren DENTRO; los que aún no, hacen de puente a su app actual.
  */
+import Link from "next/link";
 import { BrandingScope, type BrandingSalon } from "@salones/ui";
 import { tieneFuncion } from "@salones/core";
 import { ArrowUpRight, PartyPopper } from "lucide-react";
-import { MODULOS, enlaceModulo } from "@/lib/modulos";
+import { MODULOS, enlaceModulo, esInterno } from "@/lib/modulos";
 import type { ConfigEvento } from "@/lib/config-evento";
+
+const CLASES_TARJETA =
+  "group block rounded-[var(--radius)] border border-border bg-card p-5 transition hover:border-ring hover:shadow-sm";
 
 export function PortalHome({ config }: { config: ConfigEvento }) {
   const disponibles = MODULOS.filter((m) => tieneFuncion(config.entitlements, m.clave));
@@ -33,14 +36,10 @@ export function PortalHome({ config }: { config: ConfigEvento }) {
 
         {disponibles.length > 0 ? (
           <div className="mt-8 grid gap-3 sm:grid-cols-2">
-            {disponibles.map((m) => (
-              <a
-                key={m.clave}
-                href={enlaceModulo(m, config.codigo)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group rounded-[var(--radius)] border border-border bg-card p-5 transition hover:border-ring hover:shadow-sm"
-              >
+            {disponibles.map((m) => {
+              const href = enlaceModulo(m, config.codigo);
+              const interno = esInterno(m);
+              const contenido = (
                 <div className="flex items-center gap-4">
                   <span
                     className={`inline-flex size-11 shrink-0 items-center justify-center rounded-[var(--radius)] bg-gradient-to-br ${m.acento} text-white`}
@@ -50,13 +49,32 @@ export function PortalHome({ config }: { config: ConfigEvento }) {
                   <div className="min-w-0 flex-1">
                     <h2 className="flex items-center gap-1 font-semibold">
                       {m.nombre}
-                      <ArrowUpRight className="size-4 text-muted-foreground transition group-hover:text-foreground" />
+                      {interno ? null : (
+                        <ArrowUpRight className="size-4 text-muted-foreground transition group-hover:text-foreground" />
+                      )}
                     </h2>
                     <p className="text-sm text-muted-foreground">{m.descripcion}</p>
                   </div>
                 </div>
-              </a>
-            ))}
+              );
+
+              // Migrado → se queda en el portal. Aún no → puente a su app.
+              return interno ? (
+                <Link key={m.clave} href={href} className={CLASES_TARJETA}>
+                  {contenido}
+                </Link>
+              ) : (
+                <a
+                  key={m.clave}
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={CLASES_TARJETA}
+                >
+                  {contenido}
+                </a>
+              );
+            })}
           </div>
         ) : (
           <p className="mt-8 text-sm text-muted-foreground">

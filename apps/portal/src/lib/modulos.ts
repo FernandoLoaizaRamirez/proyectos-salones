@@ -29,6 +29,11 @@ export type ModuloManifest = {
   urlBase: string;
   /** Ruta del invitado dentro de esa app. */
   rutaInvitado: string;
+  /**
+   * Si el módulo YA vive dentro del portal, su ruta interna (p. ej. "/muro").
+   * Cuando existe, manda sobre el puente: el invitado se queda en el portal.
+   */
+  rutaInterna?: string;
 };
 
 /** Los módulos del invitado, con la MISMA clave que sus funciones vendibles. */
@@ -41,6 +46,8 @@ export const MODULOS: ModuloManifest[] = [
     acento: "from-rose-500 to-fuchsia-600",
     urlBase: "https://proyectos-salones-muro.vercel.app",
     rutaInvitado: "/firmar",
+    // MIGRADO: ya vive dentro del portal.
+    rutaInterna: "/muro",
   },
   {
     clave: F.Playlist,
@@ -80,9 +87,18 @@ export const MODULOS: ModuloManifest[] = [
   },
 ];
 
-/** Enlace-puente de un módulo para un evento (propaga el código con `?e=`). */
+/** ¿El módulo ya está montado dentro del portal (no es un puente)? */
+export function esInterno(m: ModuloManifest): boolean {
+  return Boolean(m.rutaInterna);
+}
+
+/**
+ * Enlace del módulo para un evento (propaga el código con `?e=`). Si el módulo ya
+ * está migrado al portal, devuelve su ruta INTERNA; si no, el puente a su app.
+ */
 export function enlaceModulo(m: ModuloManifest, evento: string): string {
   const sufijo = evento && evento !== "demo" ? `?e=${encodeURIComponent(evento)}` : "";
+  if (m.rutaInterna) return `${m.rutaInterna}${sufijo}`;
   const ruta = m.rutaInvitado === "/" ? "/" : m.rutaInvitado;
   return `${m.urlBase}${ruta}${sufijo}`;
 }

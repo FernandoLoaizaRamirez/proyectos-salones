@@ -14,7 +14,8 @@
 |---|---|
 | Migraciones **0001, 0002, 0003, 0006, 0007** | ✅ aplicadas |
 | Migraciones **0005, 0008, 0009, 0010, 0012** | ❌ faltan |
-| Funciones **evento-config, media-subir, evento-cierre, diagnostico** | ❌ sin desplegar |
+| Migración **0013** (fotos privadas) | ❌ es solo el corte, va al final |
+| Las **cinco** funciones (evento-config, media-subir, media-ver, evento-cierre, diagnostico) | ❌ sin desplegar |
 | Función **`token`** (del primer intento fallido) | ⚠️ sigue viva, hay que borrarla |
 | PR **#4** (pase firmado) y **#17** (todo lo de hoy) | abiertos, sin fusionar |
 | Vercel | 🔴 cuota agotada: nada se puede desplegar |
@@ -67,10 +68,12 @@ tienes el CLI, también se pueden crear desde el panel de Supabase
 - [ ] **B2** · `supabase functions deploy media-subir --no-verify-jwt`
 - [ ] **B3** · `supabase functions deploy evento-cierre --no-verify-jwt`
 - [ ] **B4** · `supabase functions deploy diagnostico --no-verify-jwt`
+- [ ] **B5** · `supabase functions deploy media-ver --no-verify-jwt`
+      *(las direcciones de foto que caducan; ver `MEDIOS-PRIVADOS.md`)*
 
 Ninguna necesita configurar secretos: Supabase les inyecta las llaves por dentro.
 
-- [ ] **B5 · Limpieza** — borra la función **`token`** y el secreto
+- [ ] **B6 · Limpieza** — borra la función **`token`** y el secreto
       `EVENT_TOKEN_JWT_SECRET`. Son basura del primer intento del pase firmado
       (el que falló). **Comprobado hoy: siguen ahí.**
 
@@ -81,8 +84,9 @@ Ninguna necesita configurar secretos: Supabase les inyecta las llaves por dentro
       Sin esto no puedes crear eventos, ni cerrarlos, ni ver el diagnóstico.
 
 - [ ] **C2 · `pnpm test`** desde la rama del PR #17.
-      Ahora deberían **encenderse solas** las 22 pruebas que hoy se saltan
-      (llave de anfitrión, candado de fotos, cierre de evento y diagnóstico).
+      Ahora deberían **encenderse solas** las 27 pruebas que hoy se saltan
+      (llave de anfitrión, candado de fotos, fotos privadas, cierre de evento
+      y diagnóstico).
       Si alguna falla, para y avísame antes de seguir.
 
 ---
@@ -114,8 +118,8 @@ Ninguna necesita configurar secretos: Supabase les inyecta las llaves por dentro
 
 ## 🅔 Los cortes (en un rato tranquilo)
 
-> 🚨 **Nunca durante un evento en vivo.** Estos dos pasos son los únicos que
-> cierran cosas de verdad. Si algo va mal, cada uno tiene su reversión al lado.
+> 🚨 **Nunca durante un evento en vivo.** Son los únicos pasos que cierran cosas
+> de verdad. Si algo va mal, cada uno tiene su reversión al lado.
 
 - [ ] **E1 · Corte del pase y del borrado** — el **"BLOQUE FINAL" de la `0009`**.
       ⛔ **NO corras el de la `0006`.** Hace solo la mitad: dejaría el candado
@@ -131,6 +135,17 @@ Ninguna necesita configurar secretos: Supabase les inyecta las llaves por dentro
 - [ ] **E4 · Comprueba** — una subida directa con la llave pública debe dar
       **403** (el comando está en `CANDADO-FOTOS.md`), y subir una foto desde el
       álbum debe **seguir funcionando**.
+
+- [ ] **E5 · Corte de la lectura de fotos** — antes de correrlo, abre el álbum y
+      mira la dirección de una imagen: **debe llevar `/object/sign/` y un
+      `token=`**. Si lleva `/object/public/`, no cortes todavía. Cuando lo lleve:
+      ```sql
+      update storage.buckets set public = false where id = 'media';
+      ```
+
+- [ ] **E6 · Comprueba** — copia la dirección de una foto tal como está guardada
+      en la base (la de `/object/public/`) y ábrela: **debe dar error**. El álbum
+      debe seguir viéndose igual. Para revertir: el mismo comando con `true`.
 
 ---
 
@@ -163,6 +178,7 @@ explica su parte en detalle:
 | Llave de anfitrión (0009) | [`LLAVE-ANFITRION.md`](LLAVE-ANFITRION.md) |
 | Candado de fotos (0010) | [`CANDADO-FOTOS.md`](CANDADO-FOTOS.md) |
 | Diagnóstico (0012) | [`DIAGNOSTICO.md`](DIAGNOSTICO.md) |
+| Fotos privadas (0013) | [`MEDIOS-PRIVADOS.md`](MEDIOS-PRIVADOS.md) |
 | Cerrar un evento | [`CIERRE-DE-EVENTO.md`](CIERRE-DE-EVENTO.md) |
 | Documentos legales | [`LEGAL.md`](LEGAL.md) |
 | Portal del invitado | [`PORTAL-EVENTO-CONFIG.md`](PORTAL-EVENTO-CONFIG.md) *(en `main`)* |

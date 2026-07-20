@@ -13,7 +13,13 @@ import {
   Loader2,
 } from "lucide-react";
 import { Button, EmptyState, cn, AvisoParticipacion } from "@salones/ui";
-import { obtenerSync, estaConectado, eventoActual, esAnfitrion } from "@salones/sync";
+import {
+  obtenerSync,
+  estaConectado,
+  eventoActual,
+  esAnfitrion,
+  resolverMedios,
+} from "@salones/sync";
 import {
   fotosEjemplo,
   comprimirImagen,
@@ -36,6 +42,10 @@ export function Album() {
   // Solo el anfitrión puede quitar fotos del álbum común. Arranca en false: si
   // algo fallara, se esconde el botón en vez de enseñárselo a un invitado.
   const [anfitrion, setAnfitrion] = React.useState(false);
+  // Dirección guardada → dirección con la que se muestra (firmada y con fecha
+  // de caducidad). Lo que no esté aquí se muestra tal cual.
+  const [vistas, setVistas] = React.useState<Record<string, string>>({});
+  const ver = React.useCallback((u: string) => vistas[u] ?? u, [vistas]);
 
   // Álbum COMPARTIDO: se suscribe al "lugar central" (@salones/sync) y se
   // actualiza solo con las fotos que sube cada invitado desde su teléfono.
@@ -45,6 +55,27 @@ export function Album() {
     if (!estaConectado()) return;
     return obtenerSync().suscribir<Archivo>(eventoActual(), COLECCION_FOTOS, setArchivos);
   }, []);
+
+  // Lo que se guarda en la base es una REFERENCIA; la dirección con la que se
+  // ve de verdad se pide aquí y caduca en una hora (migración 0013). Si el
+  // servidor todavía no lo soporta, devuelve las de siempre y no se nota nada.
+  const clavesArchivos = archivos.map((a) => a.url).join("|");
+  React.useEffect(() => {
+    if (!estaConectado() || archivos.length === 0) return;
+    let vivo = true;
+    void resolverMedios(
+      eventoActual(),
+      archivos.map((a) => a.url),
+    ).then((mapa) => {
+      if (vivo) setVistas(mapa);
+    });
+    return () => {
+      vivo = false;
+    };
+    // `clavesArchivos` cambia solo cuando cambia la lista de fotos, no en cada
+    // sondeo: así no se pide firmar el álbum entero cada tres segundos.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clavesArchivos]);
 
   const agregar = React.useCallback(async (lista: FileList | null) => {
     if (!lista) return;
@@ -105,13 +136,15 @@ export function Album() {
   const descargarTodo = React.useCallback(() => {
     archivos.forEach((f) => {
       const a = document.createElement("a");
-      a.href = f.url;
+      a.href = ver(f.url);
       a.download = f.nombre;
       document.body.appendChild(a);
       a.click();
       a.remove();
     });
-  }, [archivos]);
+    // `ver` va en las dependencias a propósito: sin él, al descargar se usarían
+    // las direcciones de la primera carga, que ya habrían caducado.
+  }, [archivos, ver]);
 
   // --- Visor a pantalla completa ---
   const open = idx !== null;
@@ -225,7 +258,7 @@ export function Album() {
                 {f.tipo.startsWith("video/") ? (
                   <div className="relative">
                     {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
-                    <video src={f.url} className="w-full object-cover" />
+                    <video src={ver(f.url)} className="w-full object-cover" />
                     <div className="absolute inset-0 grid place-items-center bg-black/20">
                       <span className="grid size-11 place-items-center rounded-full bg-white/80 text-black">
                         <Play className="size-5" />
@@ -235,7 +268,7 @@ export function Album() {
                 ) : (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
-                    src={f.url}
+                    src={ver(f.url)}
                     alt={f.nombre}
                     loading="lazy"
                     className="w-full object-cover transition-transform duration-500 group-hover:scale-105"
@@ -296,11 +329,11 @@ export function Album() {
           <div className="max-h-[85vh] max-w-4xl" onClick={(e) => e.stopPropagation()}>
             {actual.tipo.startsWith("video/") ? (
               // eslint-disable-next-line jsx-a11y/media-has-caption
-              <video src={actual.url} controls autoPlay className="max-h-[85vh] w-auto rounded-lg" />
+              <video src={ver(actual.url)} controls autoPlay className="max-h-[85vh] w-auto rounded-lg" />
             ) : (
               // eslint-disable-next-line @next/next/no-img-element
               <img
-                src={actual.url}
+                src={ver(actual.url)}
                 alt={actual.nombre}
                 className="max-h-[85vh] w-auto rounded-lg object-contain shadow-2xl"
               />

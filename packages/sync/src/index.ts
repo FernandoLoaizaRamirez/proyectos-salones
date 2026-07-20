@@ -345,6 +345,71 @@ function crearProveedorServidor(url: string, anon: string): ProveedorSync {
   const BUCKET = "media";
   const INTERVALO_MS = 3000;
 
+  /* ---- Direcciones de lectura que caducan (migración 0013) ----------------
+   * Lo que se guarda en la base deja de ser una dirección que sirva sola y pasa
+   * a ser una REFERENCIA. Al mostrar el álbum se pide a `media-ver` que firme
+   * esas referencias, y las direcciones que devuelve caducan en una hora.
+   *
+   * Se cachean: un álbum se repinta cada 3 segundos por el sondeo, y sin caché
+   * se pediría la firma de cientos de fotos cada vez.
+   *
+   * Es NO-FATAL: si la función no está desplegada, devuelve nada y quien llama
+   * se queda con las direcciones de siempre —que siguen sirviendo mientras el
+   * bucket sea público—. Por eso esto se puede desplegar ANTES del corte. */
+  const funcMediaVer = `${raiz}/functions/v1/media-ver`;
+  const MARGEN_FIRMA_MS = 60_000;
+  const firmadas = new Map<string, { url: string; expira: number }>();
+
+  firmarMedios = async (evento, rutas) => {
+    const ahora = Date.now();
+    const salida: Record<string, string> = {};
+    const faltan: string[] = [];
+
+    for (const ruta of rutas) {
+      const guardada = firmadas.get(ruta);
+      if (guardada && guardada.expira - MARGEN_FIRMA_MS > ahora) salida[ruta] = guardada.url;
+      else faltan.push(ruta);
+    }
+    if (faltan.length === 0) return salida;
+
+    try {
+      const [pase, paseAnfitrion] = await Promise.all([
+        obtenerPase(evento),
+        obtenerPaseAnfitrion(evento),
+      ]);
+      if (!pase && !paseAnfitrion) return salida;
+
+      // De 500 en 500, que es el tope de la función.
+      for (let i = 0; i < faltan.length; i += 500) {
+        const tanda = faltan.slice(i, i + 500);
+        const res = await fetch(funcMediaVer, {
+          method: "POST",
+          headers: {
+            ...auth,
+            ...(pase ? { "x-evento-pase": pase } : {}),
+            ...(paseAnfitrion ? { "x-evento-anfitrion": paseAnfitrion } : {}),
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ rutas: tanda }),
+        });
+        if (!res.ok) return salida; // sin firmar: quien llama usa lo de siempre
+
+        const dato = (await res.json()) as {
+          direcciones?: Record<string, string>;
+          vigenciaSeg?: number;
+        };
+        const vigencia = (dato.vigenciaSeg ?? 3600) * 1000;
+        for (const [ruta, url] of Object.entries(dato.direcciones ?? {})) {
+          firmadas.set(ruta, { url, expira: Date.now() + vigencia });
+          salida[ruta] = url;
+        }
+      }
+    } catch {
+      /* sin red o función sin desplegar: se sigue con lo de siempre */
+    }
+    return salida;
+  };
+
   /* ---- Diagnóstico (migración 0012) ---------------------------------------
    * Antes, cuando algo fallaba aquí dentro, el error se tragaba en silencio
    * (`catch {}`) y el invitado veía "no hay mensajes" en vez de un aviso. El
@@ -567,6 +632,13 @@ function crearProveedorServidor(url: string, anon: string): ProveedorSync {
 let cache: ProveedorSync | null = null;
 
 /**
+ * Lo pone `crearProveedorServidor` al construirse. En modo local no hay nada
+ * que firmar (las fotos son direcciones temporales de este navegador).
+ */
+let firmarMedios: ((evento: string, rutas: string[]) => Promise<Record<string, string>>) | null =
+  null;
+
+/**
  * Devuelve el proveedor de sincronización activo: SERVIDOR si están puestas las
  * variables de entorno de Supabase, o LOCAL en caso contrario.
  */
@@ -610,6 +682,64 @@ export function eventoActual(porDefecto = "demo"): string {
 export function sufijoEvento(): string {
   const e = eventoActual();
   return e === "demo" ? "" : `?e=${e}`;
+}
+
+/* ================================================================== */
+/* Fotos y videos: de referencia guardada a dirección que caduca       */
+/* ================================================================== */
+
+/**
+ * En la base se guarda la dirección pública del archivo. Después del corte de
+ * la migración 0013 esa dirección deja de servir por sí sola y pasa a ser solo
+ * una REFERENCIA: de ella se saca la ruta dentro del almacén.
+ *
+ * Se hace así —deducir la ruta— en vez de guardar un campo nuevo, para no tener
+ * que tocar las fotos que ya están guardadas. Una migración de datos sobre los
+ * álbumes de eventos reales es justo el riesgo que no merece la pena correr
+ * cuando el dato ya está ahí dentro.
+ */
+const RUTA_EN_DIRECCION = /\/storage\/v1\/object\/public\/media\/(.+)$/;
+
+function rutaDe(direccion: string): string | null {
+  return RUTA_EN_DIRECCION.exec(direccion)?.[1] ?? null;
+}
+
+/**
+ * Convierte las direcciones guardadas en direcciones que se pueden mostrar.
+ *
+ * Devuelve un mapa `direcciónGuardada → direcciónParaMostrar`. Lo que no sea
+ * del almacén central (las fotos de ejemplo en `/img/...`, los `data:` del muro,
+ * los `blob:` del modo local) **se devuelve tal cual**: esta función nunca
+ * estropea una dirección que ya funcionaba.
+ *
+ * NO FALLA NUNCA: si la función del servidor no está desplegada o no hay red,
+ * devuelve las originales, que siguen sirviendo mientras el bucket sea público.
+ * Por eso las apps se pueden desplegar antes de hacer el corte.
+ */
+export async function resolverMedios(
+  evento: string,
+  direcciones: string[],
+): Promise<Record<string, string>> {
+  obtenerSync(); // asegura que el proveedor esté construido
+  const salida: Record<string, string> = {};
+  const porRuta = new Map<string, string[]>();
+
+  for (const direccion of direcciones) {
+    salida[direccion] = direccion; // por defecto, tal cual
+    const ruta = rutaDe(direccion);
+    if (!ruta) continue;
+    const lista = porRuta.get(ruta);
+    if (lista) lista.push(direccion);
+    else porRuta.set(ruta, [direccion]);
+  }
+
+  if (!firmarMedios || porRuta.size === 0) return salida;
+
+  const firmadas = await firmarMedios(evento, [...porRuta.keys()]);
+  for (const [ruta, url] of Object.entries(firmadas)) {
+    for (const original of porRuta.get(ruta) ?? []) salida[original] = url;
+  }
+  return salida;
 }
 
 /**

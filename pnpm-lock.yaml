@@ -544,6 +544,9 @@ importers:
       '@salones/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@salones/sync':
+        specifier: workspace:*
+        version: link:../../packages/sync
       '@salones/ui':
         specifier: workspace:*
         version: link:../../packages/ui

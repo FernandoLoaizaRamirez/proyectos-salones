@@ -32,8 +32,17 @@ const estiloEstado: Record<Estado, string> = {
 
 export function RsvpCliente() {
   const [invitados, setInvitados] = React.useState<Invitado[]>([]);
-  const [estados, setEstados] = React.useState<Record<string, Respuesta>>({});
+  const [respuestas, setRespuestas] = React.useState<RespuestaItem[]>([]);
   const [cargado, setCargado] = React.useState(false);
+
+  // El mapa de siempre (id → respuesta), derivado de lo que llega del sync.
+  const estados = React.useMemo<Record<string, Respuesta>>(
+    () =>
+      Object.fromEntries(
+        respuestas.map((r) => [r.id, { estado: r.estado, personas: r.personas }]),
+      ),
+    [respuestas],
+  );
   const estadosRef = React.useRef<Record<string, Respuesta>>({});
   estadosRef.current = estados;
 
@@ -75,11 +84,7 @@ export function RsvpCliente() {
   React.useEffect(() => {
     const eventoId = eventoActual();
     const sync = obtenerSync();
-    const cancelar = sync.suscribir<RespuestaItem>(eventoId, COLECCION_RESPUESTAS, (items) => {
-      setEstados(
-        Object.fromEntries(items.map((r) => [r.id, { estado: r.estado, personas: r.personas }])),
-      );
-    });
+    const cancelar = sync.suscribir<RespuestaItem>(eventoId, COLECCION_RESPUESTAS, setRespuestas);
     // Solo en la demo local: sembramos respuestas de ejemplo si no hay ninguna.
     if (sync.nombre === "local") {
       sync.listar<RespuestaItem>(eventoId, COLECCION_RESPUESTAS).then((items) => {
@@ -94,6 +99,18 @@ export function RsvpCliente() {
   }, []);
 
   const estadoDe = (id: string): Estado => estados[id]?.estado ?? EstadoRSVP.Pendiente;
+
+  // Confirmaciones que llegaron por el enlace GENERAL del evento (el portal del
+  // invitado), de gente que no estaba en esta lista: no tienen renglón propio,
+  // así que se muestran aparte para que no se pierdan.
+  const idsEnLista = new Set(invitados.map((i) => i.id));
+  const sueltas = respuestas.filter((r) => !idsEnLista.has(r.id));
+  const personasSueltas = sueltas
+    .filter((r) => r.estado === EstadoRSVP.Confirmado)
+    .reduce((s, r) => s + (r.personas ?? 0), 0);
+  const olvidarSuelta = (id: string) => {
+    void obtenerSync().eliminar(eventoActual(), COLECCION_RESPUESTAS, id);
+  };
 
   const confirmados = invitados.filter((i) => estadoDe(i.id) === EstadoRSVP.Confirmado);
   const rechazados = invitados.filter((i) => estadoDe(i.id) === EstadoRSVP.Rechazado);
@@ -351,6 +368,51 @@ export function RsvpCliente() {
           </div>
         </div>
       </div>
+
+      {/* Confirmaciones desde el portal del evento (sin invitación personal) */}
+      {sueltas.length > 0 ? (
+        <Card className="mt-8 p-6">
+          <h2 className="text-lg font-semibold">Confirmaciones desde el portal</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Estas personas contestaron con el enlace general del evento y no estaban en tu lista.
+            {personasSueltas > 0
+              ? ` Suman ${personasSueltas} persona${personasSueltas === 1 ? "" : "s"} además de las de arriba.`
+              : ""}
+          </p>
+          <div className="mt-4 space-y-2">
+            {sueltas.map((r) => (
+              <div
+                key={r.id}
+                className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius)] border border-border p-3"
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-medium">{r.nombre?.trim() || "Sin nombre"}</span>
+                  <span
+                    className={cn(
+                      "rounded-full px-2 py-0.5 text-[11px] font-medium ring-1",
+                      estiloEstado[r.estado],
+                    )}
+                  >
+                    {etiquetaEstado[r.estado]}
+                  </span>
+                  {r.estado === EstadoRSVP.Confirmado ? (
+                    <span className="text-sm text-muted-foreground">
+                      {r.personas} {r.personas === 1 ? "persona" : "personas"}
+                    </span>
+                  ) : null}
+                </div>
+                <button
+                  onClick={() => olvidarSuelta(r.id)}
+                  aria-label={`Descartar la confirmación de ${r.nombre || "sin nombre"}`}
+                  className="grid size-9 place-items-center rounded-[var(--radius)] text-muted-foreground transition-colors hover:bg-muted hover:text-red-500"
+                >
+                  <Trash2 className="size-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+        </Card>
+      ) : null}
     </div>
   );
 }

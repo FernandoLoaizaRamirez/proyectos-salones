@@ -35,8 +35,15 @@ export type Respuesta = { estado: Estado; personas: number };
 export const EVENTO_ID = "demo";
 export const COLECCION_RESPUESTAS = "respuestas";
 
-/** Una respuesta como item sincronizable (lleva el id del invitado). */
-export type RespuestaItem = Respuesta & { id: string };
+/**
+ * Una respuesta como item sincronizable (lleva el id del invitado).
+ *
+ * `nombre` y `fecha` los añade el PORTAL cuando alguien confirma con el enlace
+ * general del evento (sin invitación personal): ahí el id no está en esta lista,
+ * así que el nombre es lo único que identifica a quien contestó. Son opcionales;
+ * las respuestas de siempre siguen llegando igual.
+ */
+export type RespuestaItem = Respuesta & { id: string; nombre?: string; fecha?: number };
 
 /** Lista de ejemplo (editable / borrable desde la app). */
 export const invitadosIniciales: Invitado[] = [

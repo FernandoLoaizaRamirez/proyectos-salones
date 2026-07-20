@@ -57,6 +57,8 @@ export const MODULOS: ModuloManifest[] = [
     acento: "from-cyan-500 to-blue-600",
     urlBase: "https://proyectos-salones-playlist.vercel.app",
     rutaInvitado: "/pedir",
+    // MIGRADO: ya vive dentro del portal.
+    rutaInterna: "/playlist",
   },
   {
     clave: F.Rsvp,

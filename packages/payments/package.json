@@ -7,8 +7,15 @@
     ".": "./src/index.ts",
     "./servidor": "./src/servidor.ts"
   },
+  "scripts": {
+    "lint": "eslint ."
+  },
   "dependencies": {
     "@salones/core": "workspace:*",
     "stripe": "^22.3.2"
+  },
+  "devDependencies": {
+    "@salones/config": "workspace:*",
+    "eslint": "^9.39.5"
   }
 }

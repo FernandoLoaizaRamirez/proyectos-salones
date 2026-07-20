@@ -6,7 +6,14 @@
   "exports": {
     ".": "./src/index.ts"
   },
+  "scripts": {
+    "lint": "eslint ."
+  },
   "dependencies": {
     "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@salones/config": "workspace:*",
+    "eslint": "^9.39.5"
   }
 }

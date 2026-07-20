@@ -10,7 +10,20 @@
       "cache": false,
       "persistent": true
     },
-    "lint": {},
+    "lint": {
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "eslint.config.mjs",
+        "!**/*.md",
+        "!**/*.css",
+        "!public/**"
+      ],
+      "outputs": []
+    },
+    "//#lint:raiz": {
+      "inputs": ["tests/**", "vitest.config.ts", "eslint.config.mjs"],
+      "outputs": []
+    },
     "start": {
       "dependsOn": ["build"],
       "cache": false,

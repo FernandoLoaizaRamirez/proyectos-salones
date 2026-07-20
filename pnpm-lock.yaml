@@ -124,6 +124,9 @@ importers:
       '@salones/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@salones/legal':
+        specifier: workspace:*
+        version: link:../../packages/legal
       '@salones/payments':
         specifier: workspace:*
         version: link:../../packages/payments
@@ -635,6 +638,8 @@ importers:
       zod:
         specifier: ^4.4.3
         version: 4.4.3
+
+  packages/legal: {}
 
   packages/payments:
     dependencies:

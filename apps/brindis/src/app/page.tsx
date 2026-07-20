@@ -29,8 +29,9 @@ export default function Page() {
 
       <footer className="border-t border-border">
         <div className="mx-auto max-w-3xl px-6 py-8 text-center text-xs text-muted-foreground">
-          {evento.lugar} · Demo de {evento.organizador.nombre}. Los videos se graban y quedan en tu
-          teléfono; no se suben a ningún servidor en esta demostración.
+          {evento.lugar} · Demo de {evento.organizador.nombre}. Tu video se graba en tu teléfono y
+          solo sale de él si pulsas “Enviar a los novios”: entonces se guarda en el álbum del
+          evento, donde lo ven los anfitriones.
         </div>
       </footer>
     </main>

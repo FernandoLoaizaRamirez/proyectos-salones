@@ -12,7 +12,7 @@ import {
   Play,
   Loader2,
 } from "lucide-react";
-import { Button, EmptyState, cn } from "@salones/ui";
+import { Button, EmptyState, cn, AvisoParticipacion } from "@salones/ui";
 import { obtenerSync, estaConectado, eventoActual, esAnfitrion } from "@salones/sync";
 import {
   fotosEjemplo,
@@ -185,6 +185,7 @@ export function Album() {
             className="hidden"
             onChange={(e) => agregar(e.target.files)}
           />
+          <AvisoParticipacion accion="subir tus fotos" className="max-w-md text-center" />
         </div>
       </div>
 

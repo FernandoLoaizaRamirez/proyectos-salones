@@ -86,6 +86,8 @@ export const MODULOS: ModuloManifest[] = [
     acento: "from-fuchsia-500 to-purple-600",
     urlBase: "https://album-fotos-gamma.vercel.app",
     rutaInvitado: "/",
+    // MIGRADO: ya vive dentro del portal.
+    rutaInterna: "/album",
   },
 ];
 

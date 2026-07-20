@@ -179,7 +179,7 @@ function crearProveedorLocal(): ProveedorSync {
 function crearProveedorServidor(url: string, anon: string): ProveedorSync {
   const raiz = url.replace(/\/$/, "");
   const base = `${raiz}/rest/v1/items`;
-  const funciones = `${raiz}/functions/v1`;
+  const rpcPase = `${raiz}/rest/v1/rpc/emitir_pase`;
   // La llave puede ser "legacy" (un JWT que empieza con eyJ) o del formato nuevo
   // (sb_publishable_...). El encabezado Authorization solo admite JWTs; con las
   // llaves nuevas basta el encabezado apikey.
@@ -188,51 +188,57 @@ function crearProveedorServidor(url: string, anon: string): ProveedorSync {
     ...(anon.startsWith("eyJ") ? { Authorization: `Bearer ${anon}` } : {}),
   };
 
-  /* ---- Pase firmado por evento (migración x-evento → token, Fase 1) --------
-   * Antes de cada petición se pide (y se cachea) un PASE a la Edge Function
-   * `token`: un JWT corto con el claim del evento. Se manda como Authorization
-   * para que la RLS acote el acceso por ese claim (ver migración 0006). Es
-   * NO-FATAL: si la función aún no existe o falla, se sigue por el candado
-   * viejo (encabezado x-evento), así que esta versión es segura de desplegar
-   * ANTES de que el pase esté encendido en el servidor. */
-  const pases = new Map<string, { token: string; expira: number }>();
+  /* ---- Pase firmado por evento (migración x-evento → pase, Fase 1) ---------
+   * Antes de cada petición se pide (y se cachea) un PASE al servidor:
+   * `<evento>.<caducidad>.<firma>`, que emite la función `emitir_pase` de la
+   * propia base de datos (ver migración 0006). Viaja en el encabezado
+   * `x-evento-pase` y la RLS lo verifica ahí mismo (firma + caducidad), así que
+   * no se puede forjar y caduca solo. Es NO-FATAL: si el servidor todavía no lo
+   * tiene, se sigue por el candado viejo (encabezado x-evento), de modo que esta
+   * versión es segura de desplegar ANTES de aplicar la migración. */
+  const pases = new Map<string, { pase: string; expira: number }>();
   const MARGEN_MS = 60_000; // renovar 1 min antes de que caduque
+
+  /** La caducidad viaja dentro del propio pase: <evento>.<exp>.<firma>. */
+  const caducidadDe = (pase: string): number => {
+    const exp = Number(pase.split(".")[1]);
+    return Number.isFinite(exp) ? exp * 1000 : 0;
+  };
 
   async function obtenerPase(evento: string): Promise<string | null> {
     const guardado = pases.get(evento);
-    if (guardado && guardado.expira - MARGEN_MS > Date.now()) return guardado.token;
+    if (guardado && guardado.expira - MARGEN_MS > Date.now()) return guardado.pase;
     try {
-      const res = await fetch(`${funciones}/token?e=${encodeURIComponent(evento)}`, {
-        headers: auth,
+      const res = await fetch(rpcPase, {
+        method: "POST",
+        headers: { ...auth, "Content-Type": "application/json" },
+        body: JSON.stringify({ p_codigo: evento }),
       });
       if (!res.ok) return null;
-      const { token, exp } = (await res.json()) as { token?: string; exp?: number };
-      if (!token) return null;
-      pases.set(evento, { token, expira: (exp ?? 0) * 1000 });
-      return token;
+      const pase = (await res.json()) as unknown;
+      if (typeof pase !== "string" || !pase) return null;
+      pases.set(evento, { pase, expira: caducidadDe(pase) });
+      return pase;
     } catch {
-      return null; // sin red o función ausente: se sigue por el header
+      return null; // sin red o migración sin aplicar: se sigue por el header
     }
   }
 
-  /** Authorization efectivo: el pase del evento si lo hay; si no, el de base. */
-  async function autorizacion(evento: string): Promise<Record<string, string>> {
-    const pase = await obtenerPase(evento);
-    if (pase) return { apikey: anon, Authorization: `Bearer ${pase}` };
-    return { ...auth };
-  }
-
   /**
-   * La llave del evento viaja TAMBIÉN como encabezado (x-evento) en cada
-   * petición: así conviven el pase nuevo y el candado viejo hasta el corte
-   * final (ver docs/MIGRACION-TOKEN-FIRMADO.md). Con cualquiera de los dos, el
-   * servidor exige la llave correcta: sin ella no se lee ni escribe nada.
+   * La llave del evento viaja de DOS formas mientras dura la transición: el
+   * encabezado viejo (x-evento) y el PASE firmado (x-evento-pase). Con
+   * cualquiera de los dos el servidor exige la llave correcta: sin ella no se
+   * lee ni se escribe nada (ver docs/MIGRACION-TOKEN-FIRMADO.md).
    */
-  const headersDe = async (evento: string): Promise<Record<string, string>> => ({
-    ...(await autorizacion(evento)),
-    "x-evento": evento,
-    "Content-Type": "application/json",
-  });
+  const headersDe = async (evento: string): Promise<Record<string, string>> => {
+    const pase = await obtenerPase(evento);
+    return {
+      ...auth,
+      "x-evento": evento,
+      ...(pase ? { "x-evento-pase": pase } : {}),
+      "Content-Type": "application/json",
+    };
+  };
   /** Almacenamiento central de fotos/videos (bucket "media" del proyecto). */
   const almacen = `${raiz}/storage/v1`;
   const BUCKET = "media";
@@ -299,11 +305,13 @@ function crearProveedorServidor(url: string, anon: string): ProveedorSync {
       const ruta = `${encodeURIComponent(evento)}/${Date.now()}-${Math.random()
         .toString(36)
         .slice(2, 8)}.${ext}`;
+      const pase = await obtenerPase(evento);
       const res = await fetch(`${almacen}/object/${BUCKET}/${ruta}`, {
         method: "POST",
         headers: {
-          ...(await autorizacion(evento)),
+          ...auth,
           "x-evento": evento,
+          ...(pase ? { "x-evento-pase": pase } : {}),
           "Content-Type": tipo || "application/octet-stream",
         },
         body: blob,

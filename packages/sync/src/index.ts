@@ -164,6 +164,60 @@ function crearProveedorLocal(): ProveedorSync {
 }
 
 /* ================================================================== */
+/* Llave del ANFITRIÓN — la segunda llave, la de quien organiza        */
+/* ================================================================== */
+
+/**
+ * Hay DOS llaves por evento:
+ *
+ *   - La del INVITADO  → el código del evento (`?e=`). Va en el QR, la tiene
+ *     todo el mundo. Sirve para ver el evento y para aportar (firmar el muro,
+ *     pedir una canción, subir una foto, confirmar asistencia).
+ *
+ *   - La del ANFITRIÓN → una clave privada (`&a=`) que solo recibe quien
+ *     organiza. Es la única que permite BORRAR y moderar.
+ *
+ * Antes de esto, el código del evento permitía borrar, así que cualquier
+ * invitado podía vaciar el álbum o el muro de la boda entera. Ver la migración
+ * `supabase/migrations/0009_llave_anfitrion.sql`.
+ *
+ * La clave se recuerda en el navegador POR EVENTO, para que el anfitrión no
+ * tenga que volver a pegar su enlace cada vez que cambia de pantalla.
+ */
+const claveAnfitrionKey = (evento: string) => `salones:anfitrion:${evento}`;
+
+export function claveAnfitrion(evento: string): string | null {
+  if (!hayNavegador()) return null;
+  const enUrl = new URLSearchParams(window.location.search).get("a");
+  if (enUrl && /^[a-zA-Z0-9_-]{8,128}$/.test(enUrl)) {
+    try {
+      window.localStorage.setItem(claveAnfitrionKey(evento), enUrl);
+    } catch {
+      /* almacenamiento lleno o bloqueado: se usa la de la URL igualmente */
+    }
+    return enUrl;
+  }
+  try {
+    return window.localStorage.getItem(claveAnfitrionKey(evento));
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Olvida la llave de anfitrión guardada en ESTE dispositivo. Útil cuando el
+ * enlace se abrió en una pantalla prestada (la del salón, un proyector).
+ */
+export function olvidarClaveAnfitrion(evento: string): void {
+  if (!hayNavegador()) return;
+  try {
+    window.localStorage.removeItem(claveAnfitrionKey(evento));
+  } catch {
+    /* nada que olvidar */
+  }
+}
+
+/* ================================================================== */
 /* Proveedor SERVIDOR — todos los teléfonos, vía Supabase (REST)       */
 /* ================================================================== */
 
@@ -180,6 +234,7 @@ function crearProveedorServidor(url: string, anon: string): ProveedorSync {
   const raiz = url.replace(/\/$/, "");
   const base = `${raiz}/rest/v1/items`;
   const rpcPase = `${raiz}/rest/v1/rpc/emitir_pase`;
+  const rpcPaseAnfitrion = `${raiz}/rest/v1/rpc/emitir_pase_anfitrion`;
   // La llave puede ser "legacy" (un JWT que empieza con eyJ) o del formato nuevo
   // (sb_publishable_...). El encabezado Authorization solo admite JWTs; con las
   // llaves nuevas basta el encabezado apikey.
@@ -197,45 +252,80 @@ function crearProveedorServidor(url: string, anon: string): ProveedorSync {
    * tiene, se sigue por el candado viejo (encabezado x-evento), de modo que esta
    * versión es segura de desplegar ANTES de aplicar la migración. */
   const pases = new Map<string, { pase: string; expira: number }>();
+  const pasesAnfitrion = new Map<string, { pase: string; expira: number }>();
   const MARGEN_MS = 60_000; // renovar 1 min antes de que caduque
 
-  /** La caducidad viaja dentro del propio pase: <evento>.<exp>.<firma>. */
+  /**
+   * La caducidad viaja dentro del propio pase:
+   *   invitado  → <evento>.<exp>.<firma>
+   *   anfitrión → a.<evento>.<exp>.<firma>   (la "a." del principio lo delata)
+   */
   const caducidadDe = (pase: string): number => {
-    const exp = Number(pase.split(".")[1]);
+    const partes = pase.split(".");
+    const exp = Number(partes[0] === "a" ? partes[2] : partes[1]);
     return Number.isFinite(exp) ? exp * 1000 : 0;
   };
 
-  async function obtenerPase(evento: string): Promise<string | null> {
-    const guardado = pases.get(evento);
+  /** Pide un pase (de invitado o de anfitrión) y lo cachea hasta que caduque. */
+  async function pedirPase(
+    cache: Map<string, { pase: string; expira: number }>,
+    evento: string,
+    ruta: string,
+    cuerpo: Record<string, string>,
+  ): Promise<string | null> {
+    const guardado = cache.get(evento);
     if (guardado && guardado.expira - MARGEN_MS > Date.now()) return guardado.pase;
     try {
-      const res = await fetch(rpcPase, {
+      const res = await fetch(ruta, {
         method: "POST",
         headers: { ...auth, "Content-Type": "application/json" },
-        body: JSON.stringify({ p_codigo: evento }),
+        body: JSON.stringify(cuerpo),
       });
       if (!res.ok) return null;
       const pase = (await res.json()) as unknown;
       if (typeof pase !== "string" || !pase) return null;
-      pases.set(evento, { pase, expira: caducidadDe(pase) });
+      cache.set(evento, { pase, expira: caducidadDe(pase) });
       return pase;
     } catch {
       return null; // sin red o migración sin aplicar: se sigue por el header
     }
   }
 
+  const obtenerPase = (evento: string) =>
+    pedirPase(pases, evento, rpcPase, { p_codigo: evento });
+
   /**
-   * La llave del evento viaja de DOS formas mientras dura la transición: el
-   * encabezado viejo (x-evento) y el PASE firmado (x-evento-pase). Con
-   * cualquiera de los dos el servidor exige la llave correcta: sin ella no se
-   * lee ni se escribe nada (ver docs/MIGRACION-TOKEN-FIRMADO.md).
+   * Pase de ANFITRIÓN: solo se puede pedir si este dispositivo tiene la llave
+   * privada del evento (el `&a=` de su enlace). Sin llave no se pide nada —
+   * ni siquiera se molesta al servidor.
+   */
+  async function obtenerPaseAnfitrion(evento: string): Promise<string | null> {
+    const clave = claveAnfitrion(evento);
+    // "demo" es la vitrina pública: cualquiera modera la demostración.
+    if (!clave && evento !== "demo") return null;
+    return pedirPase(pasesAnfitrion, evento, rpcPaseAnfitrion, {
+      p_codigo: evento,
+      p_clave: clave ?? "",
+    });
+  }
+
+  /**
+   * La llave del evento viaja de VARIAS formas mientras dura la transición: el
+   * encabezado viejo (x-evento), el PASE de invitado (x-evento-pase) y, si este
+   * dispositivo es el del anfitrión, su PASE DE ANFITRIÓN (x-evento-anfitrion),
+   * que es el único que permite borrar una vez hecho el corte.
+   * Ver docs/MIGRACION-TOKEN-FIRMADO.md y docs/LLAVE-ANFITRION.md.
    */
   const headersDe = async (evento: string): Promise<Record<string, string>> => {
-    const pase = await obtenerPase(evento);
+    const [pase, paseAnfitrion] = await Promise.all([
+      obtenerPase(evento),
+      obtenerPaseAnfitrion(evento),
+    ]);
     return {
       ...auth,
       "x-evento": evento,
       ...(pase ? { "x-evento-pase": pase } : {}),
+      ...(paseAnfitrion ? { "x-evento-anfitrion": paseAnfitrion } : {}),
       "Content-Type": "application/json",
     };
   };
@@ -305,13 +395,17 @@ function crearProveedorServidor(url: string, anon: string): ProveedorSync {
       const ruta = `${encodeURIComponent(evento)}/${Date.now()}-${Math.random()
         .toString(36)
         .slice(2, 8)}.${ext}`;
-      const pase = await obtenerPase(evento);
+      const [pase, paseAnfitrion] = await Promise.all([
+        obtenerPase(evento),
+        obtenerPaseAnfitrion(evento),
+      ]);
       const res = await fetch(`${almacen}/object/${BUCKET}/${ruta}`, {
         method: "POST",
         headers: {
           ...auth,
           "x-evento": evento,
           ...(pase ? { "x-evento-pase": pase } : {}),
+          ...(paseAnfitrion ? { "x-evento-anfitrion": paseAnfitrion } : {}),
           "Content-Type": tipo || "application/octet-stream",
         },
         body: blob,
@@ -372,4 +466,37 @@ export function eventoActual(porDefecto = "demo"): string {
 export function sufijoEvento(): string {
   const e = eventoActual();
   return e === "demo" ? "" : `?e=${e}`;
+}
+
+/**
+ * ¿Este dispositivo es el del ANFITRIÓN de este evento?
+ *
+ * Sirve para DIBUJAR la interfaz: mostrar u ocultar los botones de borrar y
+ * moderar. **No es el candado.** El candado de verdad está en la base de datos
+ * (migración 0009): aunque alguien fuerce la interfaz, el servidor rechaza el
+ * borrado si no viene con un pase de anfitrión válido.
+ *
+ * Devuelve `true` cuando:
+ *   - no hay servidor central (modo local: un solo dispositivo, quien lo usa es
+ *     el anfitrión — es el modo de las demos y de los planes Renta / Compra), o
+ *   - el evento es "demo" (la vitrina pública se puede moderar sin llave), o
+ *   - este dispositivo tiene la llave privada del evento (llegó por `&a=`).
+ */
+export function esAnfitrion(evento: string = eventoActual()): boolean {
+  if (!estaConectado()) return true;
+  if (evento === "demo") return true;
+  return claveAnfitrion(evento) !== null;
+}
+
+/**
+ * Sufijo del enlace PRIVADO del anfitrión (`?e=…&a=…`), para propagar la llave
+ * entre las pantallas de la misma app. Devuelve el sufijo normal si este
+ * dispositivo no tiene llave, para no inventar una.
+ *
+ * ⚠️ Este enlace NO se comparte con los invitados: quien lo tenga puede borrar.
+ */
+export function sufijoAnfitrion(evento: string = eventoActual()): string {
+  const clave = claveAnfitrion(evento);
+  if (!clave) return sufijoEvento();
+  return `?e=${evento}&a=${clave}`;
 }

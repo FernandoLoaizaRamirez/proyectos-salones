@@ -82,13 +82,15 @@ select emitir_pase('demo');   -- debe devolver algo como  demo.1784570160.9f3c..
 
 ### Paso 4 — EL CORTE (apagar el encabezado viejo) · en un rato tranquilo
 
-Cuando el paso 3 esté verde y **todas** las apps manden el pase:
+> ⛔ **ESTE PASO CAMBIÓ.** No corras el "BLOQUE FINAL" de la `0006`. Lo sustituye
+> el de la [`0009_llave_anfitrion.sql`](../supabase/migrations/0009_llave_anfitrion.sql),
+> que apaga el encabezado viejo **y además** deja el borrado solo en manos del
+> anfitrión. El bloque de la `0006` cerraría el candado del pase pero dejaría a
+> cualquier invitado con poder de borrar la boda entera.
+>
+> **Sigue el runbook [`LLAVE-ANFITRION.md`](LLAVE-ANFITRION.md) a partir de aquí.**
 
-1. Supabase → **SQL Editor** → corre el **"BLOQUE FINAL"** que está al final de
-   [`0006_pase_firmado.sql`](../supabase/migrations/0006_pase_firmado.sql) (las 4
-   políticas que quedan **solo** con el pase).
-2. Verifica de nuevo (paso 3). A partir de aquí el encabezado `x-evento` ya no
-   abre nada: solo el pase firmado.
+El resto de este documento (pasos 1 a 3) sigue siendo válido y es el prerrequisito.
 
 ### Paso 5 — Limpieza (opcional)
 

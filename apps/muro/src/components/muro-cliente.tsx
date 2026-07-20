@@ -14,7 +14,7 @@ import {
   PenLine,
 } from "lucide-react";
 import { Button, Card, EmptyState, cn } from "@salones/ui";
-import { obtenerSync, eventoActual, sufijoEvento } from "@salones/sync";
+import { obtenerSync, eventoActual, sufijoEvento, esAnfitrion } from "@salones/sync";
 import { QR } from "@/components/qr";
 import { ModoPantalla } from "@/components/modo-pantalla";
 import {
@@ -34,6 +34,9 @@ export function MuroCliente() {
   const [urlFirmar, setUrlFirmar] = React.useState("");
   const [copiado, setCopiado] = React.useState(false);
   const [ahora, setAhora] = React.useState(() => 0);
+  // Arranca en false a propósito: si algo fallara, se esconde el botón de
+  // borrar en vez de enseñárselo a un invitado.
+  const [anfitrion, setAnfitrion] = React.useState(false);
 
   // Carga + sincronización en vivo desde el "lugar central" (@salones/sync).
   // En local se sincroniza entre pestañas de este dispositivo; con el servicio
@@ -42,6 +45,10 @@ export function MuroCliente() {
     setAhora(Date.now());
     // El enlace para firmar lleva el código del evento actual (?e=...).
     setUrlFirmar(`${window.location.origin}/firmar${sufijoEvento()}`);
+    // ¿Quien mira esta pantalla es el anfitrión? Solo él modera. Se calcula
+    // aquí (y no al pintar) porque depende del enlace y del navegador, que en
+    // el servidor todavía no existen.
+    setAnfitrion(esAnfitrion());
 
     const eventoId = eventoActual();
     const sync = obtenerSync();
@@ -130,13 +137,15 @@ export function MuroCliente() {
                 key={m.id}
                 className="group relative mb-4 break-inside-avoid rounded-[var(--radius)] border border-border bg-card p-5 shadow-sm"
               >
-                <button
-                  onClick={() => eliminar(m.id)}
-                  aria-label={`Quitar el mensaje de ${m.nombre}`}
-                  className="absolute right-2 top-2 grid size-8 place-items-center rounded-full bg-background/70 text-muted-foreground opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100"
-                >
-                  <Trash2 className="size-4" />
-                </button>
+                {anfitrion ? (
+                  <button
+                    onClick={() => eliminar(m.id)}
+                    aria-label={`Quitar el mensaje de ${m.nombre}`}
+                    className="absolute right-2 top-2 grid size-8 place-items-center rounded-full bg-background/70 text-muted-foreground opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100"
+                  >
+                    <Trash2 className="size-4" />
+                  </button>
+                ) : null}
                 {m.foto ? (
                   <img
                     src={m.foto}

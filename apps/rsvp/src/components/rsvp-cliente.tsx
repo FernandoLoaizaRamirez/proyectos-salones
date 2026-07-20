@@ -3,7 +3,7 @@
 import * as React from "react";
 import { Plus, Check, Trash2, MessageCircle, Clock } from "lucide-react";
 import { Button, Card, cn } from "@salones/ui";
-import { obtenerSync, eventoActual, sufijoEvento } from "@salones/sync";
+import { obtenerSync, eventoActual, sufijoEvento, esAnfitrion } from "@salones/sync";
 import {
   invitadosIniciales,
   respuestasIniciales,
@@ -34,6 +34,8 @@ export function RsvpCliente() {
   const [invitados, setInvitados] = React.useState<Invitado[]>([]);
   const [estados, setEstados] = React.useState<Record<string, Respuesta>>({});
   const [cargado, setCargado] = React.useState(false);
+  // Arranca en false a propósito: ante la duda se esconde el botón de borrar.
+  const [anfitrion, setAnfitrion] = React.useState(false);
   const estadosRef = React.useRef<Record<string, Respuesta>>({});
   estadosRef.current = estados;
 
@@ -73,6 +75,9 @@ export function RsvpCliente() {
   // actualiza solo con lo que confirma cada invitado. En local, entre pestañas;
   // con el servicio gestionado, desde el teléfono de cada invitado.
   React.useEffect(() => {
+    // Solo el anfitrión borra invitados de la lista. Depende del enlace y del
+    // navegador, que en el servidor todavía no existen.
+    setAnfitrion(esAnfitrion());
     const eventoId = eventoActual();
     const sync = obtenerSync();
     const cancelar = sync.suscribir<RespuestaItem>(eventoId, COLECCION_RESPUESTAS, (items) => {
@@ -336,13 +341,15 @@ export function RsvpCliente() {
                       <Button variant="ghost" size="sm" onClick={() => editar(inv)}>
                         Editar
                       </Button>
-                      <button
-                        onClick={() => eliminar(inv.id)}
-                        aria-label={`Eliminar ${inv.nombre}`}
-                        className="grid size-9 place-items-center rounded-[var(--radius)] text-muted-foreground transition-colors hover:bg-muted hover:text-red-500"
-                      >
-                        <Trash2 className="size-4" />
-                      </button>
+                      {anfitrion ? (
+                        <button
+                          onClick={() => eliminar(inv.id)}
+                          aria-label={`Eliminar ${inv.nombre}`}
+                          className="grid size-9 place-items-center rounded-[var(--radius)] text-muted-foreground transition-colors hover:bg-muted hover:text-red-500"
+                        >
+                          <Trash2 className="size-4" />
+                        </button>
+                      ) : null}
                     </div>
                   </div>
                 </Card>

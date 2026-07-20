@@ -13,7 +13,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { Button, EmptyState, cn } from "@salones/ui";
-import { obtenerSync, estaConectado, eventoActual } from "@salones/sync";
+import { obtenerSync, estaConectado, eventoActual, esAnfitrion } from "@salones/sync";
 import {
   fotosEjemplo,
   comprimirImagen,
@@ -33,10 +33,15 @@ export function Album() {
   const [idx, setIdx] = React.useState<number | null>(null);
   const inputRef = React.useRef<HTMLInputElement>(null);
   const contador = React.useRef(0);
+  // Solo el anfitrión puede quitar fotos del álbum común. Arranca en false: si
+  // algo fallara, se esconde el botón en vez de enseñárselo a un invitado.
+  const [anfitrion, setAnfitrion] = React.useState(false);
 
   // Álbum COMPARTIDO: se suscribe al "lugar central" (@salones/sync) y se
   // actualiza solo con las fotos que sube cada invitado desde su teléfono.
   React.useEffect(() => {
+    // Depende del enlace y del navegador, que en el servidor no existen.
+    setAnfitrion(esAnfitrion());
     if (!estaConectado()) return;
     return obtenerSync().suscribir<Archivo>(eventoActual(), COLECCION_FOTOS, setArchivos);
   }, []);
@@ -236,14 +241,16 @@ export function Album() {
                   />
                 )}
               </button>
-              <button
-                type="button"
-                aria-label={`Eliminar ${f.nombre}`}
-                onClick={() => eliminar(f.id)}
-                className="absolute right-2 top-2 grid size-8 place-items-center rounded-full bg-black/60 text-white opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
-              >
-                <Trash2 className="size-4" />
-              </button>
+              {anfitrion ? (
+                <button
+                  type="button"
+                  aria-label={`Eliminar ${f.nombre}`}
+                  onClick={() => eliminar(f.id)}
+                  className="absolute right-2 top-2 grid size-8 place-items-center rounded-full bg-black/60 text-white opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+                >
+                  <Trash2 className="size-4" />
+                </button>
+              ) : null}
             </div>
           ))}
         </div>

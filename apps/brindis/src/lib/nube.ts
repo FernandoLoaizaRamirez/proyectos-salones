@@ -23,6 +23,23 @@ import { extensionDe } from "@/lib/brindis";
 /** Colección donde se anotan los brindis de un evento (tabla `items`). */
 export const COLECCION_BRINDIS = "brindis";
 
+/**
+ * Tope del cajón central: 25 MB. Lo pone el propio servidor
+ * (`file_size_limit` del bucket `media`, ver docs/SERVICIO-GESTIONADO.md), así
+ * que si cambia allá hay que cambiarlo aquí.
+ *
+ * Con la calidad que fija `VIDEO_BPS`, un brindis del largo máximo pesa ~14 MB
+ * y nunca debería acercarse. Pero la calidad es solo una SUGERENCIA al
+ * navegador y algunos (Safari en iPhone) la ignoran, así que se revisa antes de
+ * subir: más vale un aviso claro aquí que un error del servidor a media fiesta.
+ */
+export const LIMITE_BYTES = 25 * 1024 * 1024;
+
+/** Peso en MB, redondeado, para los mensajes al invitado. */
+function enMB(bytes: number): string {
+  return (bytes / (1024 * 1024)).toFixed(0);
+}
+
 /** Un brindis ya subido al lugar central. */
 export type BrindisSubido = {
   id: string;
@@ -67,6 +84,14 @@ export async function subirBrindis(
   blob: Blob,
   mime: string,
 ): Promise<{ ok: boolean; error?: string }> {
+  if (blob.size > LIMITE_BYTES) {
+    return {
+      ok: false,
+      // Se inserta dentro de "No se pudo enviar (…)", por eso va en minúscula y
+      // sin punto final.
+      error: `pesa ${enMB(blob.size)} MB y el máximo son ${enMB(LIMITE_BYTES)} MB; graba uno más corto`,
+    };
+  }
   try {
     const sync = obtenerSync();
     const tipo = tipoLimpio(mime);

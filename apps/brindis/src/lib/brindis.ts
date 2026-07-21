@@ -23,6 +23,23 @@ export const evento = {
 export const MAX_SEGUNDOS = 60;
 
 /**
+ * Calidad de grabación. Se fija a propósito para que el video quede liviano y
+ * PAREJO entre teléfonos: sin esto, un iPhone graba ~4× más pesado que un
+ * Android con la misma duración.
+ *
+ * Las cuentas, que es lo que importa: 1.8 Mbps de video + 96 kbps de audio ≈
+ * 1.9 Mbps, así que el brindis más largo posible ({@link MAX_SEGUNDOS} = 60 s)
+ * pesa ~14 MB. El cajón central corta en 25 MB (ver `LIMITE_BYTES` en
+ * `src/lib/nube.ts`), o sea que queda margen de sobra en vez de rozar el tope.
+ *
+ * Un brindis es una cara hablando —poco movimiento—, así que a 720×960 esta
+ * tasa se ve bien; subirla solo engorda el archivo y hace esperar al invitado
+ * con los datos de su teléfono.
+ */
+export const VIDEO_BPS = 1_800_000;
+export const AUDIO_BPS = 96_000;
+
+/**
  * Elige un formato de grabación soportado por el navegador.
  * Se prioriza MP4 porque es el que WhatsApp reproduce como video (no como
  * "archivo/documento"); si el navegador no lo soporta, cae a WebM.

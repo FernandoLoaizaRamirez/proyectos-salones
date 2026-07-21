@@ -23,6 +23,8 @@ import { QR } from "@/components/qr";
 import {
   evento,
   MAX_SEGUNDOS,
+  VIDEO_BPS,
+  AUDIO_BPS,
   VIDEO_ANCHO,
   VIDEO_ALTO,
   marcosBrindis,
@@ -248,13 +250,12 @@ export function BrindisCliente() {
       }
     }
 
-    // Fijamos la calidad al grabar para que el video quede liviano y parejo entre
-    // teléfonos: sin esto, un iPhone graba ~4× más pesado que un Android (misma
-    // duración). ~2.5 Mbps deja un clip de 60 s en ~19 MB, sube rápido y gasta
-    // menos datos al invitado.
+    // La calidad se fija en un solo sitio (ver VIDEO_BPS en @/lib/brindis), con
+    // las cuentas de por qué. Ojo: es una SUGERENCIA — hay navegadores (Safari
+    // en iPhone) que la ignoran, por eso `subirBrindis` revisa el peso final.
     const opciones: MediaRecorderOptions = {
-      videoBitsPerSecond: 2_500_000,
-      audioBitsPerSecond: 128_000,
+      videoBitsPerSecond: VIDEO_BPS,
+      audioBitsPerSecond: AUDIO_BPS,
     };
     if (mime) opciones.mimeType = mime;
     let rec: MediaRecorder;

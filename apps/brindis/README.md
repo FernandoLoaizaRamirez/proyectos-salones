@@ -36,6 +36,22 @@ brindis del evento que se le pide (el navegador se lo manda a
 Los códigos se crean en el generador del operador:
 `suite-salones.vercel.app/evento`.
 
+## El peso del video
+
+El cajón central corta en **25 MB** por archivo. La grabación se fija a 1.8 Mbps
+de video + 96 kbps de audio (`VIDEO_BPS` y `AUDIO_BPS` en `src/lib/brindis.ts`),
+así que el brindis más largo posible —60 s— pesa **~14 MB**: entra con margen y
+sube rápido incluso con los datos del teléfono del invitado.
+
+Esa calidad es solo una **sugerencia** al navegador, y algunos (Safari en
+iPhone) la ignoran y graban mucho más pesado. Por eso `subirBrindis` pesa el
+archivo antes de mandarlo y, si se pasa, avisa al invitado que grabe uno más
+corto en vez de dejar que el servidor lo rechace con un error críptico.
+
+El video **no se re-comprime** después de grabar, a diferencia de las fotos del
+álbum. Re-codificar un video en el teléfono tarda minutos y quema batería; era
+peor remedio que la enfermedad. Bajar la tasa al grabar sale gratis.
+
 ## Decisión: los videos viejos se dan por perdidos
 
 Hasta esta versión, `brindis` era un **silo aparte** del resto del monorepo:

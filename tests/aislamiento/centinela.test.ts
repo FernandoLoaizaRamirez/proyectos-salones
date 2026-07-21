@@ -52,28 +52,48 @@ suite("Centinela de seguridad — qué candados están encendidos", () => {
     ...(anon.startsWith("eyJ") ? { Authorization: `Bearer ${anon}` } : {}),
   };
 
-  /** ¿Responde esta RPC con algo que no sea NULL? */
+  /**
+   * ¿Responde esta RPC con algo que no sea NULL?
+   * Nunca lanza: si no hay red, es una pieza que no se pudo medir, no un error
+   * que deba tumbar el informe entero.
+   */
   const rpc = async (nombre: string, cuerpo: Record<string, string>): Promise<unknown> => {
-    const res = await fetch(`${url}/rest/v1/rpc/${nombre}`, {
-      method: "POST",
-      headers: { ...auth, "Content-Type": "application/json" },
-      body: JSON.stringify(cuerpo),
-    });
-    if (!res.ok) return null;
-    return res.json();
+    try {
+      const res = await fetch(`${url}/rest/v1/rpc/${nombre}`, {
+        method: "POST",
+        headers: { ...auth, "Content-Type": "application/json" },
+        body: JSON.stringify(cuerpo),
+      });
+      if (!res.ok) return null;
+      return await res.json();
+    } catch {
+      return null;
+    }
   };
 
   /**
    * ¿Está desplegada esta Edge Function?
-   * Desplegada = contesta con SU PROPIO "sin permiso" (403). Un 404 es el
-   * enrutador de funciones diciendo que no existe.
+   *
+   * Desplegada = contesta ELLA. Sin desplegar = 404 del enrutador de funciones.
+   *
+   * Se mira "distinto de 404" y no "igual a 403" a propósito: `media-subir` y
+   * `media-ver` solo aceptan POST y responden 405 a cualquier otra cosa. Dar por
+   * apagada una función que contestó 405 sería una falsa alarma — y justo la que
+   * aparecería el día que se desplieguen.
    */
-  const funcionDesplegada = async (nombre: string): Promise<boolean> => {
+  const sondearFuncion = async (
+    nombre: string,
+    metodo: "GET" | "POST",
+  ): Promise<{ viva: boolean; estado: number | null }> => {
     try {
-      const res = await fetch(`${url}/functions/v1/${nombre}?e=demo`, { headers: auth });
-      return res.status === 403;
+      const res = await fetch(`${url}/functions/v1/${nombre}?e=demo`, {
+        method: metodo,
+        headers: { ...auth, ...(metodo === "POST" ? { "Content-Type": "application/json" } : {}) },
+        ...(metodo === "POST" ? { body: JSON.stringify({ e: "demo" }) } : {}),
+      });
+      return { viva: res.status !== 404, estado: res.status };
     } catch {
-      return false;
+      return { viva: false, estado: null };
     }
   };
 
@@ -101,19 +121,22 @@ suite("Centinela de seguridad — qué candados están encendidos", () => {
           : "la migración 0009 no está aplicada",
     });
 
-    for (const [funcion, nombre, que, dormidas] of [
-      ["media-subir", "0010 · candado de las fotos", "subir exige permiso firmado", 5],
-      ["media-ver", "0013 · fotos privadas", "las direcciones caducan", 5],
-      ["diagnostico", "0012 · diagnóstico", "los fallos dejan rastro", 5],
-      ["evento-cierre", "evento-cierre", "entregar y borrar una boda", 6],
+    // El método importa: media-subir y media-ver SOLO aceptan POST.
+    for (const [funcion, metodo, nombre, que, dormidas] of [
+      ["media-subir", "POST", "0010 · candado de las fotos", "subir exige permiso firmado", 5],
+      ["media-ver", "POST", "0013 · fotos privadas", "las direcciones caducan", 5],
+      ["diagnostico", "GET", "0012 · diagnóstico", "los fallos dejan rastro", 5],
+      ["evento-cierre", "GET", "evento-cierre", "entregar y borrar una boda", 6],
     ] as const) {
-      const viva = await funcionDesplegada(funcion);
+      const { viva, estado } = await sondearFuncion(funcion, metodo);
       piezas.push({
         nombre,
         que,
         pruebasDormidas: dormidas,
         viva,
-        detalle: viva ? `función ${funcion} desplegada` : `función ${funcion} SIN desplegar`,
+        detalle: viva
+          ? `función ${funcion} desplegada (responde ${estado})`
+          : `función ${funcion} SIN desplegar${estado === null ? " (no respondió)" : ""}`,
       });
     }
 

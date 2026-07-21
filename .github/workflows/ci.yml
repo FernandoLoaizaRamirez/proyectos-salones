@@ -105,7 +105,14 @@ jobs:
       # Tamaños MEDIDOS en este repo, por si algún día hay que recortar:
       # `.turbo/cache` ≈ 99 MB con 164 entradas acumuladas (una corrida completa
       # aporta ~18); las 14 `.next/cache` juntas ocupan 2,4 MB. Contra el límite
-      # de 10 GB por repositorio, ninguna de las dos aprieta.
+      # de 10 GB por repositorio, ninguna de las dos aprieta. En CI una corrida
+      # completa guarda ~20 MB.
+      #
+      # ⚠️ TRAMPA si algún día tocas la lista de `path`: `actions/cache` mete las
+      # rutas dentro de la identidad de la caché, no solo la clave. Cambiar,
+      # añadir o quitar una ruta INVALIDA todas las cachés anteriores, aunque la
+      # clave siga igual — la corrida siguiente sale sin caché y tarda lo mismo
+      # que en frío. Es esperado y se arregla solo a la segunda; no es un fallo.
       - name: Restaurar las cachés de compilación
         uses: actions/cache@v4
         with:

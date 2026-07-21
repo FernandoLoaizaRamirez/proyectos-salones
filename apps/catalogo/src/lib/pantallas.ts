@@ -71,6 +71,8 @@ export const PANTALLAS: PantallaAnfitrion[] = [
     appId: "playlist",
     ruta: "/",
     coleccion: "canciones",
+    // MIGRADA: ya vive dentro del panel.
+    rutaInterna: "dj",
   },
   {
     clave: F.Dinamicas,
@@ -80,6 +82,8 @@ export const PANTALLAS: PantallaAnfitrion[] = [
     appId: "dinamicas",
     ruta: "/",
     coleccion: "ranking",
+    // MIGRADA: ya vive dentro del panel.
+    rutaInterna: "juegos",
   },
   {
     clave: F.Album,
@@ -89,6 +93,8 @@ export const PANTALLAS: PantallaAnfitrion[] = [
     appId: "album-fotos",
     ruta: "/",
     coleccion: "fotos",
+    // MIGRADA: ya vive dentro del panel.
+    rutaInterna: "album",
   },
 ];
 

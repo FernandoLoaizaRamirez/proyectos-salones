@@ -1,7 +1,14 @@
 name: CI
 
 # Se ejecuta en cada push a main y en cada Pull Request. Es la primera "malla de
-# seguridad" automática del proyecto: instala y corre las pruebas.
+# seguridad" automática del proyecto. Son DOS trabajos que corren EN PARALELO:
+#
+#   · verificar → las pruebas (`pnpm test`).
+#   · compilar  → los tipos y la compilación de las 14 apps (`pnpm typecheck`
+#                 + `pnpm build`). Sin esto, un PR podía romper la compilación
+#                 de todas las apps y salir en verde igualmente.
+#
+# Al ser trabajos separados, el tiempo total es el del MÁS LENTO, no la suma.
 #
 # Nota: el `lint` NO se incluye todavía porque las apps usan `next lint`, comando
 # que Next.js 16 eliminó (queda roto en todo el repo, deuda previa). Se volverá a
@@ -10,6 +17,13 @@ on:
   push:
     branches: [main]
   pull_request:
+
+# Si empujas dos veces seguidas a un PR, la primera compilación ya no sirve:
+# se cancela y solo corre la última. En `main` NO se cancela nada, porque ahí
+# cada commit tiene que quedar comprobado por su cuenta.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   verificar:
@@ -47,3 +61,88 @@ jobs:
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+
+  compilar:
+    runs-on: ubuntu-latest
+    # Turborepo manda telemetría anónima la primera vez que corre; en CI no
+    # aporta nada y solo ensucia el log.
+    env:
+      TURBO_TELEMETRY_DISABLED: 1
+    steps:
+      - name: Traer el código
+        uses: actions/checkout@v4
+
+      - name: Instalar pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.9.0
+
+      - name: Instalar Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      # ── Por qué se cachea (decisión) ────────────────────────────────────────
+      # Compilar 14 apps de Next desde cero tarda varios minutos. Turborepo
+      # guarda el resultado de cada app junto con la huella de sus archivos: si
+      # una app no cambió, no la vuelve a compilar, la saca de la caché.
+      #
+      # Un PR que toca UNA app aprovecha la caché de las otras 13 → segundos en
+      # vez de minutos. Como la clave lleva el SHA, cada corrida guarda una
+      # entrada nueva; `restore-keys` hace que un PR arranque de la caché más
+      # reciente (normalmente la de `main`).
+      #
+      # Se guardan las dos cachés, y son complementarias:
+      #   · `.turbo/cache`      → el resultado ya compilado de cada app. Cuando
+      #                           acierta, esa app ni se compila.
+      #   · `apps/*/.next/cache` → la caché interna de Next. Entra en juego
+      #                           cuando turbo NO acierta (la app sí cambió) y
+      #                           hace que Next recompile solo lo tocado.
+      #     Turborepo la excluye de sus `outputs` a propósito, así que si no se
+      #     guarda aquí, se pierde en cada corrida.
+      #
+      # Tamaños MEDIDOS en este repo, por si algún día hay que recortar:
+      # `.turbo/cache` ≈ 99 MB con 164 entradas acumuladas (una corrida completa
+      # aporta ~18); las 14 `.next/cache` juntas ocupan 2,4 MB. Contra el límite
+      # de 10 GB por repositorio, ninguna de las dos aprieta. En CI una corrida
+      # completa guarda ~20 MB.
+      #
+      # ⚠️ TRAMPA si algún día tocas la lista de `path`: `actions/cache` mete las
+      # rutas dentro de la identidad de la caché, no solo la clave. Cambiar,
+      # añadir o quitar una ruta INVALIDA todas las cachés anteriores, aunque la
+      # clave siga igual — la corrida siguiente sale sin caché y tarda lo mismo
+      # que en frío. Es esperado y se arregla solo a la segunda; no es un fallo.
+      - name: Restaurar las cachés de compilación
+        uses: actions/cache@v4
+        with:
+          path: |
+            .turbo/cache
+            apps/*/.next/cache
+          key: turbo-${{ runner.os }}-${{ github.sha }}
+          restore-keys: |
+            turbo-${{ runner.os }}-
+
+      - name: Instalar dependencias
+        run: pnpm install --frozen-lockfile
+
+      # Primero los tipos: tarda segundos y es donde más fallos salen, así el
+      # PR se entera rápido en vez de esperar toda la compilación.
+      #
+      # Cubre los 4 paquetes de packages/ (core, payments, sync, ui), que hasta
+      # ahora nadie revisaba por separado. Las 14 apps NO llevan `typecheck`
+      # propio: `next build` ya revisa sus tipos (ninguna tiene
+      # `ignoreBuildErrors`), así que un `tsc` aparte duplicaría el trabajo sin
+      # cubrir nada nuevo.
+      - name: Revisar tipos de los paquetes
+        run: pnpm typecheck
+
+      # Compila las 14 apps. Aquí es donde se revisan los tipos de las apps.
+      # Se compilan TODAS (no solo las que cambiaron) para que el verde
+      # signifique "el monorepo entero compila"; la caché se encarga del tiempo.
+      #
+      # No lleva variables de entorno a propósito: el código está escrito para
+      # aguantar que falten (devuelve null y la UI avisa), y así CI comprueba
+      # justo eso. Las de verdad las pone Vercel al desplegar.
+      - name: Compilar todas las apps
+        run: pnpm build

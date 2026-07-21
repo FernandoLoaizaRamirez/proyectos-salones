@@ -24,6 +24,9 @@
       "inputs": ["tests/**", "vitest.config.ts", "eslint.config.mjs"],
       "outputs": []
     },
+    "typecheck": {
+      "dependsOn": ["^typecheck"]
+    },
     "start": {
       "dependsOn": ["build"],
       "cache": false,

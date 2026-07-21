@@ -1,10 +1,15 @@
 # Fase 0 + Fase 1 — La columna vertebral de la plataforma
 
-> **Qué es esto:** el registro de cómo la suite pasa de "13 apps + backend
+> **Qué es esto:** el registro de cómo la suite pasa de "apps sueltas + backend
 > colectivo" a una **plataforma SaaS multi-cliente**. Es la puesta en práctica de
 > la hoja de ruta de [`EVALUACION-VISION-PLATAFORMA.md`](EVALUACION-VISION-PLATAFORMA.md).
 > Complementa a [`SERVICIO-GESTIONADO.md`](SERVICIO-GESTIONADO.md) (el backend que
 > ya existía) y a [`REVISION-TECNICA.md`](REVISION-TECNICA.md) (estado y deuda).
+>
+> **Estado al 20 jul 2026 (medido contra `main`):** la **Fase 0 está completa** y
+> de la **Fase 1 hay 5 de 6 pasos hechos y fusionados**. El único que falta es el
+> paso 4 (el token firmado), que está construido pero sigue en el PR #4. El repo
+> tiene hoy **14 carpetas en `apps/`**.
 
 ## Por qué
 
@@ -89,6 +94,12 @@ se hace en la Fase 1 con la secuencia segura).
    pruebas en cada push/PR). *El `lint` queda fuera del CI por ahora porque las
    apps usan `next lint`, comando que Next.js 16 eliminó (deuda previa a migrar).*
 
+   > **Al día:** aquellos 7 casos fueron la semilla. Hoy `main` corre **58
+   > pruebas**: 19 de `resolveEntitlements` (7 + 12 de casos borde), 19 del
+   > webhook de Stripe y 20 de aislamiento contra el Supabase real. Estas
+   > últimas **se saltan solas** si faltan las variables públicas de Supabase,
+   > y en CI se inyectan desde los secrets del repo.
+
 ### Cómo aplicar las migraciones (en Supabase)
 
 En el proyecto `cpbfisylcquuahrmyaca` → **SQL Editor** → pegar y **Run**, en orden:
@@ -105,20 +116,79 @@ En el proyecto `cpbfisylcquuahrmyaca` → **SQL Editor** → pegar y **Run**, en
 
 ---
 
-## FASE 1 — Identidad + tenencia + cobros · **planeado** (seguridad al final)
+## FASE 1 — Identidad + tenencia + cobros · **5 de 6 hechos** (seguridad al final)
 
-1. **Supabase Auth para el staff** — login por correo en `apps/catalogo`;
+| # | Paso | Estado |
+|---|---|---|
+| 1 | Supabase Auth para el staff | ✅ **hecho** |
+| 2 | RLS por tenant + rol | ✅ **hecho** (migración `0008`) |
+| 3 | Alta de eventos autenticada | ✅ **hecho** |
+| 4 | 🔒 `x-evento` → pase firmado | 🚧 **construido, sin fusionar** (PR #4) |
+| 5 | Cobros con Stripe, apagados | ✅ **hecho** |
+| 6 | Tests de aislamiento en CI | ✅ **hecho** |
+
+1. **Supabase Auth para el staff** · ✅ — login por correo en `apps/catalogo`;
    `tenant_id` + `rol` viajan en el token vía `app_metadata` (funciona en Free).
-2. **RLS por tenant + rol** (deny-by-default) en las tablas de negocio.
-3. **Alta de eventos autenticada** — el generador `/evento` exige login e inserta
-   en `events`; el contrato de enlaces `?e=...` queda **idéntico**.
-4. **🔒 Migración de seguridad `x-evento` → token firmado** (el paso final y más
-   cuidado): una Edge Function cambia `?e=codigo` por un **JWT de corta duración**
-   por evento; el proveedor de servidor de `@salones/sync` lo usa por dentro (sin
-   cambiar su interfaz), conviviendo con el candado viejo hasta apagarlo con la
-   secuencia compatible. El invitado por enlace **no nota ningún cambio**.
-5. **Cobros con Stripe** — plomería lista pero apagada detrás de bandera
-   (`PAGOS_ACTIVOS=false`); el webhook escribirá los entitlements cuando se encienda.
-6. **Suite de tests de aislamiento en CI** — que un cliente/evento no pueda leer
-   datos de otro; token vencido y `x-evento` forjado rechazados. **Antes** de meter
-   cualquier cliente real.
+   El panel muestra el salón y el rol de quien entró.
+2. **RLS por tenant + rol** (deny-by-default) en las tablas de negocio · ✅ —
+   migración `0008_rls_tenant_rol.sql`. Detalle en
+   [`RLS-TENANT-ROL.md`](RLS-TENANT-ROL.md). *Ojo al aplicarla: **la `0005` va
+   antes**, porque la `0008` nombra la tabla `subscriptions` que crea aquella; sin
+   ella la `0008` falla a mitad.*
+3. **Alta de eventos autenticada** · ✅ — el generador `/evento` exige login e
+   inserta en `events`; el contrato de enlaces `?e=...` quedó **idéntico**.
+4. **🔒 Migración de seguridad `x-evento` → token firmado** · 🚧 **el único que
+   falta.** Construido en la rama `feat/token-firmado` (**PR #4**), sin fusionar.
+
+   > **Cambió respecto a lo planeado.** El primer intento era una Edge Function
+   > emitiendo un **JWT HS256**, y **no funcionó**: el proyecto migró a llaves
+   > asimétricas ES256 y PostgREST rechaza HS256 (`PGRST301: No suitable key or
+   > wrong key type`). La solución que sí funciona **emite y verifica el pase
+   > dentro de Postgres** (migración `0006`, funciones `emitir_pase` /
+   > `evento_del_pase` con pgcrypto); el secreto se genera en la base y nunca
+   > sale de ahí. El pase caduca a los 30 min y viaja como `x-evento-pase`.
+   > La interfaz de `ProveedorSync` **no cambió**, y el invitado por enlace no
+   > nota nada. Runbook: `MIGRACION-TOKEN-FIRMADO.md` (en la rama del PR).
+   >
+   > ⛔ **Quedan restos del intento fallido.** Según la lista de encendido, que
+   > midió el proyecto de Supabase el 20 jul 2026, la Edge Function `token` y el
+   > secreto `EVENT_TOKEN_JWT_SECRET` seguían vivos y hay que borrarlos. *(Esto
+   > no se puede comprobar desde el repo: esa función no está en ninguna rama,
+   > solo desplegada.)*
+   >
+   > 🚨 **No corras el "BLOQUE FINAL" de la `0006`.** Hace solo la mitad del
+   > trabajo: dejaría bien el candado del pase, pero **cualquier invitado
+   > seguiría pudiendo borrar la boda entera**. Lo sustituye el bloque final de
+   > la `0009` (llave de anfitrión, PR #17).
+5. **Cobros con Stripe** · ✅ — plomería lista pero apagada detrás de bandera
+   (`PAGOS_ACTIVOS=false`) en `@salones/payments` + migración `0005_pagos.sql`;
+   el webhook escribirá los entitlements cuando se encienda. 19 pruebas cubren su
+   lógica pura.
+6. **Suite de tests de aislamiento en CI** · ✅ — `tests/aislamiento/`: que un
+   cliente/evento no pueda leer datos de otro, y que la `0008` no filtrara nada a
+   la llave pública. Corren contra el Supabase real y se saltan solas sin
+   credenciales.
+
+---
+
+## Lo que vino después de la Fase 1
+
+Para que este documento no se lea como si ahí se hubiera parado todo:
+
+- **Fase 2 — portal del invitado** · ✅ fusionada. `apps/portal`: un solo enlace
+  desde el que los 5 módulos (muro, playlist, RSVP, dinámicas, álbum) abren
+  **por dentro**. Ver [`PORTAL-EVENTO-CONFIG.md`](PORTAL-EVENTO-CONFIG.md).
+- **Fase 2b — panel del anfitrión** · 🚧 a medias. `/eventos` y el tablero de cada
+  evento ya están; de las 5 pantallas, **2 viven dentro** (confirmaciones y muro
+  proyectado) y **3 siguen siendo puentes** a su app suelta (DJ, juegos, álbum),
+  en los PRs **#22 → #23 → #24**, que se fusionan **en ese orden**.
+- **Fase 3 — branding en runtime** · ✅ la semilla está fusionada (migración
+  `0007_branding.sql` + `@salones/ui`). Lo que falta de la Fase 3 son los
+  **subdominios por salón**; hoy solo está reservado el campo `slug`.
+- **Seguridad y operación** · 🚧 construido, sin fusionar (**PR #17**): llave de
+  anfitrión (`0009`), candado de subida de fotos (`0010`), fotos privadas
+  (`0013`), diagnóstico (`0012`), capa legal y cierre de evento.
+
+> **Para encender todo esto en Supabase** hay una sola lista maestra, con el
+> estado real medido y el orden de los pasos peligrosos: `docs/ENCENDER-TODO.md`,
+> en la rama del **PR #17**.

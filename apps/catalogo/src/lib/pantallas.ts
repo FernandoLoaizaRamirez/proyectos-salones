@@ -71,6 +71,8 @@ export const PANTALLAS: PantallaAnfitrion[] = [
     appId: "playlist",
     ruta: "/",
     coleccion: "canciones",
+    // MIGRADA: ya vive dentro del panel.
+    rutaInterna: "dj",
   },
   {
     clave: F.Dinamicas,

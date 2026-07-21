@@ -24,6 +24,12 @@
  * Runbook: docs/DIAGNOSTICO.md
  */
 
+// `texto` y `soloRuta` viven en `_shared/` para que se puedan PROBAR sin Deno ni
+// Supabase (este archivo arranca un servidor al cargarse y no se puede importar
+// desde una prueba). `soloRuta` es la defensa que impide que la llave de
+// anfitrión acabe guardada. Ver tests/seguridad/validar.test.ts.
+import { soloRuta, texto } from "../_shared/validar.ts";
+
 const URL_SUPABASE = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 // La revisión se hace con la llave PÚBLICA a propósito: para comprobar lo mismo
@@ -64,24 +70,6 @@ async function rest<T>(ruta: string, init?: RequestInit): Promise<T> {
 /* ================================================================== */
 /* POST — registrar un fallo                                           */
 /* ================================================================== */
-
-/** Recorta y limpia. Todo lo que entra aqui viene de fuera y no es de fiar. */
-function texto(v: unknown, max: number): string | null {
-  if (typeof v !== "string") return null;
-  const limpio = v.trim().slice(0, max);
-  return limpio || null;
-}
-
-/**
- * Quita la query de una direccion. Es la linea de defensa que impide que la
- * llave de anfitrion (`?a=…`) acabe guardada en la base.
- */
-function soloRuta(v: unknown): string | null {
-  const bruto = texto(v, 300);
-  if (!bruto) return null;
-  const sinQuery = bruto.split("?")[0].split("#")[0];
-  return sinQuery.slice(0, 200) || null;
-}
 
 async function registrar(cuerpo: Record<string, unknown>): Promise<Response> {
   const app = texto(cuerpo.app, 40);

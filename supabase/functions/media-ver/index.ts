@@ -27,6 +27,11 @@
  * Runbook: docs/MEDIOS-PRIVADOS.md
  */
 
+// `esDelEvento` vive en `_shared/` para que se pueda PROBAR sin Deno ni
+// Supabase (este archivo arranca un servidor al cargarse y no se puede
+// importar desde una prueba). Ver tests/seguridad/validar.test.ts.
+import { esDelEvento } from "../_shared/validar.ts";
+
 const URL_SUPABASE = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
@@ -77,20 +82,6 @@ async function eventoDelPase(pase: string, paseAnfitrion: string): Promise<strin
     if (typeof e === "string" && e) return e;
   }
   return null;
-}
-
-/**
- * ¿Esta ruta pertenece de verdad a la carpeta de este evento?
- *
- * No basta con `startsWith`: `demo-otra/foto.jpg` empieza por `demo` sin ser del
- * evento `demo`. Y hay que rechazar cualquier `..` que intente salirse.
- */
-function esDelEvento(ruta: string, evento: string): boolean {
-  if (typeof ruta !== "string" || !ruta || ruta.length > 300) return false;
-  if (ruta.includes("..") || ruta.startsWith("/")) return false;
-  const trozos = ruta.split("/");
-  // Exactamente <evento>/<archivo>: ni más hondo, ni en otra carpeta.
-  return trozos.length === 2 && trozos[0] === encodeURIComponent(evento) && trozos[1].length > 0;
 }
 
 /** Firma muchas rutas de una vez. Devuelve { ruta: direcciónFirmada }. */

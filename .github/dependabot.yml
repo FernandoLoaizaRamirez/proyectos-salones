@@ -38,12 +38,21 @@ updates:
     groups:
       rutina:
         group-by: dependency-name
-        # Los saltos de versión MAYOR se quedan fuera del grupo a propósito: son
-        # los que rompen cosas (como Next 16, que se llevó por delante el lint) y
-        # conviene mirarlos de uno en uno, no mezclados con lo rutinario.
         update-types:
           - "minor"
           - "patch"
+
+      # Los saltos de versión MAYOR van en su PROPIO grupo, separados de lo
+      # rutinario: son los que rompen cosas (como Next 16, que se llevó por
+      # delante el lint) y conviene mirarlos aparte, sin mezclar.
+      #
+      # Pero AGRUPADOS igual. Si se dejaran sueltos —fuera de todo grupo—
+      # Dependabot abriría un PR POR CARPETA: un salto de `next` serían 14 PRs,
+      # uno por app. Con esto es UNO que lo sube en las 14 a la vez.
+      mayores:
+        group-by: dependency-name
+        update-types:
+          - "major"
 
     # Como mucho 5 PRs abiertos a la vez. Si aun así molesta, se baja este número
     # (con 0 se apaga del todo sin borrar el archivo).

@@ -18,6 +18,13 @@ on:
     branches: [main]
   pull_request:
 
+# Si empujas dos veces seguidas a un PR, la primera compilación ya no sirve:
+# se cancela y solo corre la última. En `main` NO se cancela nada, porque ahí
+# cada commit tiene que quedar comprobado por su cuenta.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   verificar:
     runs-on: ubuntu-latest
@@ -86,15 +93,25 @@ jobs:
       # entrada nueva; `restore-keys` hace que un PR arranque de la caché más
       # reciente (normalmente la de `main`).
       #
-      # Se cachea SOLO `.turbo/cache` a propósito. Añadir `apps/*/.next/cache`
-      # multiplicaría el tamaño (son cientos de MB por app) contra el límite de
-      # 10 GB del repo, y ese espacio se lo comería a la caché de Turborepo, que
-      # es la que de verdad ahorra tiempo. Si algún día compilar se vuelve lento
-      # aun con caché, ese es el siguiente botón que tocar.
-      - name: Restaurar la caché de Turborepo
+      # Se guardan las dos cachés, y son complementarias:
+      #   · `.turbo/cache`      → el resultado ya compilado de cada app. Cuando
+      #                           acierta, esa app ni se compila.
+      #   · `apps/*/.next/cache` → la caché interna de Next. Entra en juego
+      #                           cuando turbo NO acierta (la app sí cambió) y
+      #                           hace que Next recompile solo lo tocado.
+      #     Turborepo la excluye de sus `outputs` a propósito, así que si no se
+      #     guarda aquí, se pierde en cada corrida.
+      #
+      # Tamaños MEDIDOS en este repo, por si algún día hay que recortar:
+      # `.turbo/cache` ≈ 99 MB con 164 entradas acumuladas (una corrida completa
+      # aporta ~18); las 14 `.next/cache` juntas ocupan 2,4 MB. Contra el límite
+      # de 10 GB por repositorio, ninguna de las dos aprieta.
+      - name: Restaurar las cachés de compilación
         uses: actions/cache@v4
         with:
-          path: .turbo/cache
+          path: |
+            .turbo/cache
+            apps/*/.next/cache
           key: turbo-${{ runner.os }}-${{ github.sha }}
           restore-keys: |
             turbo-${{ runner.os }}-

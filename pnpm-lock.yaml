@@ -697,7 +697,11 @@ importers:
         specifier: ^22.3.2
         version: 22.3.2(@types/node@26.1.0)
 
-  packages/sync: {}
+  packages/sync:
+    devDependencies:
+      '@types/node':
+        specifier: ^26.1.0
+        version: 26.1.0
 
   packages/ui:
     dependencies:
@@ -723,6 +727,9 @@ importers:
         specifier: ^3.6.0
         version: 3.6.0
     devDependencies:
+      '@types/node':
+        specifier: ^26.1.0
+        version: 26.1.0
       '@types/react':
         specifier: ^19.2.17
         version: 19.2.17

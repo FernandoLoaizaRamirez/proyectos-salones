@@ -5,13 +5,14 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "lint": "eslint ."
   },
   "dependencies": {
     "@salones/core": "workspace:*",
     "@salones/sync": "workspace:*",
     "@salones/ui": "workspace:*",
-    "lucide-react": "^1.23.0",
+    "lucide-react": "^1.25.0",
     "next": "^16.2.10",
     "react": "^19.2.7",
     "react-dom": "^19.2.7"
@@ -22,6 +23,7 @@
     "@types/node": "^26.1.0",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
+    "eslint": "^9.39.5",
     "tailwindcss": "^4.3.2",
     "typescript": "^6.0.3"
   }

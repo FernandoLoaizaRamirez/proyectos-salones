@@ -17,7 +17,7 @@ import {
   Film,
   UploadCloud,
 } from "lucide-react";
-import { Button, Card, cn } from "@salones/ui";
+import { Button, Card, cn, AvisoParticipacion } from "@salones/ui";
 import { estaConectado, eventoActual, sufijoEvento } from "@salones/sync";
 import { QR } from "@/components/qr";
 import {
@@ -612,6 +612,7 @@ export function BrindisCliente() {
               ? `Al enviarlo, tu brindis se guarda junto con los de todos para que ${evento.nombre} los vea en un solo lugar.`
               : `Tu brindis se quedó en este teléfono. Compártelo para que llegue a ${evento.nombre}.`}
           </p>
+          <AvisoParticipacion accion="enviar tu brindis" className="mt-2 text-center" />
         </div>
       ) : null}
     </div>

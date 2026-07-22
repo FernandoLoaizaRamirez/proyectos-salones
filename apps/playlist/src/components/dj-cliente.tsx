@@ -17,7 +17,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { Button, Card, cn } from "@salones/ui";
-import { sufijoEvento } from "@salones/sync";
+import { sufijoEvento, esAnfitrion } from "@salones/sync";
 import { QR } from "@/components/qr";
 import { useCanciones } from "@/lib/use-canciones";
 import { evento, porVotos, plataformaDeLink, EstadoCancion, type Cancion } from "@/lib/playlist";
@@ -37,10 +37,15 @@ export function DjCliente() {
   const [compartir, setCompartir] = React.useState(false);
   const [url, setUrl] = React.useState("");
   const [copiado, setCopiado] = React.useState(false);
+  // Solo el anfitrión (el DJ con su enlace privado) descarta canciones.
+  // Arranca en false: ante la duda, se esconde el botón.
+  const [anfitrion, setAnfitrion] = React.useState(false);
 
   React.useEffect(() => {
     // El enlace para pedir lleva el código del evento actual (?e=...).
     setUrl(`${window.location.origin}/pedir${sufijoEvento()}`);
+    // Depende del enlace y del navegador, que en el servidor no existen.
+    setAnfitrion(esAnfitrion());
   }, []);
 
   const cola = canciones.filter((c) => c.estado === EstadoCancion.Pendiente);
@@ -194,13 +199,15 @@ export function DjCliente() {
                       <RotateCcw className="size-4" />
                     </button>
                   )}
-                  <button
-                    onClick={() => eliminar(c.id)}
-                    aria-label="Eliminar"
-                    className="grid size-9 place-items-center rounded-[var(--radius)] text-muted-foreground transition-colors hover:bg-muted hover:text-red-500"
-                  >
-                    <Trash2 className="size-4" />
-                  </button>
+                  {anfitrion ? (
+                    <button
+                      onClick={() => eliminar(c.id)}
+                      aria-label="Eliminar"
+                      className="grid size-9 place-items-center rounded-[var(--radius)] text-muted-foreground transition-colors hover:bg-muted hover:text-red-500"
+                    >
+                      <Trash2 className="size-4" />
+                    </button>
+                  ) : null}
                 </div>
               </Card>
             );

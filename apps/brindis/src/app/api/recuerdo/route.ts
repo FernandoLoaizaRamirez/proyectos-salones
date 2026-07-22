@@ -39,6 +39,20 @@ export async function POST(req: Request) {
 
   // Cada evento junta SOLO sus brindis: el video recuerdo de una boda nunca
   // mezcla los videos de otra.
+  //
+  // ⚠️ PENDIENTE ANTES DEL CORTE DE LA 0013 (almacén privado). Estas direcciones
+  // NO las abre un navegador: se las mandamos a Shotstack, que las descarga
+  // desde SU servidor. Cuando el bucket pase a privado dejarán de servir y el
+  // video recuerdo fallará (la galería ya está resuelta: usa `resolverMedios`
+  // desde el navegador, con el pase del evento).
+  //
+  // Aquí no vale el mismo camino: esto corre en el servidor, donde no hay pase
+  // del evento. Las salidas razonables son (a) firmar aquí con la service-role,
+  // que Vercel sí puede tener, o (b) que `media-ver` acepte una llamada de
+  // servidor. Una hora de caducidad sobra: el render tarda minutos.
+  //
+  // Mientras tanto NO se rompe nada, porque el corte de la 0013 todavía no se ha
+  // dado. Está anotado en docs/GUION-DEL-CORTE.md como condición del corte 3.
   let urls: string[];
   try {
     urls = (await listarBrindis(evento)).map((v) => v.url);

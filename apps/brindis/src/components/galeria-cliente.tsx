@@ -3,7 +3,7 @@
 import * as React from "react";
 import { RefreshCw, Download, Loader2, Film, Sparkles } from "lucide-react";
 import { Button, Card, cn } from "@salones/ui";
-import { obtenerSync, estaConectado, eventoActual } from "@salones/sync";
+import { obtenerSync, estaConectado, eventoActual, resolverMedios } from "@salones/sync";
 import {
   listarBrindis,
   ordenarBrindis,
@@ -52,6 +52,29 @@ export function GaleriaCliente() {
   const [recuerdoUrl, setRecuerdoUrl] = React.useState<string | null>(null);
   const [avisoRecuerdo, setAvisoRecuerdo] = React.useState("");
   const pollRef = React.useRef<number | null>(null);
+
+  // Desde la migración 0013 el almacén es privado: lo guardado es una
+  // REFERENCIA y el video solo se ve con una dirección FIRMADA que caduca en una
+  // hora. Sin esto, tras el corte la galería se vería vacía.
+  // Antes del corte `resolverMedios` devuelve las direcciones de siempre.
+  const [vistas, setVistas] = React.useState<Record<string, string>>({});
+  const ver = React.useCallback((u: string) => vistas[u] ?? u, [vistas]);
+  const clavesVideos = videos.map((v) => v.url).join("|");
+  React.useEffect(() => {
+    if (!conectado || videos.length === 0) return;
+    let vivo = true;
+    void resolverMedios(
+      eventoRef.current,
+      videos.map((v) => v.url),
+    ).then((mapa) => {
+      if (vivo) setVistas((previas) => ({ ...previas, ...mapa }));
+    });
+    return () => {
+      vivo = false;
+    };
+    // Depende de la LISTA, no de cada sondeo.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clavesVideos, conectado]);
 
   const cargar = React.useCallback(async () => {
     setCargando(true);
@@ -236,7 +259,7 @@ export function GaleriaCliente() {
           {videos.map((v) => (
             <Card key={v.id} className="overflow-hidden p-3">
               <video
-                src={v.url}
+                src={ver(v.url)}
                 controls
                 playsInline
                 preload="metadata"
@@ -253,7 +276,11 @@ export function GaleriaCliente() {
                       })
                     : ""}
                 </span>
-                <Button size="sm" variant="ghost" onClick={() => descargar(v.url, nombreArchivo(v))}>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => descargar(ver(v.url), nombreArchivo(v))}
+                >
                   <Download className="size-4" /> Descargar
                 </Button>
               </div>

@@ -4,15 +4,12 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint ."
   },
   "exports": {
     ".": "./src/index.ts",
     "./styles/tokens.css": "./src/styles/tokens.css"
-  },
-  "peerDependencies": {
-    "react": ">=18",
-    "react-dom": ">=18"
   },
   "dependencies": {
     "class-variance-authority": "^0.7.1",
@@ -21,9 +18,15 @@
     "next-themes": "^0.4.6",
     "tailwind-merge": "^3.6.0"
   },
+  "peerDependencies": {
+    "react": ">=18",
+    "react-dom": ">=18"
+  },
   "devDependencies": {
+    "@salones/config": "workspace:*",
     "@types/node": "^26.1.0",
     "@types/react": "^19.2.17",
-    "@types/react-dom": "^19.2.3"
+    "@types/react-dom": "^19.2.3",
+    "eslint": "^9.39.5"
   }
 }

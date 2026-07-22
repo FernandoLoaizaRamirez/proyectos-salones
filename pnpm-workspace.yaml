@@ -5,6 +5,15 @@ packages:
 allowBuilds:
   esbuild: true
   sharp: true
+  # Resolutor nativo que arrastra eslint-import-resolver-typescript. Ninguna
+  # regla encendida necesita resolver imports, así que no se le deja compilar.
+  unrs-resolver: false
+
+# typescript-eslint queda clavado en una versión ya asentada. Sin esto pnpm
+# toma la más nueva, y su política de antigüedad mínima (la cuarentena que
+# protege de un paquete recién publicado y comprometido) obliga a saltársela.
+overrides:
+  typescript-eslint: 8.63.0
 
 # Paquetes autorizados a correr su script de instalación (build). pnpm los bloquea
 # por defecto como medida de seguridad; aquí se permiten solo los de confianza:

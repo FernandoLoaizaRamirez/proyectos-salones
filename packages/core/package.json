@@ -4,12 +4,17 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint ."
   },
   "exports": {
     ".": "./src/index.ts"
   },
   "dependencies": {
     "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@salones/config": "workspace:*",
+    "eslint": "^9.39.5"
   }
 }

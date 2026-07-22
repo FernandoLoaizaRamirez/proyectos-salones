@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint ."
   },
   "exports": {
     ".": "./src/index.ts",
@@ -13,5 +14,9 @@
   "dependencies": {
     "@salones/core": "workspace:*",
     "stripe": "^22.3.2"
+  },
+  "devDependencies": {
+    "@salones/config": "workspace:*",
+    "eslint": "^9.39.5"
   }
 }

@@ -108,6 +108,13 @@ que caduca en una hora.
 update storage.buckets set public = false where id = 'media';
 ```
 
+> 🚩 **Condición extra si el brindis ya está fusionado:** su **video recuerdo** se
+> arma en Shotstack, un servicio externo que descarga los videos desde **su**
+> servidor con las direcciones guardadas. Firmarlas desde el navegador no le
+> sirve. Está anotado en `apps/brindis/src/app/api/recuerdo/route.ts`: hay que
+> resolverlo (firmar en el servidor) **antes** de este corte, o el video recuerdo
+> dejará de armarse. La galería del brindis sí está resuelta.
+
 **Comprobar después:**
 
 - [ ] El álbum del **portal** se sigue viendo igual.

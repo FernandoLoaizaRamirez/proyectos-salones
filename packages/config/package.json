@@ -6,6 +6,22 @@
     "./tsconfig/base.json": "./tsconfig/base.json",
     "./tsconfig/nextjs.json": "./tsconfig/nextjs.json",
     "./tsconfig/react-library.json": "./tsconfig/react-library.json",
-    "./prettier": "./prettier/index.mjs"
+    "./prettier": "./prettier/index.mjs",
+    "./eslint/base": "./eslint/base.mjs",
+    "./eslint/next": "./eslint/next.mjs",
+    "./eslint/react-library": "./eslint/react-library.mjs"
+  },
+  "dependencies": {
+    "@eslint/js": "^9.39.5",
+    "eslint-config-next": "16.2.10",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "typescript-eslint": "8.63.0"
+  },
+  "peerDependencies": {
+    "eslint": "^9.39.5"
+  },
+  "devDependencies": {
+    "eslint": "^9.39.5"
   }
 }

@@ -1,0 +1,76 @@
+version: 2
+
+# Dependabot vigila las dependencias del repo y abre Pull Requests cuando salen
+# versiones nuevas. Ahora que el CI compila las 14 apps, cada PR suyo se valida
+# solo: si una actualización rompe la compilación, sale en rojo ANTES de llegar
+# a `main`. Sin ese candado, actualizar a ciegas daba miedo; con él, no.
+#
+# ⚠️ OJO, SON DOS INTERRUPTORES DISTINTOS:
+#
+#   · Este archivo = actualizaciones DE RUTINA (salió una versión nueva).
+#   · Las de SEGURIDAD (urgentes, cuando se descubre un fallo explotable) NO se
+#     encienden aquí, sino en la web:
+#         Repo → Settings → Code security → Dependabot
+#         y activar "Dependabot alerts" + "Dependabot security updates".
+#
+#   Con solo este archivo NO estás cubierto ante un fallo de seguridad. Esas dos
+#   casillas son las que importan de verdad si manejas datos de invitados.
+
+updates:
+  # ── Dependencias de JavaScript ──────────────────────────────────────────────
+  - package-ecosystem: "npm" # `npm` es también el ecosistema de pnpm
+    # Hay que listar las carpetas del workspace UNA POR UNA (con comodín). Con
+    # solo la raíz, Dependabot ve el `package.json` de arriba pero se queda corto
+    # con los de `apps/*` y `packages/*`: es una limitación conocida suya con
+    # pnpm, no un detalle de este repo.
+    directories:
+      - "/" # prettier, turbo, typescript, vitest
+      - "/apps/*" # las 14 apps
+      - "/packages/*" # core, payments, sync, ui
+    schedule:
+      interval: "weekly"
+
+    # Sin agrupar esto sería un diluvio: las 14 apps comparten `next`, `react`,
+    # `typescript`… y saldría un PR por app y por dependencia.
+    #
+    # `group-by: dependency-name` junta la MISMA dependencia de todas las
+    # carpetas en un solo PR: "sube `next` en las 14 apps" en vez de 14 PRs.
+    groups:
+      rutina:
+        group-by: dependency-name
+        update-types:
+          - "minor"
+          - "patch"
+
+      # Los saltos de versión MAYOR van en su PROPIO grupo, separados de lo
+      # rutinario: son los que rompen cosas (como Next 16, que se llevó por
+      # delante el lint) y conviene mirarlos aparte, sin mezclar.
+      #
+      # Pero AGRUPADOS igual. Si se dejaran sueltos —fuera de todo grupo—
+      # Dependabot abriría un PR POR CARPETA: un salto de `next` serían 14 PRs,
+      # uno por app. Con esto es UNO que lo sube en las 14 a la vez.
+      mayores:
+        group-by: dependency-name
+        update-types:
+          - "major"
+
+    # Como mucho 5 PRs abiertos a la vez. Si aun así molesta, se baja este número
+    # (con 0 se apaga del todo sin borrar el archivo).
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(deps)"
+
+  # ── Las actions del propio CI ───────────────────────────────────────────────
+  # Las piezas que usa .github/workflows/ci.yml (checkout, setup-node, cache…).
+  # Cambian poco, así que basta una vez al mes y todas juntas.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    groups:
+      actions:
+        patterns:
+          - "*"
+    open-pull-requests-limit: 2
+    commit-message:
+      prefix: "ci(deps)"

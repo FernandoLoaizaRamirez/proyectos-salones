@@ -73,7 +73,12 @@ function paquete(ruta: string, nombre: string, deps: string[] = []): void {
  */
 function decidir(
   cambios: Record<string, string>,
-  { app = "apps/miapp", desde = base, hasta = "" } = {},
+  {
+    app = "apps/miapp",
+    desde = base,
+    hasta = "",
+    entorno = {} as Record<string, string>,
+  } = {},
 ): { codigo: number; salida: string } {
   git("reset", "--hard", base);
   for (const [ruta, contenido] of Object.entries(cambios)) escribir(ruta, contenido);
@@ -86,8 +91,11 @@ function decidir(
   // `undefined` en el env significa "esta variable no viene" (primera construcción).
   const env: Record<string, string> = { ...process.env } as Record<string, string>;
   delete env.VERCEL_GIT_PREVIOUS_SHA;
+  delete env.VERCEL_ENV;
+  delete env.VERCEL_GIT_COMMIT_REF;
   if (desde) env.VERCEL_GIT_PREVIOUS_SHA = desde;
   env.VERCEL_GIT_COMMIT_SHA = actual;
+  Object.assign(env, entorno);
 
   const r = spawnSync("node", [join(raiz, "scripts", "vercel-construir-si-cambio.mjs")], {
     cwd: join(raiz, app),
@@ -212,6 +220,58 @@ describe("Regla de oro: ante la duda, CONSTRUIR", () => {
 
   it("nos llaman desde una carpeta sin package.json", () => {
     const { codigo } = decidir({ "docs/algo.md": "otra cosa\n" }, { app: "docs" });
+    expect(codigo).toBe(CONSTRUIR);
+  });
+});
+
+/**
+ * El atajo de Dependabot: sus PRs no se previsualizan.
+ *
+ * POR QUÉ: cada uno toca el lockfile, que obliga a construir las 14 apps. Con el
+ * plan gratis (100 despliegues al día), media docena de esos PRs se comen la
+ * cuota — y el 22 jul 2026 se agotó a mitad de un despliegue de PRODUCCIÓN,
+ * dejando tres apps sin actualizar. No se pierde cobertura: el CI de GitHub
+ * compila las 14 apps en cada PR.
+ *
+ * Lo que estas pruebas fijan es el LÍMITE del atajo: solo previsualizaciones y
+ * solo de esas ramas. Si alguna vez llegara a saltarse producción, una app se
+ * quedaría vieja en vivo el día del evento sin que nadie se entere.
+ */
+describe("El atajo de Dependabot (solo previsualizaciones)", () => {
+  const LOCKFILE = { "pnpm-lock.yaml": "lockfileVersion: '9.0'\n# subida\n" };
+
+  it("PREVIEW de una rama de Dependabot: se SALTA aunque cambie el lockfile", () => {
+    const { codigo, salida } = decidir(LOCKFILE, {
+      entorno: {
+        VERCEL_ENV: "preview",
+        VERCEL_GIT_COMMIT_REF: "dependabot/npm_and_yarn/npm_and_yarn-abc123",
+      },
+    });
+    expect(codigo).toBe(SALTAR);
+    expect(salida).toContain("Dependabot");
+  });
+
+  it("PRODUCCIÓN nunca se salta, aunque el nombre de la rama lo parezca", () => {
+    const { codigo } = decidir(LOCKFILE, {
+      entorno: {
+        VERCEL_ENV: "production",
+        VERCEL_GIT_COMMIT_REF: "dependabot/npm_and_yarn/npm_and_yarn-abc123",
+      },
+    });
+    expect(codigo).toBe(CONSTRUIR);
+  });
+
+  it("una rama normal en preview NO se ve afectada: sigue construyendo", () => {
+    const { codigo } = decidir(LOCKFILE, {
+      entorno: { VERCEL_ENV: "preview", VERCEL_GIT_COMMIT_REF: "feat/lo-que-sea" },
+    });
+    expect(codigo).toBe(CONSTRUIR);
+  });
+
+  it("una rama que solo EMPIEZA parecido no cuela (dependabot-mio)", () => {
+    const { codigo } = decidir(LOCKFILE, {
+      entorno: { VERCEL_ENV: "preview", VERCEL_GIT_COMMIT_REF: "dependabot-mio/parche" },
+    });
     expect(codigo).toBe(CONSTRUIR);
   });
 });

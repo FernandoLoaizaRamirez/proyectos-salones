@@ -64,7 +64,12 @@ async function rest<T>(ruta: string, init?: RequestInit): Promise<T> {
     headers: { ...cabecerasServicio, ...(init?.headers ?? {}) },
   });
   if (!res.ok) throw new Error(`rest ${ruta} → ${res.status}`);
-  return (res.status === 204 ? null : await res.json()) as T;
+  // OJO: no basta con mirar el 204. Cuando se pide `Prefer: return=minimal`,
+  // PostgREST responde **201 con el cuerpo VACÍO**, y `res.json()` sobre un
+  // cuerpo vacío lanza — el registro de fallos moría con 500 justo por esto.
+  // Se lee como texto y solo se parsea si vino algo.
+  const cuerpo = await res.text();
+  return (cuerpo ? JSON.parse(cuerpo) : null) as T;
 }
 
 /* ================================================================== */

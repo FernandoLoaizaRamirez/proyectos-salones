@@ -67,7 +67,11 @@ async function rest<T>(ruta: string, init?: RequestInit): Promise<T> {
     headers: { ...cabecerasServicio, ...(init?.headers ?? {}) },
   });
   if (!res.ok) throw new Error(`rest ${ruta} → ${res.status}`);
-  return (res.status === 204 ? null : await res.json()) as T;
+  // Mismo cuidado que en `diagnostico`: una respuesta puede venir SIN cuerpo
+  // aunque no sea 204 (p. ej. 201 con `Prefer: return=minimal`), y `res.json()`
+  // sobre un cuerpo vacío lanza. Se parsea solo si vino algo.
+  const cuerpo = await res.text();
+  return (cuerpo ? JSON.parse(cuerpo) : null) as T;
 }
 
 async function rpc(nombre: string, cuerpo: Record<string, unknown>): Promise<unknown> {

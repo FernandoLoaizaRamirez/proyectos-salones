@@ -177,7 +177,9 @@ function crearProveedorLocal(): ProveedorSync {
  *         creado timestamptz default now())
  */
 function crearProveedorServidor(url: string, anon: string): ProveedorSync {
-  const base = `${url.replace(/\/$/, "")}/rest/v1/items`;
+  const raiz = url.replace(/\/$/, "");
+  const base = `${raiz}/rest/v1/items`;
+  const rpcPase = `${raiz}/rest/v1/rpc/emitir_pase`;
   // La llave puede ser "legacy" (un JWT que empieza con eyJ) o del formato nuevo
   // (sb_publishable_...). El encabezado Authorization solo admite JWTs; con las
   // llaves nuevas basta el encabezado apikey.
@@ -185,19 +187,60 @@ function crearProveedorServidor(url: string, anon: string): ProveedorSync {
     apikey: anon,
     ...(anon.startsWith("eyJ") ? { Authorization: `Bearer ${anon}` } : {}),
   };
+
+  /* ---- Pase firmado por evento (migración x-evento → pase, Fase 1) ---------
+   * Antes de cada petición se pide (y se cachea) un PASE al servidor:
+   * `<evento>.<caducidad>.<firma>`, que emite la función `emitir_pase` de la
+   * propia base de datos (ver migración 0006). Viaja en el encabezado
+   * `x-evento-pase` y la RLS lo verifica ahí mismo (firma + caducidad), así que
+   * no se puede forjar y caduca solo. Es NO-FATAL: si el servidor todavía no lo
+   * tiene, se sigue por el candado viejo (encabezado x-evento), de modo que esta
+   * versión es segura de desplegar ANTES de aplicar la migración. */
+  const pases = new Map<string, { pase: string; expira: number }>();
+  const MARGEN_MS = 60_000; // renovar 1 min antes de que caduque
+
+  /** La caducidad viaja dentro del propio pase: <evento>.<exp>.<firma>. */
+  const caducidadDe = (pase: string): number => {
+    const exp = Number(pase.split(".")[1]);
+    return Number.isFinite(exp) ? exp * 1000 : 0;
+  };
+
+  async function obtenerPase(evento: string): Promise<string | null> {
+    const guardado = pases.get(evento);
+    if (guardado && guardado.expira - MARGEN_MS > Date.now()) return guardado.pase;
+    try {
+      const res = await fetch(rpcPase, {
+        method: "POST",
+        headers: { ...auth, "Content-Type": "application/json" },
+        body: JSON.stringify({ p_codigo: evento }),
+      });
+      if (!res.ok) return null;
+      const pase = (await res.json()) as unknown;
+      if (typeof pase !== "string" || !pase) return null;
+      pases.set(evento, { pase, expira: caducidadDe(pase) });
+      return pase;
+    } catch {
+      return null; // sin red o migración sin aplicar: se sigue por el header
+    }
+  }
+
   /**
-   * La llave del evento viaja TAMBIÉN como encabezado (x-evento) en cada
-   * petición. Así el servidor puede exigirla con sus políticas (Fase 5): sin la
-   * llave correcta no se puede leer ni escribir nada, ni siquiera conociendo la
-   * llave pública del proyecto.
+   * La llave del evento viaja de DOS formas mientras dura la transición: el
+   * encabezado viejo (x-evento) y el PASE firmado (x-evento-pase). Con
+   * cualquiera de los dos el servidor exige la llave correcta: sin ella no se
+   * lee ni se escribe nada (ver docs/MIGRACION-TOKEN-FIRMADO.md).
    */
-  const headersDe = (evento: string): Record<string, string> => ({
-    ...auth,
-    "x-evento": evento,
-    "Content-Type": "application/json",
-  });
+  const headersDe = async (evento: string): Promise<Record<string, string>> => {
+    const pase = await obtenerPase(evento);
+    return {
+      ...auth,
+      "x-evento": evento,
+      ...(pase ? { "x-evento-pase": pase } : {}),
+      "Content-Type": "application/json",
+    };
+  };
   /** Almacenamiento central de fotos/videos (bucket "media" del proyecto). */
-  const almacen = `${url.replace(/\/$/, "")}/storage/v1`;
+  const almacen = `${raiz}/storage/v1`;
   const BUCKET = "media";
   const INTERVALO_MS = 3000;
 
@@ -206,7 +249,7 @@ function crearProveedorServidor(url: string, anon: string): ProveedorSync {
 
   async function pedir<T extends ItemSync>(evento: string, coleccion: string): Promise<T[]> {
     const q = `${base}?${filtro(evento, coleccion)}&select=id,dato&order=creado.desc`;
-    const res = await fetch(q, { headers: headersDe(evento) });
+    const res = await fetch(q, { headers: await headersDe(evento) });
     if (!res.ok) throw new Error(`sync/listar ${res.status}`);
     const filas = (await res.json()) as { id: string; dato: Record<string, unknown> }[];
     return filas.map((f) => ({ ...(f.dato ?? {}), id: f.id })) as T[];
@@ -221,14 +264,17 @@ function crearProveedorServidor(url: string, anon: string): ProveedorSync {
       const { id, ...dato } = item;
       const res = await fetch(base, {
         method: "POST",
-        headers: { ...headersDe(evento), Prefer: "resolution=merge-duplicates,return=minimal" },
+        headers: {
+          ...(await headersDe(evento)),
+          Prefer: "resolution=merge-duplicates,return=minimal",
+        },
         body: JSON.stringify({ evento, coleccion, id, dato }),
       });
       if (!res.ok) throw new Error(`sync/guardar ${res.status}`);
     },
     async eliminar(evento, coleccion, id) {
       const q = `${base}?${filtro(evento, coleccion)}&id=eq.${encodeURIComponent(id)}`;
-      const res = await fetch(q, { method: "DELETE", headers: headersDe(evento) });
+      const res = await fetch(q, { method: "DELETE", headers: await headersDe(evento) });
       if (!res.ok) throw new Error(`sync/eliminar ${res.status}`);
     },
     suscribir(evento, coleccion, cb) {
@@ -259,9 +305,15 @@ function crearProveedorServidor(url: string, anon: string): ProveedorSync {
       const ruta = `${encodeURIComponent(evento)}/${Date.now()}-${Math.random()
         .toString(36)
         .slice(2, 8)}.${ext}`;
+      const pase = await obtenerPase(evento);
       const res = await fetch(`${almacen}/object/${BUCKET}/${ruta}`, {
         method: "POST",
-        headers: { ...auth, "x-evento": evento, "Content-Type": tipo || "application/octet-stream" },
+        headers: {
+          ...auth,
+          "x-evento": evento,
+          ...(pase ? { "x-evento-pase": pase } : {}),
+          "Content-Type": tipo || "application/octet-stream",
+        },
         body: blob,
       });
       if (!res.ok) throw new Error(`sync/subir ${res.status}`);

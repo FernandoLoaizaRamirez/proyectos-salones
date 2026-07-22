@@ -34,7 +34,7 @@ import {
   X,
 } from "lucide-react";
 import { Button, Card, EmptyState } from "@salones/ui";
-import { obtenerSync } from "@salones/sync";
+import { obtenerSync, resolverMedios } from "@salones/sync";
 import { obtenerSupabase } from "@/lib/supabase";
 import { obtenerEvento, type EventoFila } from "@/lib/eventos";
 import { COLECCION_FOTOS, descargarAlbum, enlaceSubir, esVideo, porFecha, type Foto } from "@/lib/album";
@@ -58,6 +58,9 @@ export default function AlbumDelEvento({ params }: { params: Promise<{ codigo: s
   const [descarga, setDescarga] = React.useState<{ hechas: number; total: number } | null>(null);
   /** Bandera para poder cancelar una descarga larga a media faena. */
   const descargandoRef = React.useRef(false);
+  /** Dirección guardada → dirección firmada con la que se ve y se descarga. */
+  const [vistas, setVistas] = React.useState<Record<string, string>>({});
+  const ver = React.useCallback((u: string) => vistas[u] ?? u, [vistas]);
 
   const urlSubir = enlaceSubir(codigo, baseDeApp("album-fotos"));
 
@@ -79,15 +82,35 @@ export default function AlbumDelEvento({ params }: { params: Promise<{ codigo: s
 
   React.useEffect(() => {
     if (!evento) return;
-    // 📌 Cuando entre el PR #17 (fotos privadas, 0013), las direcciones guardadas
-    // dejan de servir solas y hay que pasarlas por `resolverMedios(codigo, urls)`
-    // de @salones/sync —que las firma en lote y caducan en 1 h— antes de
-    // mostrarlas o descargarlas. Es el único enganche que le falta a esta
-    // pantalla; esa función no rompe nada si aún no está desplegada.
     return obtenerSync().suscribir<Foto>(codigo, COLECCION_FOTOS, (items) =>
       setFotos([...items].sort(porFecha)),
     );
   }, [evento, codigo]);
+
+  // Desde la migración 0013 el almacén es privado: lo que guarda la base es una
+  // REFERENCIA, y para ver o descargar una foto hay que cambiarla por una
+  // dirección FIRMADA que caduca en una hora. Se piden todas en lote.
+  //
+  // Afecta a las DOS cosas de esta pantalla: mostrar el álbum y la entrega al
+  // cliente ("descargar todo"). Antes de que la 0013 esté aplicada,
+  // `resolverMedios` devuelve las direcciones de siempre, así que esto es seguro
+  // tanto antes como después del corte.
+  const clavesFotos = fotos.map((f) => f.url).join("|");
+  React.useEffect(() => {
+    if (fotos.length === 0) return;
+    let vivo = true;
+    void resolverMedios(
+      codigo,
+      fotos.map((f) => f.url),
+    ).then((mapa) => {
+      if (vivo) setVistas((previas) => ({ ...previas, ...mapa }));
+    });
+    return () => {
+      vivo = false;
+    };
+    // Depende de la LISTA de fotos, no del sondeo de cada 3 s.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clavesFotos, codigo]);
 
   // Si el álbum cambia con el visor abierto, el índice no puede quedar al aire.
   React.useEffect(() => {
@@ -133,7 +156,9 @@ export default function AlbumDelEvento({ params }: { params: Promise<{ codigo: s
     descargandoRef.current = true;
     setDescarga({ hechas: 0, total: fotos.length });
     const r = await descargarAlbum(
-      fotos,
+      // Con las direcciones ya firmadas: en un almacén privado, la guardada no
+      // se descarga sola. `descargarAlbum` no cambia; recibe la lista resuelta.
+      fotos.map((f) => ({ ...f, url: ver(f.url) })),
       (hechas, total) => setDescarga({ hechas, total }),
       () => descargandoRef.current,
     );
@@ -278,7 +303,7 @@ export default function AlbumDelEvento({ params }: { params: Promise<{ codigo: s
                   {esVideo(f.tipo) ? (
                     <div className="relative">
                       {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
-                      <video src={f.url} className="w-full object-cover" />
+                      <video src={ver(f.url)} className="w-full object-cover" />
                       <div className="absolute inset-0 grid place-items-center bg-black/20">
                         <span className="grid size-11 place-items-center rounded-full bg-white/80 text-black">
                           <Play className="size-5" />
@@ -288,7 +313,7 @@ export default function AlbumDelEvento({ params }: { params: Promise<{ codigo: s
                   ) : (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
-                      src={f.url}
+                      src={ver(f.url)}
                       alt={f.nombre}
                       loading="lazy"
                       className="w-full object-cover transition-transform duration-500 group-hover:scale-105"
@@ -407,11 +432,16 @@ export default function AlbumDelEvento({ params }: { params: Promise<{ codigo: s
           <div className="max-h-[85vh] max-w-4xl" onClick={(e) => e.stopPropagation()}>
             {esVideo(actual.tipo) ? (
               // eslint-disable-next-line jsx-a11y/media-has-caption
-              <video src={actual.url} controls autoPlay className="max-h-[85vh] w-auto rounded-lg" />
+              <video
+                src={ver(actual.url)}
+                controls
+                autoPlay
+                className="max-h-[85vh] w-auto rounded-lg"
+              />
             ) : (
               // eslint-disable-next-line @next/next/no-img-element
               <img
-                src={actual.url}
+                src={ver(actual.url)}
                 alt={actual.nombre}
                 className="max-h-[85vh] w-auto rounded-lg object-contain shadow-2xl"
               />

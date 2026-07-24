@@ -124,6 +124,10 @@ export function enlacePantalla(p: PantallaAnfitrion, codigo: string): string {
  * Dirección del PORTAL DEL INVITADO (el enlace que se comparte con la gente).
  * Se configura con `NEXT_PUBLIC_PORTAL_URL`; sin ella devolvemos "" y la interfaz
  * lo dice claro en vez de inventar una dirección equivocada.
+ *
+ * Puesta en producción el 24 jul 2026: el portal vive en
+ * `proyectos-salones-portal.vercel.app` y la variable ya está en el proyecto
+ * `suite-salones` de Vercel (Production + Preview).
  */
 export function enlacePortal(codigo: string): string {
   const base = (process.env.NEXT_PUBLIC_PORTAL_URL ?? "").replace(/\/$/, "");

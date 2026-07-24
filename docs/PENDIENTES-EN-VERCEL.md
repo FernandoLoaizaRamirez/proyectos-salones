@@ -1,97 +1,87 @@
-# Lo que falta tocar en Vercel (3 cosas, ~10 minutos)
+# Ajustes en Vercel — estado (24 jul 2026)
 
-Todo el código está en `main` y desplegado. Lo que queda son **ajustes en el
-panel de Vercel**, que hace Fernando: son formularios de configuración de su
-cuenta y automatizarlos salió mal una vez (ver el final de este documento).
+Todo el código está en `main` y desplegado. De los 3 ajustes de panel, **2 ya
+están hechos y verificados en vivo**; queda 1.
 
-Los valores están listos para copiar y pegar.
+| # | Ajuste | Estado |
+|---|---|---|
+| 1 | Variables del **brindis** | ✅ HECHO y verificado (9 peticiones al servidor) |
+| 2 | Crear el **portal** | ✅ HECHO y verificado (`proyectos-salones-portal.vercel.app`) |
+| 3 | `NEXT_PUBLIC_PORTAL_URL` en el **catálogo** | ⏳ PENDIENTE (no urgente) |
 
-> Las dos variables se repiten en varios sitios. Son **públicas por diseño**
-> (viajan en el navegador de cada invitado), así que **no marcar "Sensitive"**:
->
-> | Nombre | Valor |
-> |---|---|
-> | `NEXT_PUBLIC_SUPABASE_URL` | `https://cpbfisylcquuahrmyaca.supabase.co` |
-> | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `sb_publishable_G0gt2CGUOrmVEjK8bMX0mA_Qqrzsuwj` |
+Las dos variables públicas usadas arriba (no marcar "Sensitive"):
 
----
-
-## 1. 🔴 El brindis se quedó sin conexión (lo más urgente)
-
-**Qué pasa ahora mismo:** el brindis en vivo **no puede enviar videos**. Se graba
-y se puede compartir por WhatsApp, pero el botón *"Enviar a los novios"* no
-aparece y la galería sale vacía.
-
-**Por qué:** hasta ayer el brindis hablaba con **otro** proyecto de Supabase, con
-la dirección y la llave escritas dentro del código. Al traerlo al sistema común
-(24 jul) esas llaves salieron del código —que era el objetivo— y ahora las pide
-como variables. El proyecto de Vercel del brindis nunca las tuvo.
-
-No es un error ni se pierde nada: la app se repliega sola a "modo local" y
-esconde lo que no puede hacer. Pero mientras tanto, esa función está apagada.
-
-**Cómo se arregla:**
-
-1. Vercel → proyecto **`proyectos-salones-brindis`** → *Settings* →
-   *Environment Variables*.
-2. Añadir las **dos** variables de arriba, en *Production* y *Preview*.
-3. *Deployments* → el último → **Redeploy**.
-
-**Cómo saber que quedó bien:** abrir el brindis, grabar cualquier cosa y
-comprobar que aparece **"Enviar a los novios"**.
+| Nombre | Valor |
+|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | `https://cpbfisylcquuahrmyaca.supabase.co` |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `sb_publishable_G0gt2CGUOrmVEjK8bMX0mA_Qqrzsuwj` |
 
 ---
 
-## 2. Publicar el portal del invitado (nunca se ha desplegado)
+## ✅ 1. Brindis — HECHO (24 jul)
 
-Es la pantalla que abre el invitado con el enlace del evento, con los 5 módulos
-dentro. **Es la única de las 14 apps sin proyecto en Vercel.** Mientras no esté,
-los enlaces del panel caen en las apps sueltas de siempre (hay un respaldo puesto
-a propósito, así que nada se rompe).
+Se añadieron las dos variables al proyecto `proyectos-salones-brindis` y se forzó
+un rebuild. Verificado en vivo: la galería hace **9 peticiones al servidor real**
+y el botón "Enviar a los novios" ya aparece. Modo servidor confirmado.
 
-Los pasos detallados están en [`DESPLEGAR-PORTAL.md`](DESPLEGAR-PORTAL.md). En
-corto:
+> 🪤 **Trampa encontrada (importante para el futuro):** añadir las variables y
+> darle **Redeploy al mismo commit NO funciona** — el portero
+> (`scripts/vercel-construir-si-cambio.mjs`) ve que no cambió ningún archivo y
+> **cancela el build en 1 s** (*Canceled*). El bundle no recoge las variables.
+> Se arregla con un **commit que toque la carpeta de esa app** (así el portero la
+> reconstruye y las demás saltan). Se hizo con el commit `0e926b4` (una nota al
+> README del brindis). Documentado también en `apps/brindis/README.md`.
 
-1. *Add New… → Project* → repositorio `proyectos-salones`.
-2. **Project Name:** `portal-salones`
-3. **Root Directory:** `apps/portal` ← *el paso que más se olvida.* Al elegirlo,
-   marcar **"Include source files outside of the Root Directory"**.
-4. Las **dos** variables de arriba (Production + Preview).
-5. *Deploy*.
+## ✅ 2. Portal — HECHO (24 jul)
 
-**Cómo saber que quedó bien:** abrir `portal-salones.vercel.app/?e=demo` y ver
-**"En Suite Salones (demo)"** bajo el título. Si en vez de eso sale un aviso de
-*modo demostración*, faltan las variables.
+Creado el proyecto **`proyectos-salones-portal`** (Root Directory `apps/portal`,
+Next.js, las dos variables públicas, Production+Preview). Vercel detectó el
+monorepo con Turborepo (`turbo run build`), así que no hizo falta la casilla de
+"incluir archivos fuera de la carpeta". Verificado en vivo: **6 peticiones al
+servidor**, el muro del portal muestra mensajes reales, y la home resuelve el
+evento demo por la Edge Function `evento-config`.
+- Nota: el nombre quedó `proyectos-salones-portal` (Vercel lo regeneró al elegir
+  la carpeta), coherente con las otras apps. URL: `proyectos-salones-portal.vercel.app`.
 
 ---
 
-## 3. Enganchar el panel al portal
+## ⏳ 3. Enganchar el panel al portal — PENDIENTE (no urgente)
 
-Solo tiene sentido **después** del paso 2.
+Sin esto, los enlaces y QR del panel del anfitrión apuntan a las **apps sueltas**
+de siempre (hay respaldo puesto a propósito, así que **nada se rompe**). Con esto,
+apuntan al portal.
 
-1. Vercel → proyecto **`suite-salones`** (el catálogo) → *Environment Variables*.
+**Qué hacer:**
+1. Vercel → proyecto **`suite-salones`** → *Settings → Environment Variables*.
 
    | Nombre | Valor |
    |---|---|
-   | `NEXT_PUBLIC_PORTAL_URL` | `https://portal-salones.vercel.app` |
+   | `NEXT_PUBLIC_PORTAL_URL` | `https://proyectos-salones-portal.vercel.app` |
 
-2. *Redeploy*.
+   (Production + Preview, no "Sensitive".)
 
-A partir de ahí, los enlaces y códigos QR de confirmaciones, muro, DJ y álbum
-apuntan al portal en vez de a las apps sueltas.
+2. ⚠️ **Ojo con la misma trampa del portero:** después de guardar la variable, un
+   *Redeploy* del mismo commit se cancelará. Hay que forzar el rebuild con un
+   **commit que toque `apps/catalogo/`**. Ese commit lo hace Claude cuando la
+   variable esté puesta.
+
+**Cómo saber que quedó:** en el tablero de un evento (`/eventos/<código>`),
+desaparece el aviso naranja *"Falta configurar NEXT_PUBLIC_PORTAL_URL"* y el
+enlace para invitados pasa a ser del portal.
 
 ---
 
-## Coste en cuota
+## Por qué el paso 3 quedó pendiente hoy
 
-3 construcciones en total. El plan gratis da 100 al día.
+Claude hizo los pasos 1 y 2 directamente en el Chrome (con la técnica de **pegar**
+los valores en vez de teclear, que evita el incidente de la vez anterior). Al ir
+a por el paso 3, **la extensión de Chrome se desconectó** (transitorio). El paso
+se retoma en cuanto reconecte, o lo puede hacer Fernando con esta guía (es una
+sola variable). El commit de rebuild lo pone Claude.
 
-## Por qué esto no lo hago yo
-
-El 24 jul 2026 se intentó automatizar el formulario de *New Project*. Al escribir
-la primera variable, las pulsaciones no entraron en el campo y se fueron a la
-página **como atajos de teclado**: Vercel abrió sola la pantalla de configuración
-del **doble factor (2FA)** de la cuenta. Se salió con `Escape` sin tocar nada y no
-se cambió ningún ajuste, pero la lección quedó clara: en el panel de Vercel
-conviven ajustes inofensivos con ajustes de seguridad de la cuenta a un atajo de
-distancia, y no compensa el riesgo por ahorrar cinco minutos.
+### Antecedente: el incidente de la primera vez
+La primera vez (23 jul) se intentó **tecleando** los valores; el foco no entró en
+el campo y las teclas se fueron como atajos, abriendo la pantalla de 2FA de la
+cuenta (se salió con Escape, sin cambiar nada). La solución fue usar **pegar por
+referencia del campo** (`form_input`) y verificar con captura tras cada paso. Con
+eso, los pasos 1 y 2 salieron limpios.

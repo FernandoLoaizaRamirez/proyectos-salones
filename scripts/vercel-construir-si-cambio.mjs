@@ -118,6 +118,25 @@ function archivosCambiados(base, cabeza) {
 
 // ── Aquí empieza la decisión ────────────────────────────────────────────────
 
+// Los PRs de Dependabot NO se previsualizan, y esto ahorra media cuota diaria.
+//
+// Cada uno toca `pnpm-lock.yaml`, que está en CONFIG_DE_LA_RAIZ: el portero
+// —con razón— manda construir las 14 apps. Son ~13 despliegues por PR, y en el
+// plan gratis de Vercel (100 al día) media docena de PRs de Dependabot se comen
+// la cuota entera. El 22 jul 2026 se agotó a mitad de un despliegue de
+// producción y dejó tres apps sin actualizar.
+//
+// Se saltan sin perder nada porque el CI de GitHub SÍ los compila enteros:
+// el trabajo `compilar` corre `pnpm typecheck` + `pnpm build` de las 14 apps en
+// cada PR. Una previsualización de Vercel no añadiría información; solo gasta.
+//
+// Solo afecta a la PREVISUALIZACIÓN de esas ramas. Cuando el PR se fusiona, el
+// despliegue de producción sale de `main` y este atajo ni se mira.
+const rama = process.env.VERCEL_GIT_COMMIT_REF || "";
+if (process.env.VERCEL_ENV === "preview" && rama.startsWith("dependabot/")) {
+  saltar(`rama de Dependabot ("${rama}"): el CI ya compila las 14 apps`);
+}
+
 // Vercel corre este comando DENTRO de la carpeta de la app (su "Root Directory").
 const pkgApp = leerPaquete(resolve(process.cwd(), "package.json"));
 if (!pkgApp?.name) construir("no pude leer el package.json de la app");

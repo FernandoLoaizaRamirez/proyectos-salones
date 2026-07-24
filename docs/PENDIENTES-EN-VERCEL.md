@@ -7,7 +7,7 @@ están hechos y verificados en vivo**; queda 1.
 |---|---|---|
 | 1 | Variables del **brindis** | ✅ HECHO y verificado (9 peticiones al servidor) |
 | 2 | Crear el **portal** | ✅ HECHO y verificado (`proyectos-salones-portal.vercel.app`) |
-| 3 | `NEXT_PUBLIC_PORTAL_URL` en el **catálogo** | ⏳ PENDIENTE (no urgente) |
+| 3 | `NEXT_PUBLIC_PORTAL_URL` en el **catálogo** | ✅ HECHO y verificado |
 
 Las dos variables públicas usadas arriba (no marcar "Sensitive"):
 
@@ -45,39 +45,29 @@ evento demo por la Edge Function `evento-config`.
 
 ---
 
-## ⏳ 3. Enganchar el panel al portal — PENDIENTE (no urgente)
+## ✅ 3. Enganchar el panel al portal — HECHO (24 jul)
 
-Sin esto, los enlaces y QR del panel del anfitrión apuntan a las **apps sueltas**
-de siempre (hay respaldo puesto a propósito, así que **nada se rompe**). Con esto,
-apuntan al portal.
+Se puso `NEXT_PUBLIC_PORTAL_URL = https://proyectos-salones-portal.vercel.app` en
+el proyecto `suite-salones` (Production + Preview) y se forzó el rebuild con el
+commit `5a3166d` (tocó `apps/catalogo`, para esquivar la trampa del portero).
 
-**Qué hacer:**
-1. Vercel → proyecto **`suite-salones`** → *Settings → Environment Variables*.
-
-   | Nombre | Valor |
-   |---|---|
-   | `NEXT_PUBLIC_PORTAL_URL` | `https://proyectos-salones-portal.vercel.app` |
-
-   (Production + Preview, no "Sensitive".)
-
-2. ⚠️ **Ojo con la misma trampa del portero:** después de guardar la variable, un
-   *Redeploy* del mismo commit se cancelará. Hay que forzar el rebuild con un
-   **commit que toque `apps/catalogo/`**. Ese commit lo hace Claude cuando la
-   variable esté puesta.
-
-**Cómo saber que quedó:** en el tablero de un evento (`/eventos/<código>`),
-desaparece el aviso naranja *"Falta configurar NEXT_PUBLIC_PORTAL_URL"* y el
-enlace para invitados pasa a ser del portal.
+**Verificado en vivo** (con la sesión de Fernando, en el tablero del evento de
+prueba `boda-citla-oxfmm`): el aviso naranja desapareció y ahora sale
+*"El enlace para tus invitados: https://proyectos-salones-portal.vercel.app/?e=boda-citla-oxfmm"*,
+con botones de copiar y enviar por WhatsApp. Los enlaces del panel ya van al portal.
 
 ---
 
-## Por qué el paso 3 quedó pendiente hoy
+## 🎉 LOS 3 AJUSTES DE VERCEL: COMPLETOS
 
-Claude hizo los pasos 1 y 2 directamente en el Chrome (con la técnica de **pegar**
-los valores en vez de teclear, que evita el incidente de la vez anterior). Al ir
-a por el paso 3, **la extensión de Chrome se desconectó** (transitorio). El paso
-se retoma en cuanto reconecte, o lo puede hacer Fernando con esta guía (es una
-sola variable). El commit de rebuild lo pone Claude.
+Brindis conectado, portal publicado, panel enganchado al portal. Todo el trabajo
+de despliegue de la suite queda cerrado. Lo siguiente del proyecto ya no es Vercel:
+son los **cortes** (bloque E, ver `docs/GUION-DEL-CORTE.md`) y lo **legal** (bloque F).
+
+### Nota de proceso: cómo se hicieron
+Claude los hizo directamente en el Chrome de Fernando, con la técnica de **pegar**
+los valores (`form_input`) en vez de teclear, y verificando con captura tras cada
+paso. Así NO se repitió el incidente de la primera vez.
 
 ### Antecedente: el incidente de la primera vez
 La primera vez (23 jul) se intentó **tecleando** los valores; el foco no entró en

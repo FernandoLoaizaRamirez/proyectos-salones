@@ -12,6 +12,7 @@ export { ThemeProvider } from "./components/theme-provider";
 export { ThemeToggle } from "./components/theme-toggle";
 export { Logo } from "./components/logo";
 export { EmptyState } from "./components/empty-state";
+export { AvisoParticipacion } from "./components/aviso-participacion";
 export { BrandingScope } from "./components/branding-scope";
 export { brandingAVariables } from "./branding";
 export type { BrandingSalon } from "./branding";

@@ -12,8 +12,14 @@ import {
   Play,
   Loader2,
 } from "lucide-react";
-import { Button, EmptyState, cn } from "@salones/ui";
-import { obtenerSync, estaConectado, eventoActual } from "@salones/sync";
+import { Button, EmptyState, cn, AvisoParticipacion } from "@salones/ui";
+import {
+  obtenerSync,
+  estaConectado,
+  eventoActual,
+  esAnfitrion,
+  resolverMedios,
+} from "@salones/sync";
 import {
   fotosEjemplo,
   comprimirImagen,
@@ -33,13 +39,43 @@ export function Album() {
   const [idx, setIdx] = React.useState<number | null>(null);
   const inputRef = React.useRef<HTMLInputElement>(null);
   const contador = React.useRef(0);
+  // Solo el anfitrión puede quitar fotos del álbum común. Arranca en false: si
+  // algo fallara, se esconde el botón en vez de enseñárselo a un invitado.
+  const [anfitrion, setAnfitrion] = React.useState(false);
+  // Dirección guardada → dirección con la que se muestra (firmada y con fecha
+  // de caducidad). Lo que no esté aquí se muestra tal cual.
+  const [vistas, setVistas] = React.useState<Record<string, string>>({});
+  const ver = React.useCallback((u: string) => vistas[u] ?? u, [vistas]);
 
   // Álbum COMPARTIDO: se suscribe al "lugar central" (@salones/sync) y se
   // actualiza solo con las fotos que sube cada invitado desde su teléfono.
   React.useEffect(() => {
+    // Depende del enlace y del navegador, que en el servidor no existen.
+    setAnfitrion(esAnfitrion());
     if (!estaConectado()) return;
     return obtenerSync().suscribir<Archivo>(eventoActual(), COLECCION_FOTOS, setArchivos);
   }, []);
+
+  // Lo que se guarda en la base es una REFERENCIA; la dirección con la que se
+  // ve de verdad se pide aquí y caduca en una hora (migración 0013). Si el
+  // servidor todavía no lo soporta, devuelve las de siempre y no se nota nada.
+  const clavesArchivos = archivos.map((a) => a.url).join("|");
+  React.useEffect(() => {
+    if (!estaConectado() || archivos.length === 0) return;
+    let vivo = true;
+    void resolverMedios(
+      eventoActual(),
+      archivos.map((a) => a.url),
+    ).then((mapa) => {
+      if (vivo) setVistas(mapa);
+    });
+    return () => {
+      vivo = false;
+    };
+    // `clavesArchivos` cambia solo cuando cambia la lista de fotos, no en cada
+    // sondeo: así no se pide firmar el álbum entero cada tres segundos.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clavesArchivos]);
 
   const agregar = React.useCallback(async (lista: FileList | null) => {
     if (!lista) return;
@@ -100,13 +136,15 @@ export function Album() {
   const descargarTodo = React.useCallback(() => {
     archivos.forEach((f) => {
       const a = document.createElement("a");
-      a.href = f.url;
+      a.href = ver(f.url);
       a.download = f.nombre;
       document.body.appendChild(a);
       a.click();
       a.remove();
     });
-  }, [archivos]);
+    // `ver` va en las dependencias a propósito: sin él, al descargar se usarían
+    // las direcciones de la primera carga, que ya habrían caducado.
+  }, [archivos, ver]);
 
   // --- Visor a pantalla completa ---
   const open = idx !== null;
@@ -180,6 +218,7 @@ export function Album() {
             className="hidden"
             onChange={(e) => agregar(e.target.files)}
           />
+          <AvisoParticipacion accion="subir tus fotos" className="max-w-md text-center" />
         </div>
       </div>
 
@@ -219,7 +258,7 @@ export function Album() {
                 {f.tipo.startsWith("video/") ? (
                   <div className="relative">
                     {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
-                    <video src={f.url} className="w-full object-cover" />
+                    <video src={ver(f.url)} className="w-full object-cover" />
                     <div className="absolute inset-0 grid place-items-center bg-black/20">
                       <span className="grid size-11 place-items-center rounded-full bg-white/80 text-black">
                         <Play className="size-5" />
@@ -229,21 +268,23 @@ export function Album() {
                 ) : (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
-                    src={f.url}
+                    src={ver(f.url)}
                     alt={f.nombre}
                     loading="lazy"
                     className="w-full object-cover transition-transform duration-500 group-hover:scale-105"
                   />
                 )}
               </button>
-              <button
-                type="button"
-                aria-label={`Eliminar ${f.nombre}`}
-                onClick={() => eliminar(f.id)}
-                className="absolute right-2 top-2 grid size-8 place-items-center rounded-full bg-black/60 text-white opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
-              >
-                <Trash2 className="size-4" />
-              </button>
+              {anfitrion ? (
+                <button
+                  type="button"
+                  aria-label={`Eliminar ${f.nombre}`}
+                  onClick={() => eliminar(f.id)}
+                  className="absolute right-2 top-2 grid size-8 place-items-center rounded-full bg-black/60 text-white opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+                >
+                  <Trash2 className="size-4" />
+                </button>
+              ) : null}
             </div>
           ))}
         </div>
@@ -288,11 +329,11 @@ export function Album() {
           <div className="max-h-[85vh] max-w-4xl" onClick={(e) => e.stopPropagation()}>
             {actual.tipo.startsWith("video/") ? (
               // eslint-disable-next-line jsx-a11y/media-has-caption
-              <video src={actual.url} controls autoPlay className="max-h-[85vh] w-auto rounded-lg" />
+              <video src={ver(actual.url)} controls autoPlay className="max-h-[85vh] w-auto rounded-lg" />
             ) : (
               // eslint-disable-next-line @next/next/no-img-element
               <img
-                src={actual.url}
+                src={ver(actual.url)}
                 alt={actual.nombre}
                 className="max-h-[85vh] w-auto rounded-lg object-contain shadow-2xl"
               />

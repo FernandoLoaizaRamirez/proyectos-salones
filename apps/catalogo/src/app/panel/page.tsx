@@ -11,7 +11,16 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { KeyRound, LogOut, Loader2, Building2, BadgeCheck, CalendarDays } from "lucide-react";
+import {
+  KeyRound,
+  LogOut,
+  Loader2,
+  Building2,
+  BadgeCheck,
+  CalendarDays,
+  PackageCheck,
+  Stethoscope,
+} from "lucide-react";
 import { Button, Card } from "@salones/ui";
 import { obtenerSupabase } from "@/lib/supabase";
 import { leerIdentidad, type Identidad } from "@/lib/sesion";
@@ -128,6 +137,36 @@ export default function Panel() {
         </div>
         <Link href="/evento">
           <Button size="sm">Abrir</Button>
+        </Link>
+      </Card>
+
+      <Card className="mt-4 flex items-center gap-4 p-6">
+        <Stethoscope className="size-8 shrink-0 text-primary" />
+        <div className="min-w-0 flex-1">
+          <h2 className="font-semibold">¿Está todo bien?</h2>
+          <p className="text-sm text-muted-foreground">
+            Revisa un evento antes de que empiece y mira los últimos fallos.
+          </p>
+        </div>
+        <Link href="/panel/diagnostico">
+          <Button size="sm" variant="outline">
+            Abrir
+          </Button>
+        </Link>
+      </Card>
+
+      <Card className="mt-4 flex items-center gap-4 p-6">
+        <PackageCheck className="size-8 shrink-0 text-primary" />
+        <div className="min-w-0 flex-1">
+          <h2 className="font-semibold">Cerrar un evento</h2>
+          <p className="text-sm text-muted-foreground">
+            Entrega todo el material a los anfitriones y bórralo del servidor.
+          </p>
+        </div>
+        <Link href="/evento/cerrar">
+          <Button size="sm" variant="outline">
+            Abrir
+          </Button>
         </Link>
       </Card>
 

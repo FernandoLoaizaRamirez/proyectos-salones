@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@salones/core": "workspace:*",
+    "@salones/legal": "workspace:*",
     "@salones/payments": "workspace:*",
     "@salones/sync": "workspace:*",
     "@salones/ui": "workspace:*",

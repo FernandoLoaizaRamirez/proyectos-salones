@@ -185,6 +185,14 @@ create policy "borrado por evento" on items for delete
 
 -- ============================================================================
 -- BLOQUE FINAL — EL PASO DE CORTE  ·  ¡NO CORRER TODAVIA!
+--
+--   ⛔ OBSOLETO: NO CORRAS ESTE BLOQUE. Lo sustituye el de la migracion
+--      0009_llave_anfitrion.sql, que hace lo mismo Y ADEMAS deja el borrado
+--      solo en manos del anfitrion. Si corres ESTE, el candado del pase queda
+--      bien pero CUALQUIER INVITADO seguira pudiendo borrar la boda entera.
+--      Runbook: docs/LLAVE-ANFITRION.md
+--
+--   Se conserva aqui solo como referencia historica.
 -- ----------------------------------------------------------------------------
 -- Correr SOLO cuando TODAS las apps en vivo (muro, playlist, rsvp, dinamicas,
 -- album) esten desplegadas mandando el pase, y tras verificar que funciona.

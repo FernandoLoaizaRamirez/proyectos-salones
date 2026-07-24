@@ -12,8 +12,22 @@ allowBuilds:
 # typescript-eslint queda clavado en una versión ya asentada. Sin esto pnpm
 # toma la más nueva, y su política de antigüedad mínima (la cuarentena que
 # protege de un paquete recién publicado y comprometido) obliga a saltársela.
+#
+# sharp y postcss NO los pide ninguna app: los arrastra Next (16.2.10 fija
+# sharp 0.34.5 y postcss 8.4.31, ambas con aviso de seguridad abierto). Como no
+# aparecen en ningún package.json, la única forma de subirlas sin esperar a que
+# Next publique versión es forzarlas desde aquí:
+#   · sharp   → 0.34.5 hereda 4 fallos de libvips (aviso ALTO; CVE-2026-33327,
+#               -33328, -35590 y -35591). Corregido en 0.35.0.
+#   · postcss → 8.4.31 permite XSS al no escapar "</style>" al escribir el CSS
+#               (aviso medio). Corregido en 8.5.10. Otra copia del árbol ya iba
+#               en 8.5.16; esto deja una sola versión, la sana.
+# Se fijan con ">=" para que un Next futuro que ya traiga versión sana no quede
+# frenado por este candado.
 overrides:
   typescript-eslint: 8.63.0
+  sharp: ">=0.35.0"
+  postcss: ">=8.5.10"
 
 # Paquetes autorizados a correr su script de instalación (build). pnpm los bloquea
 # por defecto como medida de seguridad; aquí se permiten solo los de confianza:

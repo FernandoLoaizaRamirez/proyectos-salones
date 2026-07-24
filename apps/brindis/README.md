@@ -79,3 +79,22 @@ migran a propósito, porque:
 Consecuencia práctica: la galería arranca vacía y se vuelve a llenar en cuanto
 los invitados graban. Si algún día hiciera falta un video viejo, sigue estando en
 el panel de Supabase del proyecto anterior hasta que se borre a mano.
+
+## ⚠️ Al añadir/cambiar variables en Vercel: no basta con "Redeploy"
+
+Este monorepo usa un **portero** (`scripts/vercel-construir-si-cambio.mjs`, vía el
+`ignoreCommand` de cada `vercel.json`) que **salta** el build cuando el commit no
+tocó archivos de la app. Eso ahorra cuota, pero tiene un efecto secundario: si
+añades variables de entorno en el panel y le das **Redeploy al mismo commit**, el
+portero ve que "no cambió ningún archivo" y **cancela el build** (sale en 1 s como
+*Canceled*) — así que el bundle nuevo **no** recoge las variables.
+
+Para que un cambio de variables surta efecto hay que **construir de verdad**. La
+forma barata es un commit que toque solo esta carpeta (por ejemplo, editar este
+README): el portero reconstruye **solo el brindis** y las otras apps saltan.
+Alternativa: en Vercel, *Settings → Git → Ignored Build Step*, desactivarlo,
+redesplegar y volver a activarlo.
+
+Medido el 24 jul 2026: las variables se pusieron en el proyecto de Vercel del
+brindis, pero el primer *Redeploy* quedó *Canceled* por esto; se arregló con un
+commit a esta carpeta.

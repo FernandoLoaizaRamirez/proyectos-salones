@@ -1,0 +1,68 @@
+-- ============================================================================
+-- 0013 · EL ALMACEN DEJA DE SER PUBLICO
+-- ----------------------------------------------------------------------------
+-- EL AGUJERO QUE CIERRA (el ultimo de los dos del almacen):
+--   La `0010` cerro la ESCRITURA. Faltaba la LECTURA. El bucket `media` nacio
+--   publico en la `0001`, y en un bucket publico el almacen NI SIQUIERA CONSULTA
+--   las politicas: quien tuviera la direccion de una foto la veia, sin ninguna
+--   llave y PARA SIEMPRE. Una direccion filtrada no caducaba nunca.
+--
+-- COMO QUEDA:
+--   El bucket pasa a privado. Las fotos solo se ven con una direccion FIRMADA
+--   que caduca en una hora, y esas direcciones las reparte la Edge Function
+--   `media-ver`, que antes comprueba el pase del evento y que la ruta pedida
+--   esta dentro de la carpeta de ESE evento.
+--
+--   Lo que la base guarda deja de ser una direccion que sirva sola: pasa a ser
+--   una REFERENCIA. Las apps la cambian por una direccion firmada al mostrarla.
+--
+-- POR QUE NO HACE FALTA MIGRAR LOS DATOS (decision de diseno):
+--   La ruta del archivo se DEDUCE de la direccion que ya esta guardada
+--   (`…/object/public/media/<ruta>`), asi que no hay que tocar ni una fila de
+--   `items`. Una migracion de datos sobre albumes de eventos reales es
+--   exactamente el riesgo que no merece la pena correr cuando el dato ya esta
+--   ahi dentro. Si algun dia se cambia de proveedor, ESE sera el momento de
+--   reescribirlas.
+--
+-- LAS SUBIDAS NO SE ROMPEN: una URL de subida firmada (`media-subir`) funciona
+-- igual en un bucket privado.
+--
+-- Requiere: la funcion `media-ver` DESPLEGADA y las apps desplegadas con la
+-- @salones/sync que la usa. Runbook: docs/MEDIOS-PRIVADOS.md
+-- ============================================================================
+
+
+-- ============================================================================
+-- BLOQUE UNICO — EL CORTE  ·  ¡NO CORRER TODAVIA!
+-- ----------------------------------------------------------------------------
+-- Toda esta migracion ES el corte: no hay parte aditiva que aplicar antes.
+--
+-- CORRER SOLO CUANDO:
+--   1. `media-ver` este desplegada y probada, y
+--   2. el album este desplegado con la sync que pide direcciones firmadas, y
+--   3. NO haya un evento en curso.
+--
+-- COMO SE COMPRUEBA (docs/MEDIOS-PRIVADOS.md): abrir en el navegador la
+-- direccion de una foto tal como esta guardada en la base. Antes del corte se
+-- ve; despues debe dar error. Y el album debe seguir viendose igual.
+--
+-- PARA REVERTIR (todo vuelve a como estaba, sin perder ninguna foto):
+--
+--   update storage.buckets set public = true where id = 'media';
+--
+-- ----------------------------------------------------------------------------
+--
+--   update storage.buckets set public = false where id = 'media';
+--
+-- ============================================================================
+
+
+-- ============================================================================
+-- CONSULTA UTIL — en que estado esta el almacen ahora mismo
+-- ----------------------------------------------------------------------------
+--   select id, public, file_size_limit, allowed_mime_types
+--     from storage.buckets where id = 'media';
+--
+--   public = true  → cualquiera con la direccion ve la foto (estado viejo)
+--   public = false → solo con direccion firmada, y caduca (estado nuevo)
+-- ============================================================================

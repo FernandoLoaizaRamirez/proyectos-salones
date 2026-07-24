@@ -58,9 +58,19 @@ jobs:
         #     · NEXT_PUBLIC_SUPABASE_ANON_KEY  = la llave "publishable/anon" pública del proyecto
         #   (Son públicas por diseño —viajan en el navegador—; van como secrets solo
         #    por comodidad y para no fijarlas en el archivo.)
+        #
+        # EXIGIR_SEGURIDAD=1 → el CENTINELA (tests/aislamiento/centinela.test.ts)
+        # deja de ser informativo y se vuelve un CANDADO: si alguna de las 6 piezas
+        # de seguridad se apaga (una migración revertida, una función caída o
+        # borrada), el CI se pone ROJO en vez de saltarse las pruebas en silencio.
+        #
+        # Se enciende el 21 jul 2026, cuando las 6 piezas quedaron desplegadas y
+        # verificadas ("Todas las piezas están encendidas", 53 pruebas pasando).
+        # ANTES de esa fecha habría dado un rojo permanente sin utilidad.
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          EXIGIR_SEGURIDAD: 1
 
   compilar:
     runs-on: ubuntu-latest

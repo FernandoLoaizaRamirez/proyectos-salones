@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Check, X, MessageCircle } from "lucide-react";
-import { Button, Card, cn } from "@salones/ui";
+import { Button, Card, cn, AvisoParticipacion } from "@salones/ui";
 import { obtenerSync, eventoActual } from "@salones/sync";
 import {
   decodificar,
@@ -136,6 +136,8 @@ export default function ConfirmarPage() {
           <Button className="mt-6 w-full" disabled={!asiste} onClick={confirmar}>
             <MessageCircle className="size-4" /> Confirmar
           </Button>
+
+          <AvisoParticipacion accion="confirmar" className="mt-3" />
           <p className="mt-3 text-xs text-muted-foreground">
             Tu respuesta se enviará a los organizadores. Confirma antes del {evento.fechaLimite}.
           </p>

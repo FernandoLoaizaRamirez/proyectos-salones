@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Camera, X, Send, Check, PenLine, MessageCircle, Loader2 } from "lucide-react";
-import { Button, Card, cn } from "@salones/ui";
+import { Button, Card, cn, AvisoParticipacion } from "@salones/ui";
 import { obtenerSync, estaConectado, eventoActual } from "@salones/sync";
 import {
   evento,
@@ -218,6 +218,8 @@ export function FirmaForm() {
             </>
           )}
         </Button>
+
+        <AvisoParticipacion accion="dejar tu mensaje" />
       </form>
     </Card>
   );

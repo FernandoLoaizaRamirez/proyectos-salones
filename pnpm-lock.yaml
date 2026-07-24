@@ -139,6 +139,9 @@ importers:
       '@salones/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@salones/legal':
+        specifier: workspace:*
+        version: link:../../packages/legal
       '@salones/payments':
         specifier: workspace:*
         version: link:../../packages/payments
@@ -765,6 +768,8 @@ importers:
       eslint:
         specifier: ^9.39.5
         version: 9.39.5(jiti@2.7.0)
+
+  packages/legal: {}
 
   packages/payments:
     dependencies:

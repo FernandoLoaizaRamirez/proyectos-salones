@@ -164,6 +164,60 @@ function crearProveedorLocal(): ProveedorSync {
 }
 
 /* ================================================================== */
+/* Llave del ANFITRIÓN — la segunda llave, la de quien organiza        */
+/* ================================================================== */
+
+/**
+ * Hay DOS llaves por evento:
+ *
+ *   - La del INVITADO  → el código del evento (`?e=`). Va en el QR, la tiene
+ *     todo el mundo. Sirve para ver el evento y para aportar (firmar el muro,
+ *     pedir una canción, subir una foto, confirmar asistencia).
+ *
+ *   - La del ANFITRIÓN → una clave privada (`&a=`) que solo recibe quien
+ *     organiza. Es la única que permite BORRAR y moderar.
+ *
+ * Antes de esto, el código del evento permitía borrar, así que cualquier
+ * invitado podía vaciar el álbum o el muro de la boda entera. Ver la migración
+ * `supabase/migrations/0009_llave_anfitrion.sql`.
+ *
+ * La clave se recuerda en el navegador POR EVENTO, para que el anfitrión no
+ * tenga que volver a pegar su enlace cada vez que cambia de pantalla.
+ */
+const claveAnfitrionKey = (evento: string) => `salones:anfitrion:${evento}`;
+
+export function claveAnfitrion(evento: string): string | null {
+  if (!hayNavegador()) return null;
+  const enUrl = new URLSearchParams(window.location.search).get("a");
+  if (enUrl && /^[a-zA-Z0-9_-]{8,128}$/.test(enUrl)) {
+    try {
+      window.localStorage.setItem(claveAnfitrionKey(evento), enUrl);
+    } catch {
+      /* almacenamiento lleno o bloqueado: se usa la de la URL igualmente */
+    }
+    return enUrl;
+  }
+  try {
+    return window.localStorage.getItem(claveAnfitrionKey(evento));
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Olvida la llave de anfitrión guardada en ESTE dispositivo. Útil cuando el
+ * enlace se abrió en una pantalla prestada (la del salón, un proyector).
+ */
+export function olvidarClaveAnfitrion(evento: string): void {
+  if (!hayNavegador()) return;
+  try {
+    window.localStorage.removeItem(claveAnfitrionKey(evento));
+  } catch {
+    /* nada que olvidar */
+  }
+}
+
+/* ================================================================== */
 /* Proveedor SERVIDOR — todos los teléfonos, vía Supabase (REST)       */
 /* ================================================================== */
 
@@ -180,6 +234,7 @@ function crearProveedorServidor(url: string, anon: string): ProveedorSync {
   const raiz = url.replace(/\/$/, "");
   const base = `${raiz}/rest/v1/items`;
   const rpcPase = `${raiz}/rest/v1/rpc/emitir_pase`;
+  const rpcPaseAnfitrion = `${raiz}/rest/v1/rpc/emitir_pase_anfitrion`;
   // La llave puede ser "legacy" (un JWT que empieza con eyJ) o del formato nuevo
   // (sb_publishable_...). El encabezado Authorization solo admite JWTs; con las
   // llaves nuevas basta el encabezado apikey.
@@ -197,45 +252,91 @@ function crearProveedorServidor(url: string, anon: string): ProveedorSync {
    * tiene, se sigue por el candado viejo (encabezado x-evento), de modo que esta
    * versión es segura de desplegar ANTES de aplicar la migración. */
   const pases = new Map<string, { pase: string; expira: number }>();
+  const pasesAnfitrion = new Map<string, { pase: string; expira: number }>();
   const MARGEN_MS = 60_000; // renovar 1 min antes de que caduque
 
-  /** La caducidad viaja dentro del propio pase: <evento>.<exp>.<firma>. */
+  /**
+   * La caducidad viaja dentro del propio pase:
+   *   invitado  → <evento>.<exp>.<firma>
+   *   anfitrión → a.<evento>.<exp>.<firma>   (la "a." del principio lo delata)
+   */
   const caducidadDe = (pase: string): number => {
-    const exp = Number(pase.split(".")[1]);
+    const partes = pase.split(".");
+    const exp = Number(partes[0] === "a" ? partes[2] : partes[1]);
     return Number.isFinite(exp) ? exp * 1000 : 0;
   };
 
-  async function obtenerPase(evento: string): Promise<string | null> {
-    const guardado = pases.get(evento);
+  /** Pide un pase (de invitado o de anfitrión) y lo cachea hasta que caduque. */
+  async function pedirPase(
+    cache: Map<string, { pase: string; expira: number }>,
+    evento: string,
+    ruta: string,
+    cuerpo: Record<string, string>,
+    tipo: string,
+  ): Promise<string | null> {
+    const guardado = cache.get(evento);
     if (guardado && guardado.expira - MARGEN_MS > Date.now()) return guardado.pase;
     try {
-      const res = await fetch(rpcPase, {
+      const res = await fetch(ruta, {
         method: "POST",
         headers: { ...auth, "Content-Type": "application/json" },
-        body: JSON.stringify({ p_codigo: evento }),
+        body: JSON.stringify(cuerpo),
       });
-      if (!res.ok) return null;
+      if (!res.ok) {
+        // Un 404 es "la migración todavía no está aplicada": esperado durante
+        // el despliegue y no es noticia. Un 5xx sí lo es.
+        if (res.status >= 500) reportar(tipo, `la base respondió ${res.status}`, evento);
+        return null;
+      }
       const pase = (await res.json()) as unknown;
       if (typeof pase !== "string" || !pase) return null;
-      pases.set(evento, { pase, expira: caducidadDe(pase) });
+      cache.set(evento, { pase, expira: caducidadDe(pase) });
       return pase;
-    } catch {
-      return null; // sin red o migración sin aplicar: se sigue por el header
+    } catch (e) {
+      // Sin red. Se sigue por el header viejo mientras exista.
+      reportar(tipo, e instanceof Error ? e.message : "sin conexión", evento);
+      return null;
     }
   }
 
+  const obtenerPase = (evento: string) =>
+    pedirPase(pases, evento, rpcPase, { p_codigo: evento }, "sin-pase");
+
   /**
-   * La llave del evento viaja de DOS formas mientras dura la transición: el
-   * encabezado viejo (x-evento) y el PASE firmado (x-evento-pase). Con
-   * cualquiera de los dos el servidor exige la llave correcta: sin ella no se
-   * lee ni se escribe nada (ver docs/MIGRACION-TOKEN-FIRMADO.md).
+   * Pase de ANFITRIÓN: solo se puede pedir si este dispositivo tiene la llave
+   * privada del evento (el `&a=` de su enlace). Sin llave no se pide nada —
+   * ni siquiera se molesta al servidor.
+   */
+  async function obtenerPaseAnfitrion(evento: string): Promise<string | null> {
+    const clave = claveAnfitrion(evento);
+    // "demo" es la vitrina pública: cualquiera modera la demostración.
+    if (!clave && evento !== "demo") return null;
+    return pedirPase(
+      pasesAnfitrion,
+      evento,
+      rpcPaseAnfitrion,
+      { p_codigo: evento, p_clave: clave ?? "" },
+      "sin-pase-anfitrion",
+    );
+  }
+
+  /**
+   * La llave del evento viaja de VARIAS formas mientras dura la transición: el
+   * encabezado viejo (x-evento), el PASE de invitado (x-evento-pase) y, si este
+   * dispositivo es el del anfitrión, su PASE DE ANFITRIÓN (x-evento-anfitrion),
+   * que es el único que permite borrar una vez hecho el corte.
+   * Ver docs/MIGRACION-TOKEN-FIRMADO.md y docs/LLAVE-ANFITRION.md.
    */
   const headersDe = async (evento: string): Promise<Record<string, string>> => {
-    const pase = await obtenerPase(evento);
+    const [pase, paseAnfitrion] = await Promise.all([
+      obtenerPase(evento),
+      obtenerPaseAnfitrion(evento),
+    ]);
     return {
       ...auth,
       "x-evento": evento,
       ...(pase ? { "x-evento-pase": pase } : {}),
+      ...(paseAnfitrion ? { "x-evento-anfitrion": paseAnfitrion } : {}),
       "Content-Type": "application/json",
     };
   };
@@ -243,6 +344,175 @@ function crearProveedorServidor(url: string, anon: string): ProveedorSync {
   const almacen = `${raiz}/storage/v1`;
   const BUCKET = "media";
   const INTERVALO_MS = 3000;
+
+  /* ---- Direcciones de lectura que caducan (migración 0013) ----------------
+   * Lo que se guarda en la base deja de ser una dirección que sirva sola y pasa
+   * a ser una REFERENCIA. Al mostrar el álbum se pide a `media-ver` que firme
+   * esas referencias, y las direcciones que devuelve caducan en una hora.
+   *
+   * Se cachean: un álbum se repinta cada 3 segundos por el sondeo, y sin caché
+   * se pediría la firma de cientos de fotos cada vez.
+   *
+   * Es NO-FATAL: si la función no está desplegada, devuelve nada y quien llama
+   * se queda con las direcciones de siempre —que siguen sirviendo mientras el
+   * bucket sea público—. Por eso esto se puede desplegar ANTES del corte. */
+  const funcMediaVer = `${raiz}/functions/v1/media-ver`;
+  const MARGEN_FIRMA_MS = 60_000;
+  const firmadas = new Map<string, { url: string; expira: number }>();
+
+  firmarMedios = async (evento, rutas) => {
+    const ahora = Date.now();
+    const salida: Record<string, string> = {};
+    const faltan: string[] = [];
+
+    for (const ruta of rutas) {
+      const guardada = firmadas.get(ruta);
+      if (guardada && guardada.expira - MARGEN_FIRMA_MS > ahora) salida[ruta] = guardada.url;
+      else faltan.push(ruta);
+    }
+    if (faltan.length === 0) return salida;
+
+    try {
+      const [pase, paseAnfitrion] = await Promise.all([
+        obtenerPase(evento),
+        obtenerPaseAnfitrion(evento),
+      ]);
+      if (!pase && !paseAnfitrion) return salida;
+
+      // De 500 en 500, que es el tope de la función.
+      for (let i = 0; i < faltan.length; i += 500) {
+        const tanda = faltan.slice(i, i + 500);
+        const res = await fetch(funcMediaVer, {
+          method: "POST",
+          headers: {
+            ...auth,
+            ...(pase ? { "x-evento-pase": pase } : {}),
+            ...(paseAnfitrion ? { "x-evento-anfitrion": paseAnfitrion } : {}),
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ rutas: tanda }),
+        });
+        if (!res.ok) return salida; // sin firmar: quien llama usa lo de siempre
+
+        const dato = (await res.json()) as {
+          direcciones?: Record<string, string>;
+          vigenciaSeg?: number;
+        };
+        const vigencia = (dato.vigenciaSeg ?? 3600) * 1000;
+        for (const [ruta, url] of Object.entries(dato.direcciones ?? {})) {
+          firmadas.set(ruta, { url, expira: Date.now() + vigencia });
+          salida[ruta] = url;
+        }
+      }
+    } catch {
+      /* sin red o función sin desplegar: se sigue con lo de siempre */
+    }
+    return salida;
+  };
+
+  /* ---- Diagnóstico (migración 0012) ---------------------------------------
+   * Antes, cuando algo fallaba aquí dentro, el error se tragaba en silencio
+   * (`catch {}`) y el invitado veía "no hay mensajes" en vez de un aviso. El
+   * operador se enteraba por un WhatsApp enfadado. Ahora los fallos dejan
+   * rastro.
+   *
+   * REGLAS DE ESTE REPORTE:
+   *   · Nunca lanza ni bloquea: si el propio reporte falla, se calla. Un fallo
+   *     al avisar de un fallo no puede tumbar la app de un invitado.
+   *   · Agrupa: el sondeo reintenta cada 3 segundos; sin agrupar, un invitado
+   *     con mala cobertura generaría cientos de avisos. Se manda uno por tipo
+   *     cada 5 minutos, con la cuenta de las veces que se repitió.
+   *   · **Nunca manda la query de la dirección**: ahí viaja la llave de
+   *     anfitrión (`?a=…`). Solo el `pathname`. El servidor la vuelve a
+   *     recortar por si acaso. */
+  const funcDiagnostico = `${raiz}/functions/v1/diagnostico`;
+  const VENTANA_MS = 5 * 60_000;
+  const vistos = new Map<string, { desde: number; veces: number }>();
+
+  /** Qué app es esta, para saber dónde mirar. Del nombre del host, sin más. */
+  const appActual = (): string => {
+    if (!hayNavegador()) return "servidor";
+    return window.location.hostname.replace(/\.vercel\.app$/, "").slice(0, 40) || "desconocida";
+  };
+
+  function reportar(tipo: string, mensaje: string, evento?: string): void {
+    if (!hayNavegador()) return;
+    const ahora = Date.now();
+    const clave = `${tipo}:${evento ?? ""}`;
+    const previo = vistos.get(clave);
+
+    if (previo && ahora - previo.desde < VENTANA_MS) {
+      previo.veces += 1;
+      return; // dentro de la ventana: se cuenta y se calla
+    }
+    const veces = previo ? previo.veces : 1;
+    vistos.set(clave, { desde: ahora, veces: 1 });
+
+    try {
+      void fetch(funcDiagnostico, {
+        method: "POST",
+        headers: { ...auth, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          app: appActual(),
+          tipo,
+          evento,
+          mensaje: String(mensaje).slice(0, 500),
+          // SOLO la ruta. La query lleva la llave de anfitrión.
+          ruta: window.location.pathname,
+          navegador: navigator.userAgent.slice(0, 200),
+          repeticiones: veces,
+        }),
+        keepalive: true,
+      }).catch(() => {});
+    } catch {
+      /* avisar de un fallo nunca puede provocar otro */
+    }
+  }
+
+  /* ---- Permiso de subida (migración 0010) ---------------------------------
+   * Antes de subir una foto o un video se pide permiso a la Edge Function
+   * `media-subir`, presentando el pase del evento. Ella verifica el pase y
+   * devuelve una URL de subida firmada para una ruta que decide ELLA: así el
+   * navegador no puede escribir en la carpeta de otro evento.
+   *
+   * Es NO-FATAL, igual que el pase: si la función todavía no está desplegada,
+   * devuelve null y se sigue por la subida directa de siempre. Por eso esta
+   * versión es segura de desplegar ANTES de tocar nada en el servidor. */
+  const funcMediaSubir = `${raiz}/functions/v1/media-subir`;
+
+  type PermisoSubida = { subirUrl: string; urlPublica: string };
+
+  async function pedirPermisoSubida(
+    evento: string,
+    nombre: string,
+    tipo: string,
+  ): Promise<PermisoSubida | null> {
+    try {
+      const [pase, paseAnfitrion] = await Promise.all([
+        obtenerPase(evento),
+        obtenerPaseAnfitrion(evento),
+      ]);
+      // Sin ningún pase no hay nada que presentar: se deja para el camino viejo.
+      if (!pase && !paseAnfitrion) return null;
+
+      const res = await fetch(funcMediaSubir, {
+        method: "POST",
+        headers: {
+          ...auth,
+          ...(pase ? { "x-evento-pase": pase } : {}),
+          ...(paseAnfitrion ? { "x-evento-anfitrion": paseAnfitrion } : {}),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ nombre, tipo }),
+      });
+      if (!res.ok) return null;
+      const dato = (await res.json()) as Partial<PermisoSubida>;
+      if (typeof dato.subirUrl !== "string" || typeof dato.urlPublica !== "string") return null;
+      return { subirUrl: dato.subirUrl, urlPublica: dato.urlPublica };
+    } catch {
+      return null; // sin red o función sin desplegar
+    }
+  }
 
   const filtro = (evento: string, coleccion: string) =>
     `evento=eq.${encodeURIComponent(evento)}&coleccion=eq.${encodeURIComponent(coleccion)}`;
@@ -289,8 +559,15 @@ function crearProveedorServidor(url: string, anon: string): ProveedorSync {
             firma = nueva;
             cb(items as never);
           }
-        } catch {
-          /* error de red puntual: se reintenta en el próximo ciclo */
+        } catch (e) {
+          // Se reintenta en el próximo ciclo, pero ya no en silencio: si el
+          // muro de una boda lleva 10 minutos sin actualizarse, tiene que
+          // quedar constancia de por qué.
+          reportar(
+            "sondeo",
+            `${coleccion}: ${e instanceof Error ? e.message : "fallo de red"}`,
+            evento,
+          );
         }
       };
       revisar();
@@ -301,22 +578,48 @@ function crearProveedorServidor(url: string, anon: string): ProveedorSync {
       };
     },
     async subirArchivo(evento, nombre, blob, tipo) {
-      const ext = extensionDe(nombre, tipo);
+      const mime = tipo || "application/octet-stream";
+
+      // Camino NUEVO: se pide permiso a la Edge Function `media-subir`, que
+      // verifica el pase y decide ELLA la carpeta (ver migración 0010). Así el
+      // navegador no puede escribir en la burbuja de otro evento.
+      const permiso = await pedirPermisoSubida(evento, nombre, mime);
+      if (permiso) {
+        const res = await fetch(permiso.subirUrl, {
+          method: "PUT",
+          headers: { "Content-Type": mime },
+          body: blob,
+        });
+        if (res.ok) return permiso.urlPublica;
+        // Si la subida firmada falla, se intenta el camino viejo: mientras el
+        // corte no esté hecho sigue abierto, y es mejor que perder la foto.
+      }
+
+      // Camino VIEJO (subida directa). Deja de funcionar en cuanto se corra el
+      // corte de la 0010, que es justo el objetivo.
       const ruta = `${encodeURIComponent(evento)}/${Date.now()}-${Math.random()
         .toString(36)
-        .slice(2, 8)}.${ext}`;
-      const pase = await obtenerPase(evento);
+        .slice(2, 8)}.${extensionDe(nombre, mime)}`;
+      const [pase, paseAnfitrion] = await Promise.all([
+        obtenerPase(evento),
+        obtenerPaseAnfitrion(evento),
+      ]);
       const res = await fetch(`${almacen}/object/${BUCKET}/${ruta}`, {
         method: "POST",
         headers: {
           ...auth,
           "x-evento": evento,
           ...(pase ? { "x-evento-pase": pase } : {}),
-          "Content-Type": tipo || "application/octet-stream",
+          ...(paseAnfitrion ? { "x-evento-anfitrion": paseAnfitrion } : {}),
+          "Content-Type": mime,
         },
         body: blob,
       });
-      if (!res.ok) throw new Error(`sync/subir ${res.status}`);
+      if (!res.ok) {
+        // Aquí sí importa avisar: una foto que no sube es un recuerdo perdido.
+        reportar("subida", `el almacén respondió ${res.status}`, evento);
+        throw new Error(`sync/subir ${res.status}`);
+      }
       return `${almacen}/object/public/${BUCKET}/${ruta}`;
     },
   };
@@ -327,6 +630,13 @@ function crearProveedorServidor(url: string, anon: string): ProveedorSync {
 /* ================================================================== */
 
 let cache: ProveedorSync | null = null;
+
+/**
+ * Lo pone `crearProveedorServidor` al construirse. En modo local no hay nada
+ * que firmar (las fotos son direcciones temporales de este navegador).
+ */
+let firmarMedios: ((evento: string, rutas: string[]) => Promise<Record<string, string>>) | null =
+  null;
 
 /**
  * Devuelve el proveedor de sincronización activo: SERVIDOR si están puestas las
@@ -372,4 +682,95 @@ export function eventoActual(porDefecto = "demo"): string {
 export function sufijoEvento(): string {
   const e = eventoActual();
   return e === "demo" ? "" : `?e=${e}`;
+}
+
+/* ================================================================== */
+/* Fotos y videos: de referencia guardada a dirección que caduca       */
+/* ================================================================== */
+
+/**
+ * En la base se guarda la dirección pública del archivo. Después del corte de
+ * la migración 0013 esa dirección deja de servir por sí sola y pasa a ser solo
+ * una REFERENCIA: de ella se saca la ruta dentro del almacén.
+ *
+ * Se hace así —deducir la ruta— en vez de guardar un campo nuevo, para no tener
+ * que tocar las fotos que ya están guardadas. Una migración de datos sobre los
+ * álbumes de eventos reales es justo el riesgo que no merece la pena correr
+ * cuando el dato ya está ahí dentro.
+ */
+const RUTA_EN_DIRECCION = /\/storage\/v1\/object\/public\/media\/(.+)$/;
+
+function rutaDe(direccion: string): string | null {
+  return RUTA_EN_DIRECCION.exec(direccion)?.[1] ?? null;
+}
+
+/**
+ * Convierte las direcciones guardadas en direcciones que se pueden mostrar.
+ *
+ * Devuelve un mapa `direcciónGuardada → direcciónParaMostrar`. Lo que no sea
+ * del almacén central (las fotos de ejemplo en `/img/...`, los `data:` del muro,
+ * los `blob:` del modo local) **se devuelve tal cual**: esta función nunca
+ * estropea una dirección que ya funcionaba.
+ *
+ * NO FALLA NUNCA: si la función del servidor no está desplegada o no hay red,
+ * devuelve las originales, que siguen sirviendo mientras el bucket sea público.
+ * Por eso las apps se pueden desplegar antes de hacer el corte.
+ */
+export async function resolverMedios(
+  evento: string,
+  direcciones: string[],
+): Promise<Record<string, string>> {
+  obtenerSync(); // asegura que el proveedor esté construido
+  const salida: Record<string, string> = {};
+  const porRuta = new Map<string, string[]>();
+
+  for (const direccion of direcciones) {
+    salida[direccion] = direccion; // por defecto, tal cual
+    const ruta = rutaDe(direccion);
+    if (!ruta) continue;
+    const lista = porRuta.get(ruta);
+    if (lista) lista.push(direccion);
+    else porRuta.set(ruta, [direccion]);
+  }
+
+  if (!firmarMedios || porRuta.size === 0) return salida;
+
+  const firmadas = await firmarMedios(evento, [...porRuta.keys()]);
+  for (const [ruta, url] of Object.entries(firmadas)) {
+    for (const original of porRuta.get(ruta) ?? []) salida[original] = url;
+  }
+  return salida;
+}
+
+/**
+ * ¿Este dispositivo es el del ANFITRIÓN de este evento?
+ *
+ * Sirve para DIBUJAR la interfaz: mostrar u ocultar los botones de borrar y
+ * moderar. **No es el candado.** El candado de verdad está en la base de datos
+ * (migración 0009): aunque alguien fuerce la interfaz, el servidor rechaza el
+ * borrado si no viene con un pase de anfitrión válido.
+ *
+ * Devuelve `true` cuando:
+ *   - no hay servidor central (modo local: un solo dispositivo, quien lo usa es
+ *     el anfitrión — es el modo de las demos y de los planes Renta / Compra), o
+ *   - el evento es "demo" (la vitrina pública se puede moderar sin llave), o
+ *   - este dispositivo tiene la llave privada del evento (llegó por `&a=`).
+ */
+export function esAnfitrion(evento: string = eventoActual()): boolean {
+  if (!estaConectado()) return true;
+  if (evento === "demo") return true;
+  return claveAnfitrion(evento) !== null;
+}
+
+/**
+ * Sufijo del enlace PRIVADO del anfitrión (`?e=…&a=…`), para propagar la llave
+ * entre las pantallas de la misma app. Devuelve el sufijo normal si este
+ * dispositivo no tiene llave, para no inventar una.
+ *
+ * ⚠️ Este enlace NO se comparte con los invitados: quien lo tenga puede borrar.
+ */
+export function sufijoAnfitrion(evento: string = eventoActual()): string {
+  const clave = claveAnfitrion(evento);
+  if (!clave) return sufijoEvento();
+  return `?e=${evento}&a=${clave}`;
 }

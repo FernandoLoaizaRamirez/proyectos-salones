@@ -28,7 +28,7 @@ import {
   X,
 } from "lucide-react";
 import { Button, EmptyState, cn } from "@salones/ui";
-import { estaConectado, obtenerSync } from "@salones/sync";
+import { estaConectado, obtenerSync, resolverMedios } from "@salones/sync";
 import {
   COLECCION_FOTOS,
   MAX_MB,
@@ -56,6 +56,13 @@ export function AlbumModulo({ evento, nombreEvento }: { evento: string; nombreEv
   const inputRef = React.useRef<HTMLInputElement>(null);
   /** URLs temporales de la demo local, para liberarlas al salir. */
   const temporalesRef = React.useRef<string[]>([]);
+  /**
+   * Dirección guardada → dirección con la que se muestra (firmada y con fecha de
+   * caducidad). Lo que no esté aquí se muestra tal cual: las fotos de ejemplo y
+   * las de la demo local no viven en el almacén y no hay nada que firmar.
+   */
+  const [vistas, setVistas] = React.useState<Record<string, string>>({});
+  const ver = React.useCallback((u: string) => vistas[u] ?? u, [vistas]);
 
   // Álbum en vivo: con servidor, se suscribe a la colección del evento. En la
   // demo local las fotos se quedan en esta pestaña (sus URLs son temporales:
@@ -68,6 +75,32 @@ export function AlbumModulo({ evento, nombreEvento }: { evento: string; nombreEv
       setFotos([...items].sort(porFecha)),
     );
   }, [evento]);
+
+  // Lo que la base guarda es una REFERENCIA, no una dirección que sirva sola:
+  // desde la migración 0013 el almacén es privado y cada foto se ve con una
+  // dirección FIRMADA que caduca en una hora. Aquí se piden todas de una vez.
+  //
+  // No romperlo importa más de lo que parece: si esto falta, el día que se
+  // aplique la 0013 el álbum del invitado aparece VACÍO en plena fiesta. Y
+  // mientras la 0013 no esté aplicada, `resolverMedios` devuelve las de siempre,
+  // así que este código es seguro antes y después del corte.
+  const clavesFotos = fotos.map((f) => f.url).join("|");
+  React.useEffect(() => {
+    if (!estaConectado() || fotos.length === 0) return;
+    let vivo = true;
+    void resolverMedios(
+      evento,
+      fotos.map((f) => f.url),
+    ).then((mapa) => {
+      if (vivo) setVistas((previas) => ({ ...previas, ...mapa }));
+    });
+    return () => {
+      vivo = false;
+    };
+    // Depende de la LISTA de fotos, no del sondeo: así no se pide firmar el
+    // álbum entero cada tres segundos.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clavesFotos, evento]);
 
   // Lo subido desde este teléfono para ESTE evento.
   React.useEffect(() => {
@@ -296,7 +329,7 @@ export function AlbumModulo({ evento, nombreEvento }: { evento: string; nombreEv
                 {esVideo(f.tipo) ? (
                   <div className="relative">
                     {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
-                    <video src={f.url} className="w-full object-cover" />
+                    <video src={ver(f.url)} className="w-full object-cover" />
                     <div className="absolute inset-0 grid place-items-center bg-black/20">
                       <span className="grid size-11 place-items-center rounded-full bg-white/80 text-black">
                         <Play className="size-5" />
@@ -306,7 +339,7 @@ export function AlbumModulo({ evento, nombreEvento }: { evento: string; nombreEv
                 ) : (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
-                    src={f.url}
+                    src={ver(f.url)}
                     alt={f.nombre}
                     loading="lazy"
                     className="w-full object-cover transition-transform duration-500 group-hover:scale-105"
@@ -346,7 +379,7 @@ export function AlbumModulo({ evento, nombreEvento }: { evento: string; nombreEv
         >
           <div className="absolute right-5 top-5 z-10 flex items-center gap-2">
             <a
-              href={actual.url}
+              href={ver(actual.url)}
               download={actual.nombre}
               target="_blank"
               rel="noopener noreferrer"
@@ -391,11 +424,16 @@ export function AlbumModulo({ evento, nombreEvento }: { evento: string; nombreEv
           <div className="max-h-[85vh] max-w-4xl" onClick={(e) => e.stopPropagation()}>
             {esVideo(actual.tipo) ? (
               // eslint-disable-next-line jsx-a11y/media-has-caption
-              <video src={actual.url} controls autoPlay className="max-h-[85vh] w-auto rounded-lg" />
+              <video
+                src={ver(actual.url)}
+                controls
+                autoPlay
+                className="max-h-[85vh] w-auto rounded-lg"
+              />
             ) : (
               // eslint-disable-next-line @next/next/no-img-element
               <img
-                src={actual.url}
+                src={ver(actual.url)}
                 alt={actual.nombre}
                 className="max-h-[85vh] w-auto rounded-lg object-contain shadow-2xl"
               />

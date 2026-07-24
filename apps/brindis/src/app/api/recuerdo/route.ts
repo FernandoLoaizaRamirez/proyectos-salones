@@ -1,17 +1,21 @@
 /**
  * API del VIDEO RECUERDO (corre en el servidor, no en el navegador).
  *
- * - POST /api/recuerdo        -> junta todos los brindis y manda el render a
- *                                Shotstack. Devuelve { id }.
+ * - POST /api/recuerdo        -> junta los brindis DE UN EVENTO y manda el
+ *                                render a Shotstack. Recibe { evento } y
+ *                                devuelve { id }.
  * - GET  /api/recuerdo?id=... -> consulta el estado del render. Devuelve
  *                                { status, url } (url cuando status = "done").
+ *
+ * Aquí no hay enlace del navegador que leer, así que el código del evento llega
+ * en el cuerpo de la petición; sin él se usa `demo`, igual que en toda la suite.
  *
  * La clave de Shotstack es SECRETA: vive solo aquí (variable de entorno
  * SHOTSTACK_API_KEY en Vercel), nunca en el navegador.
  */
 import { NextResponse } from "next/server";
 import { construirEdit } from "@/lib/recuerdo";
-import { listarBrindis } from "@/lib/supabase";
+import { listarBrindis, codigoValido } from "@/lib/nube";
 
 export const dynamic = "force-dynamic";
 
@@ -19,15 +23,45 @@ const KEY = process.env.SHOTSTACK_API_KEY;
 const ENV = process.env.SHOTSTACK_ENV ?? "stage"; // "stage" (gratis) o "v1" (producción)
 const BASE = `https://api.shotstack.io/edit/${ENV}`;
 
-export async function POST() {
+export async function POST(req: Request) {
   if (!KEY) {
     return NextResponse.json(
       { error: "Falta configurar la clave de Shotstack (SHOTSTACK_API_KEY)." },
       { status: 500 },
     );
   }
-  const videos = await listarBrindis();
-  const urls = videos.map((v) => v.url);
+
+  const cuerpo = (await req.json().catch(() => null)) as { evento?: unknown } | null;
+  const evento = typeof cuerpo?.evento === "string" ? cuerpo.evento : "demo";
+  if (!codigoValido(evento)) {
+    return NextResponse.json({ error: "Código de evento no válido." }, { status: 400 });
+  }
+
+  // Cada evento junta SOLO sus brindis: el video recuerdo de una boda nunca
+  // mezcla los videos de otra.
+  //
+  // ⚠️ PENDIENTE ANTES DEL CORTE DE LA 0013 (almacén privado). Estas direcciones
+  // NO las abre un navegador: se las mandamos a Shotstack, que las descarga
+  // desde SU servidor. Cuando el bucket pase a privado dejarán de servir y el
+  // video recuerdo fallará (la galería ya está resuelta: usa `resolverMedios`
+  // desde el navegador, con el pase del evento).
+  //
+  // Aquí no vale el mismo camino: esto corre en el servidor, donde no hay pase
+  // del evento. Las salidas razonables son (a) firmar aquí con la service-role,
+  // que Vercel sí puede tener, o (b) que `media-ver` acepte una llamada de
+  // servidor. Una hora de caducidad sobra: el render tarda minutos.
+  //
+  // Mientras tanto NO se rompe nada, porque el corte de la 0013 todavía no se ha
+  // dado. Está anotado en docs/GUION-DEL-CORTE.md como condición del corte 3.
+  let urls: string[];
+  try {
+    urls = (await listarBrindis(evento)).map((v) => v.url);
+  } catch {
+    return NextResponse.json(
+      { error: "No se pudieron leer los brindis. Intenta de nuevo." },
+      { status: 502 },
+    );
+  }
   if (urls.length === 0) {
     return NextResponse.json({ error: "Todavía no hay brindis para juntar." }, { status: 400 });
   }

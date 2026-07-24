@@ -272,9 +272,9 @@ export default function GeneradorEvento() {
                 ))}
               </div>
               <p className="mt-6 text-xs text-muted-foreground">
-                El brindis en video junta los videos en su propia galería (aún sin separación por
-                evento). Los QR de cada pantalla ya salen con el código: se generan dentro de cada app
-                con su botón de compartir.
+                El brindis en video junta los videos en su propia galería, ya separada por evento
+                como el resto. Los QR de cada pantalla ya salen con el código: se generan dentro de
+                cada app con su botón de compartir.
               </p>
             </div>
           ) : null}

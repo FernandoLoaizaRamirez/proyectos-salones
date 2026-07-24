@@ -18,10 +18,13 @@ import {
   UploadCloud,
 } from "lucide-react";
 import { Button, Card, cn, AvisoParticipacion } from "@salones/ui";
+import { estaConectado, eventoActual, sufijoEvento } from "@salones/sync";
 import { QR } from "@/components/qr";
 import {
   evento,
   MAX_SEGUNDOS,
+  VIDEO_BPS,
+  AUDIO_BPS,
   VIDEO_ANCHO,
   VIDEO_ALTO,
   marcosBrindis,
@@ -36,7 +39,7 @@ import {
   type VideoGuardado,
   type MarcoBrindis,
 } from "@/lib/brindis";
-import { subirBrindis } from "@/lib/supabase";
+import { subirBrindis } from "@/lib/nube";
 
 type Fase = "inicio" | "preview" | "grabando" | "listo";
 
@@ -76,6 +79,9 @@ function dibujarCoverVideo(
 }
 
 export function BrindisCliente() {
+  // Con el Servicio gestionado el brindis viaja a la galería del anfitrión; sin
+  // él se queda en este teléfono y se comparte por WhatsApp (ver src/lib/nube.ts).
+  const conectado = estaConectado();
   const [fase, setFase] = React.useState<Fase>("inicio");
   const [error, setError] = React.useState("");
   const [aviso, setAviso] = React.useState("");
@@ -244,13 +250,12 @@ export function BrindisCliente() {
       }
     }
 
-    // Fijamos la calidad al grabar para que el video quede liviano y parejo entre
-    // teléfonos: sin esto, un iPhone graba ~4× más pesado que un Android (misma
-    // duración). ~2.5 Mbps deja un clip de 60 s en ~19 MB, sube rápido y gasta
-    // menos datos al invitado.
+    // La calidad se fija en un solo sitio (ver VIDEO_BPS en @/lib/brindis), con
+    // las cuentas de por qué. Ojo: es una SUGERENCIA — hay navegadores (Safari
+    // en iPhone) que la ignoran, por eso `subirBrindis` revisa el peso final.
     const opciones: MediaRecorderOptions = {
-      videoBitsPerSecond: 2_500_000,
-      audioBitsPerSecond: 128_000,
+      videoBitsPerSecond: VIDEO_BPS,
+      audioBitsPerSecond: AUDIO_BPS,
     };
     if (mime) opciones.mimeType = mime;
     let rec: MediaRecorder;
@@ -349,7 +354,9 @@ export function BrindisCliente() {
     if (!blobRef.current || subido) return;
     setSubiendo(true);
     setAviso("");
-    const r = await subirBrindis(blobRef.current, mimeRef.current);
+    // El brindis entra en la burbuja de SU evento (?e=...): no se mezcla con el
+    // de otra boda.
+    const r = await subirBrindis(eventoActual(), blobRef.current, mimeRef.current);
     setSubiendo(false);
     if (r.ok) {
       setSubido(true);
@@ -558,7 +565,10 @@ export function BrindisCliente() {
           ) : null}
 
           <div className="mt-4 flex flex-col gap-2">
-            {subido ? (
+            {/* "Enviar a los novios" junta los videos de todos los teléfonos:
+                eso es el Servicio gestionado. Sin él, quedan Compartir y
+                Descargar, que no necesitan servidor. */}
+            {!conectado ? null : subido ? (
               <div className="flex items-center justify-center gap-2 rounded-[var(--radius)] border border-green-500/40 bg-green-500/10 px-4 py-3 text-sm font-medium text-green-700 dark:text-green-400">
                 <Check className="size-5" /> ¡Enviado! Ya está con los demás brindis 🎉
               </div>
@@ -598,8 +608,9 @@ export function BrindisCliente() {
             </Button>
           </div>
           <p className="mt-4 text-center text-xs text-muted-foreground">
-            Al enviarlo, tu brindis se guarda junto con los de todos para que {evento.nombre} los vea
-            en un solo lugar.
+            {conectado
+              ? `Al enviarlo, tu brindis se guarda junto con los de todos para que ${evento.nombre} los vea en un solo lugar.`
+              : `Tu brindis se quedó en este teléfono. Compártelo para que llegue a ${evento.nombre}.`}
           </p>
           <AvisoParticipacion accion="enviar tu brindis" className="mt-2 text-center" />
         </div>
@@ -614,7 +625,9 @@ export function CompartirBrindis() {
   const [url, setUrl] = React.useState("");
   const [copiado, setCopiado] = React.useState(false);
 
-  React.useEffect(() => setUrl(window.location.origin), []);
+  // El enlace/QR que reparte el anfitrión lleva el código del evento actual
+  // (?e=...), para que los brindis de esta boda caigan en su propia burbuja.
+  React.useEffect(() => setUrl(`${window.location.origin}/${sufijoEvento()}`), []);
 
   const copiar = async () => {
     try {

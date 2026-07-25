@@ -11,6 +11,11 @@ comprobar antes y después de cada uno.
 > **Regla de oro: NUNCA durante un evento.** Ni "un ratito entre baile y baile".
 > Si hay una boda esa noche, se hace otro día.
 
+> ✅ **LOS TRES CORTES SE COMPLETARON EL 24 jul 2026** (ver la tabla al final).
+> Este guión queda como registro y para el runbook de futuros salones. El candado
+> de seguridad está cerrado del todo: borrado solo del anfitrión, subida solo
+> firmada, y lectura solo con dirección firmada que caduca.
+
 ---
 
 ## Antes de tocar nada: las 4 comprobaciones
@@ -148,4 +153,4 @@ Ninguna foto se pierde: revertir devuelve todo al estado anterior.
 |---|---|---|
 | 0009 · llave del anfitrión | 24 jul 2026 | ✅ HECHO. Verificado en vivo: x-evento viejo → 0 filas; el pase lee los datos; el borrado de un invitado (solo pase) fue RECHAZADO. Antes, arreglado el álbum del portal (el invitado ya no ve el botón de borrar con servidor). |
 | 0010 · almacén cerrado | 24 jul 2026 | ✅ HECHO. Verificado: subida directa con la llave pública → HTTP 400 (bloqueada); `media-subir` con pase sigue devolviendo URL firmada. |
-| 0013 · fotos privadas | | ⏳ PENDIENTE (el único que queda). ✅ El bloqueo del brindis-Shotstack YA está resuelto (firma en el servidor). Listo para correr en un rato tranquilo. |
+| 0013 · fotos privadas | 24 jul 2026 | ✅ HECHO. Verificado en vivo: foto pública "a pelo" → HTTP 400 (agujero de lectura cerrado); la firmada → 200; el álbum del portal carga la foto con la firmada (480px). 218 pruebas en verde tras el corte. **LOS TRES CORTES COMPLETOS.** |

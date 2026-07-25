@@ -142,6 +142,6 @@ Ninguna foto se pierde: revertir devuelve todo al estado anterior.
 
 | Corte | Fecha | Notas |
 |---|---|---|
-| 0009 · llave del anfitrión | | |
-| 0010 · almacén cerrado | | |
-| 0013 · fotos privadas | | |
+| 0009 · llave del anfitrión | 24 jul 2026 | ✅ HECHO. Verificado en vivo: x-evento viejo → 0 filas; el pase lee los datos; el borrado de un invitado (solo pase) fue RECHAZADO. Antes, arreglado el álbum del portal (el invitado ya no ve el botón de borrar con servidor). |
+| 0010 · almacén cerrado | 24 jul 2026 | ✅ HECHO. Verificado: subida directa con la llave pública → HTTP 400 (bloqueada); `media-subir` con pase sigue devolviendo URL firmada. |
+| 0013 · fotos privadas | | ⏳ PENDIENTE. 🚩 Antes: firmar el video recuerdo del brindis (Shotstack) en el servidor, o deja de armarse. |

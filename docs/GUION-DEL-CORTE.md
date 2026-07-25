@@ -121,6 +121,8 @@ update storage.buckets set public = false where id = 'media';
 
 - [ ] El álbum del **portal** se sigue viendo igual.
 - [ ] El álbum del **panel del anfitrión** también, y "descargar todo" funciona.
+- [ ] En el **brindis**, crear un **video recuerdo** y que se arme (prueba de que las
+      direcciones firmadas en el servidor le sirven a Shotstack con el bucket ya privado).
 - [ ] Copiar la dirección de una foto tal como está guardada en la base y abrirla
       en el navegador → ahora debe dar **error** (antes se veía). Eso es el
       agujero cerrado.

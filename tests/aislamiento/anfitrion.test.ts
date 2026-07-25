@@ -141,10 +141,16 @@ suite("Llave de anfitrión (migración 0009)", () => {
       const paseAnfitrion = (await (await pedirPaseAnfitrion("demo", "")).json()) as string;
       const soloAnfitrion = await leerCon("demo", { "x-evento-anfitrion": paseAnfitrion });
 
-      // Se compara con lo que ve el candado viejo: deben coincidir. Si el pase
-      // de anfitrión no estuviera cableado, esto daría 0 y la otra lista no.
-      const conHeaderViejo = await leerCon("demo", { "x-evento": "demo" });
-      expect(soloAnfitrion.length).toBe(conHeaderViejo.length);
+      // Se compara con lo que ve el PASE DE INVITADO: deben coincidir. Si el pase
+      // de anfitrión no estuviera cableado a las políticas, esto daría 0 y la otra
+      // lista no.
+      //
+      // (Hasta el CORTE de la 0009 esto se comparaba con el candado viejo
+      // `x-evento`; el corte lo apagó, así que ahora ese header da 0 y la
+      // referencia válida es el pase de invitado. Ver docs/GUION-DEL-CORTE.md.)
+      const paseInvitado = (await (await pedirPaseInvitado("demo")).json()) as string;
+      const conPase = await leerCon("demo", { "x-evento-pase": paseInvitado });
+      expect(soloAnfitrion.length).toBe(conPase.length);
     },
     RED,
   );

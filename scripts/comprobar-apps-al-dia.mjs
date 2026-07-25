@@ -43,7 +43,12 @@ const APPS = [
   ["rsvp", "https://rsvp-umber-pi.vercel.app"],
   ["brindis", "https://proyectos-salones-brindis.vercel.app"],
   // El portal y el catálogo muestran las fotos: les afecta el corte de la 0013.
-  ["portal", "https://portal-salones.vercel.app", "/?e=demo"],
+  // El proyecto se llama `proyectos-salones-portal` (Vercel regeneró el nombre al
+  // elegir la carpeta apps/portal; encaja con la convención de las otras apps).
+  // ⚠️ Se mira `/muro`, NO la home: la home del portal (`/?e=demo`) no carga las
+  // piezas de sync (los módulos se cargan por ruta), así que daría un falso
+  // "ATRASADA". Cualquier ruta de módulo (muro/album) sí trae el código real.
+  ["portal", "https://proyectos-salones-portal.vercel.app", "/muro?e=demo"],
   // La PORTADA del catálogo es el escaparate comercial y no toca el servidor:
   // sus piezas de sync se cargan solo al entrar al panel. Preguntando por la
   // portada saldría un "NO" que no es verdad, así que se mira `/eventos`.

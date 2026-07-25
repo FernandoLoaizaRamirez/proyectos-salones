@@ -28,7 +28,7 @@ import {
   X,
 } from "lucide-react";
 import { Button, EmptyState, cn } from "@salones/ui";
-import { estaConectado, obtenerSync, resolverMedios } from "@salones/sync";
+import { esAnfitrion, estaConectado, obtenerSync, resolverMedios } from "@salones/sync";
 import {
   COLECCION_FOTOS,
   MAX_MB,
@@ -45,10 +45,13 @@ import {
 
 export function AlbumModulo({ evento, nombreEvento }: { evento: string; nombreEvento: string }) {
   const [fotos, setFotos] = React.useState<Foto[]>([]);
-  /** Ids subidos desde ESTE dispositivo (los únicos que puede borrar). */
+  /** Ids subidos desde ESTE dispositivo. En la demo LOCAL, lo que puede quitar. */
   const [mias, setMias] = React.useState<string[]>([]);
   // Se calcula tras montar para no desincronizar el render del servidor.
   const [conectado, setConectado] = React.useState<boolean | null>(null);
+  // Con servidor, borrar del álbum COMPARTIDO es solo del anfitrión (llave 0009):
+  // el invitado no puede quitar fotos de otros, ni las suyas una vez subidas.
+  const [anfitrion, setAnfitrion] = React.useState(false);
   const [arrastrando, setArrastrando] = React.useState(false);
   const [subiendo, setSubiendo] = React.useState(0);
   const [error, setError] = React.useState("");
@@ -64,12 +67,25 @@ export function AlbumModulo({ evento, nombreEvento }: { evento: string; nombreEv
   const [vistas, setVistas] = React.useState<Record<string, string>>({});
   const ver = React.useCallback((u: string) => vistas[u] ?? u, [vistas]);
 
+  /**
+   * ¿Se puede quitar esta foto del álbum?
+   *  · Con servidor (álbum compartido): SOLO el anfitrión. Tras el corte de la
+   *    0009, la base rechaza cualquier borrado que no venga del anfitrión, así que
+   *    enseñarle el botón al invitado sería enseñarle uno que no funciona.
+   *  · En la demo LOCAL (sin servidor): quien la subió en este teléfono.
+   */
+  const puedeQuitar = React.useCallback(
+    (f: Foto) => (conectado === false ? mias.includes(f.id) : anfitrion),
+    [conectado, mias, anfitrion],
+  );
+
   // Álbum en vivo: con servidor, se suscribe a la colección del evento. En la
   // demo local las fotos se quedan en esta pestaña (sus URLs son temporales:
   // guardarlas no serviría de nada porque mueren al recargar).
   React.useEffect(() => {
     const enServidor = estaConectado();
     setConectado(enServidor);
+    setAnfitrion(esAnfitrion(evento));
     if (!enServidor) return;
     return obtenerSync().suscribir<Foto>(evento, COLECCION_FOTOS, (items) =>
       setFotos([...items].sort(porFecha)),
@@ -346,7 +362,7 @@ export function AlbumModulo({ evento, nombreEvento }: { evento: string; nombreEv
                   />
                 )}
               </button>
-              {mias.includes(f.id) ? (
+              {puedeQuitar(f) ? (
                 <button
                   type="button"
                   aria-label={`Quitar ${f.nombre} del álbum`}

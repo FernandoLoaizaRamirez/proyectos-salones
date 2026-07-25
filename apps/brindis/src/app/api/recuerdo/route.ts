@@ -14,6 +14,7 @@
  * SHOTSTACK_API_KEY en Vercel), nunca en el navegador.
  */
 import { NextResponse } from "next/server";
+import { resolverMedios } from "@salones/sync";
 import { construirEdit } from "@/lib/recuerdo";
 import { listarBrindis, codigoValido } from "@/lib/nube";
 
@@ -40,22 +41,21 @@ export async function POST(req: Request) {
   // Cada evento junta SOLO sus brindis: el video recuerdo de una boda nunca
   // mezcla los videos de otra.
   //
-  // ⚠️ PENDIENTE ANTES DEL CORTE DE LA 0013 (almacén privado). Estas direcciones
-  // NO las abre un navegador: se las mandamos a Shotstack, que las descarga
-  // desde SU servidor. Cuando el bucket pase a privado dejarán de servir y el
-  // video recuerdo fallará (la galería ya está resuelta: usa `resolverMedios`
-  // desde el navegador, con el pase del evento).
+  // Estas direcciones se las mandamos a Shotstack, que descarga los videos desde
+  // SU servidor. Tras el corte de la 0013 (almacén privado) las direcciones
+  // CRUDAS dejan de servir, así que las FIRMAMOS aquí con `resolverMedios`.
   //
-  // Aquí no vale el mismo camino: esto corre en el servidor, donde no hay pase
-  // del evento. Las salidas razonables son (a) firmar aquí con la service-role,
-  // que Vercel sí puede tener, o (b) que `media-ver` acepte una llamada de
-  // servidor. Una hora de caducidad sobra: el render tarda minutos.
-  //
-  // Mientras tanto NO se rompe nada, porque el corte de la 0013 todavía no se ha
-  // dado. Está anotado en docs/GUION-DEL-CORTE.md como condición del corte 3.
+  // Funciona en el servidor igual que en el navegador: el pase del evento se pide
+  // con la llave PÚBLICA (`emitir_pase`), no es un secreto del navegador, así que
+  // aquí también se consigue y se llama a `media-ver`. La firma caduca en 1 h y el
+  // render de Shotstack tarda minutos, así que sobra. Y no rompe nada antes del
+  // corte: mientras el bucket sea público, `resolverMedios` devuelve las de
+  // siempre si algo falla (misma red de seguridad que en el álbum).
   let urls: string[];
   try {
-    urls = (await listarBrindis(evento)).map((v) => v.url);
+    const crudas = (await listarBrindis(evento)).map((v) => v.url);
+    const firmadas = await resolverMedios(evento, crudas);
+    urls = crudas.map((u) => firmadas[u] ?? u);
   } catch {
     return NextResponse.json(
       { error: "No se pudieron leer los brindis. Intenta de nuevo." },

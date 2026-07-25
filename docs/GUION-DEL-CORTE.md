@@ -108,12 +108,14 @@ que caduca en una hora.
 update storage.buckets set public = false where id = 'media';
 ```
 
-> 🚩 **Condición extra si el brindis ya está fusionado:** su **video recuerdo** se
-> arma en Shotstack, un servicio externo que descarga los videos desde **su**
-> servidor con las direcciones guardadas. Firmarlas desde el navegador no le
-> sirve. Está anotado en `apps/brindis/src/app/api/recuerdo/route.ts`: hay que
-> resolverlo (firmar en el servidor) **antes** de este corte, o el video recuerdo
-> dejará de armarse. La galería del brindis sí está resuelta.
+> ✅ **El brindis ya está listo para este corte** (24 jul 2026, commit del
+> `feat(brindis): firma las direcciones del video recuerdo en el servidor`). Su
+> video recuerdo se arma en Shotstack, que descarga los videos desde su servidor;
+> ahora `apps/brindis/src/app/api/recuerdo/route.ts` firma las direcciones con
+> `resolverMedios` antes de mandárselas, así que seguirán sirviendo con el bucket
+> privado. La galería del brindis ya estaba resuelta. **Ya no hay nada que hacer
+> antes de este corte por el brindis** — solo confirmar que su despliegue con ese
+> commit está en vivo (`comprobar-apps-al-dia.mjs` lo cubre).
 
 **Comprobar después:**
 
@@ -144,4 +146,4 @@ Ninguna foto se pierde: revertir devuelve todo al estado anterior.
 |---|---|---|
 | 0009 · llave del anfitrión | 24 jul 2026 | ✅ HECHO. Verificado en vivo: x-evento viejo → 0 filas; el pase lee los datos; el borrado de un invitado (solo pase) fue RECHAZADO. Antes, arreglado el álbum del portal (el invitado ya no ve el botón de borrar con servidor). |
 | 0010 · almacén cerrado | 24 jul 2026 | ✅ HECHO. Verificado: subida directa con la llave pública → HTTP 400 (bloqueada); `media-subir` con pase sigue devolviendo URL firmada. |
-| 0013 · fotos privadas | | ⏳ PENDIENTE. 🚩 Antes: firmar el video recuerdo del brindis (Shotstack) en el servidor, o deja de armarse. |
+| 0013 · fotos privadas | | ⏳ PENDIENTE (el único que queda). ✅ El bloqueo del brindis-Shotstack YA está resuelto (firma en el servidor). Listo para correr en un rato tranquilo. |

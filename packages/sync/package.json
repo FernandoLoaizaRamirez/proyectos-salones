@@ -12,7 +12,7 @@
   },
   "devDependencies": {
     "@salones/config": "workspace:*",
-    "@types/node": "^26.1.0",
+    "@types/node": "^26.1.2",
     "eslint": "^9.39.5"
   }
 }

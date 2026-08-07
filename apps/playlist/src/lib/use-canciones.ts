@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { obtenerSync, eventoActual } from "@salones/sync";
+import { guardarLocal } from "@salones/ui";
 import {
   cancionesIniciales,
   EstadoCancion,
@@ -59,13 +60,30 @@ export function useCanciones() {
   }, []);
 
   React.useEffect(() => {
-    if (cargado) localStorage.setItem(K_MIS_VOTOS, JSON.stringify(misVotos));
+    if (cargado) guardarLocal(K_MIS_VOTOS, JSON.stringify(misVotos));
   }, [misVotos, cargado]);
 
   const yaVote = React.useCallback((id: string) => misVotos.includes(id), [misVotos]);
 
+  /* ---- Nada de "guardar y confiar" (arreglado el 6 ago 2026) ---------------
+   * Estas cuatro acciones lanzaban el guardado con `void` y seguían como si
+   * hubiera funcionado. Con mala cobertura —lo normal en un salón lleno— la
+   * canción no llegaba nunca y la pantalla decía "¡Agregada!" igualmente.
+   *
+   * El caso peor era VOTAR: el voto se apuntaba en este teléfono aunque el
+   * guardado fallara, así que el botón quedaba deshabilitado PARA SIEMPRE y esa
+   * persona ya no podía volver a intentarlo.
+   *
+   * Ahora todas devuelven si salió bien, y lo local solo se toca si salió bien.
+   * Quien llama decide qué enseñar. */
+
   const agregar = React.useCallback(
-    (datos: { titulo: string; artista?: string; link?: string; pedidaPor?: string }) => {
+    async (datos: {
+      titulo: string;
+      artista?: string;
+      link?: string;
+      pedidaPor?: string;
+    }): Promise<boolean> => {
       const c: Cancion = {
         id: "SG-" + Math.random().toString(36).slice(2, 6).toUpperCase(),
         titulo: datos.titulo,
@@ -76,32 +94,53 @@ export function useCanciones() {
         ...(datos.link ? { link: datos.link } : {}),
         ...(datos.pedidaPor ? { pedidaPor: datos.pedidaPor } : {}),
       };
-      void obtenerSync().guardar(eventoActual(), COLECCION_CANCIONES, c);
+      try {
+        await obtenerSync().guardar(eventoActual(), COLECCION_CANCIONES, c);
+      } catch {
+        return false;
+      }
       // El autor de la canción cuenta como su primer voto (en este dispositivo).
       setMisVotos((v) => (v.includes(c.id) ? v : [...v, c.id]));
+      return true;
     },
     [],
   );
 
-  const votar = React.useCallback((id: string) => {
-    if (misVotosRef.current.includes(id)) return;
+  const votar = React.useCallback(async (id: string): Promise<boolean> => {
+    if (misVotosRef.current.includes(id)) return true;
     const actual = cancionesRef.current.find((c) => c.id === id);
-    if (!actual) return;
-    void obtenerSync().guardar(eventoActual(), COLECCION_CANCIONES, {
-      ...actual,
-      votos: actual.votos + 1,
-    });
+    if (!actual) return false;
+    try {
+      await obtenerSync().guardar(eventoActual(), COLECCION_CANCIONES, {
+        ...actual,
+        votos: actual.votos + 1,
+      });
+    } catch {
+      // Sin apuntar nada: así puede volver a intentarlo.
+      return false;
+    }
     setMisVotos((v) => (v.includes(id) ? v : [...v, id]));
+    return true;
   }, []);
 
-  const setEstado = React.useCallback((id: string, estado: Estado) => {
+  const setEstado = React.useCallback(async (id: string, estado: Estado): Promise<boolean> => {
     const actual = cancionesRef.current.find((c) => c.id === id);
-    if (!actual) return;
-    void obtenerSync().guardar(eventoActual(), COLECCION_CANCIONES, { ...actual, estado });
+    if (!actual) return false;
+    try {
+      await obtenerSync().guardar(eventoActual(), COLECCION_CANCIONES, { ...actual, estado });
+      return true;
+    } catch {
+      return false;
+    }
   }, []);
 
-  const eliminar = React.useCallback((id: string) => {
-    void obtenerSync().eliminar(eventoActual(), COLECCION_CANCIONES, id);
+  const eliminar = React.useCallback(async (id: string): Promise<boolean> => {
+    try {
+      await obtenerSync().eliminar(eventoActual(), COLECCION_CANCIONES, id);
+      return true;
+    } catch {
+      return false;
+    }
   }, []);
 
   return { canciones, cargado, yaVote, agregar, votar, setEstado, eliminar };

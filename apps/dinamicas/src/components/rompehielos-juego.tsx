@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Check, RefreshCw, PartyPopper } from "lucide-react";
-import { Card, cn } from "@salones/ui";
+import { Card, cn, guardarLocal } from "@salones/ui";
 import { rompehielosRetos } from "@/lib/dinamicas";
 
 const K_ROMPE = "dinamicas-rompehielos";
@@ -25,7 +25,7 @@ export function RompehielosJuego() {
   }, []);
 
   React.useEffect(() => {
-    if (cargado) localStorage.setItem(K_ROMPE, JSON.stringify(respuestas));
+    if (cargado) guardarLocal(K_ROMPE, JSON.stringify(respuestas));
   }, [respuestas, cargado]);
 
   const set = (id: string, valor: string) => setRespuestas((r) => ({ ...r, [id]: valor }));

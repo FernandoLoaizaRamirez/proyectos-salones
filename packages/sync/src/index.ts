@@ -595,10 +595,47 @@ function crearProveedorServidor(url: string, anon: string): ProveedorSync {
       });
       if (!res.ok) throw new Error(`sync/guardar ${res.status}`);
     },
+    /**
+     * ⚠️ BORRAR "BIEN" NO SIGNIFICA HABER BORRADO (arreglado el 6 ago 2026).
+     *
+     * PostgREST responde **204 aunque no haya borrado ni una fila**: si la RLS
+     * la filtra —lo que pasa cuando no llega el pase de ANFITRIÓN, que desde el
+     * corte de la 0009 es el único que permite borrar— la petición sale
+     * perfecta y el contenido sigue ahí. Comprobado en producción: un DELETE
+     * de un id inventado devuelve 204 igual.
+     *
+     * Se veía así: el anfitrión quitaba un mensaje subido de tono desde su
+     * teléfono, la app no decía nada, y el mensaje seguía en la pantalla grande.
+     *
+     * Ahora se pide que devuelva lo borrado. Si no devuelve nada, se comprueba
+     * si la fila sigue existiendo: si ya no está, el borrado vale igual
+     * (alguien se adelantó, o fue un doble toque); si sigue ahí, es que no hubo
+     * permiso y hay que decirlo.
+     */
     async eliminar(evento, coleccion, id) {
       const q = `${base}?${filtro(evento, coleccion)}&id=eq.${encodeURIComponent(id)}`;
-      const res = await fetch(q, { method: "DELETE", headers: await headersDe(evento) });
+      const res = await fetch(q, {
+        method: "DELETE",
+        headers: { ...(await headersDe(evento)), Prefer: "return=representation" },
+      });
       if (!res.ok) throw new Error(`sync/eliminar ${res.status}`);
+
+      const cuerpo = await res.text();
+      let borradas: unknown = [];
+      try {
+        borradas = cuerpo ? JSON.parse(cuerpo) : [];
+      } catch {
+        borradas = [];
+      }
+      if (Array.isArray(borradas) && borradas.length > 0) return;
+
+      const comprobar = await fetch(`${q}&select=id`, { headers: await headersDe(evento) });
+      if (!comprobar.ok) return; // no se pudo comprobar: no se inventa un fallo
+      const quedan = (await comprobar.json()) as unknown;
+      if (Array.isArray(quedan) && quedan.length > 0) {
+        reportar("borrado-sin-permiso", `${coleccion}: la fila sigue ahí`, evento);
+        throw new Error("sync/eliminar sin-permiso");
+      }
     },
     suscribir(evento, coleccion, cb) {
       let vivo = true;

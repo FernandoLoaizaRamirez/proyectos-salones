@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Plus, Check, X, Trash2, Download, MessageCircle } from "lucide-react";
-import { Button, Card, cn } from "@salones/ui";
+import { Button, Card, cn, Confirmar, guardarLocal } from "@salones/ui";
 import {
   invitadosIniciales,
   evento,
@@ -50,6 +50,9 @@ export function PasesCliente() {
 
   const [paseVer, setPaseVer] = React.useState<Invitado | null>(null);
   const [resultado, setResultado] = React.useState<Aviso>(null);
+  const [confirmarReinicio, setConfirmarReinicio] = React.useState(false);
+  const [importPendiente, setImportPendiente] = React.useState<Invitado[] | null>(null);
+  const [errorImportar, setErrorImportar] = React.useState("");
 
   const invitadosRef = React.useRef(invitados);
   const ingresadosRef = React.useRef(ingresados);
@@ -71,11 +74,11 @@ export function PasesCliente() {
   }, []);
   React.useEffect(() => {
     invitadosRef.current = invitados;
-    if (cargado) localStorage.setItem(LISTA, JSON.stringify(invitados));
+    if (cargado) guardarLocal(LISTA, JSON.stringify(invitados));
   }, [invitados, cargado]);
   React.useEffect(() => {
     ingresadosRef.current = ingresados;
-    if (cargado) localStorage.setItem(INGRESOS, JSON.stringify(ingresados));
+    if (cargado) guardarLocal(INGRESOS, JSON.stringify(ingresados));
   }, [ingresados, cargado]);
 
   const totalPersonas = invitados.reduce((s, i) => s + i.personas, 0);
@@ -140,20 +143,51 @@ export function PasesCliente() {
     a.remove();
     URL.revokeObjectURL(url);
   };
+  /**
+   * ¿Esto que viene del archivo tiene pinta de una lista de invitados?
+   *
+   * Antes se metía tal cual lo que trajera el JSON: un archivo equivocado
+   * sustituía la lista de la puerta por basura, el día del evento, sin deshacer.
+   */
+  const esListaDeInvitados = (data: unknown): data is Invitado[] =>
+    Array.isArray(data) &&
+    data.length > 0 &&
+    data.every(
+      (x) =>
+        x !== null &&
+        typeof x === "object" &&
+        typeof (x as Invitado).id === "string" &&
+        typeof (x as Invitado).nombre === "string",
+    );
+
   const importar = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
     if (!f) return;
     const r = new FileReader();
     r.onload = () => {
+      let data: unknown;
       try {
-        const data = JSON.parse(String(r.result));
-        if (Array.isArray(data)) setInvitados(data);
+        data = JSON.parse(String(r.result));
       } catch {
-        /* archivo inválido */
+        setErrorImportar("Ese archivo no se puede leer. ¿Es el .json que exportaste desde aquí?");
+        return;
       }
+      if (!esListaDeInvitados(data)) {
+        setErrorImportar("Ese archivo no contiene una lista de invitados válida.");
+        return;
+      }
+      setErrorImportar("");
+      // Si ya hay lista, no se pisa sin preguntar: se queda esperando.
+      if (invitados.length > 0) setImportPendiente(data);
+      else setInvitados(data);
     };
     r.readAsText(f);
     e.target.value = "";
+  };
+
+  const aplicarImportacion = () => {
+    if (importPendiente) setInvitados(importPendiente);
+    setImportPendiente(null);
   };
 
   const compartir = (inv: Invitado) => {
@@ -359,6 +393,28 @@ export function PasesCliente() {
               </div>
             </div>
 
+            {errorImportar ? (
+              <p className="mb-4 rounded-[var(--radius)] bg-red-500/10 px-3 py-2 text-sm text-red-600 dark:text-red-400">
+                {errorImportar}
+              </p>
+            ) : null}
+
+            <Confirmar
+              abierto={importPendiente !== null}
+              titulo="¿Sustituir la lista de invitados?"
+              descripcion={
+                <>
+                  El archivo trae <strong>{importPendiente?.length ?? 0}</strong> invitados y
+                  sustituye por completo a los <strong>{invitados.length}</strong> que tienes
+                  ahora. <strong>No hay deshacer.</strong> Si quieres conservar la lista actual,
+                  cancela y usa <em>Exportar</em> primero.
+                </>
+              }
+              textoConfirmar="Sí, sustituir la lista"
+              onConfirmar={aplicarImportacion}
+              onCancelar={() => setImportPendiente(null)}
+            />
+
             <div className="space-y-2">
               {invitados.length === 0 ? (
                 <Card className="p-8 text-center text-sm text-muted-foreground">
@@ -489,10 +545,29 @@ export function PasesCliente() {
               <span className="font-semibold">{personasDentro}</span> de {totalPersonas} personas
               dentro
             </div>
-            <Button variant="ghost" size="sm" onClick={() => setIngresados({})}>
+            <Button variant="ghost" size="sm" onClick={() => setConfirmarReinicio(true)}>
               Reiniciar
             </Button>
           </div>
+
+          <Confirmar
+            abierto={confirmarReinicio}
+            titulo="¿Borrar el registro de entrada?"
+            descripcion={
+              <>
+                Se olvidan los <strong>{nIngresados}</strong> pases que ya entraron. La lista de
+                invitados no se toca, pero el control de la puerta empieza de cero y{" "}
+                <strong>no se puede recuperar</strong>: quien ya pasó podría volver a entrar sin
+                que nadie lo note.
+              </>
+            }
+            textoConfirmar="Sí, empezar de cero"
+            onConfirmar={() => {
+              setIngresados({});
+              setConfirmarReinicio(false);
+            }}
+            onCancelar={() => setConfirmarReinicio(false)}
+          />
 
           <div className="mt-4 space-y-2">
             {invitados.map((inv) => {

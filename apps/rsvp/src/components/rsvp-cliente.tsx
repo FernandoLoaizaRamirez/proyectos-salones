@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Plus, Check, Trash2, MessageCircle, Clock } from "lucide-react";
-import { Button, Card, cn } from "@salones/ui";
+import { Button, Card, cn, guardarLocal } from "@salones/ui";
 import { obtenerSync, eventoActual, sufijoEvento, esAnfitrion } from "@salones/sync";
 import {
   invitadosIniciales,
@@ -77,7 +77,7 @@ export function RsvpCliente() {
   }, []);
 
   React.useEffect(() => {
-    if (cargado) localStorage.setItem(K_LISTA, JSON.stringify(invitados));
+    if (cargado) guardarLocal(K_LISTA, JSON.stringify(invitados));
   }, [invitados, cargado]);
 
   // Las RESPUESTAS llegan por el "lugar central" (@salones/sync): el tablero se

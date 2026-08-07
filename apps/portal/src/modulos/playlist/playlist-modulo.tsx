@@ -13,8 +13,8 @@
  * para no votar dos veces ni mezclar eventos.
  */
 import * as React from "react";
-import { Plus, ThumbsUp, Check, Music, ExternalLink } from "lucide-react";
-import { Button, Card, cn } from "@salones/ui";
+import { Plus, ThumbsUp, Check, Music, ExternalLink, Loader2 } from "lucide-react";
+import { Button, Card, cn, guardarLocal } from "@salones/ui";
 import { obtenerSync } from "@salones/sync";
 import {
   COLECCION_CANCIONES,
@@ -43,6 +43,8 @@ export function PlaylistModulo({
   const [form, setForm] = React.useState({ titulo: "", artista: "", link: "", nombre: "" });
   const [error, setError] = React.useState("");
   const [agregada, setAgregada] = React.useState(false);
+  const [enviando, setEnviando] = React.useState(false);
+  const [errorVoto, setErrorVoto] = React.useState("");
 
   // Referencias a lo último, para no cerrar sobre valores viejos.
   const cancionesRef = React.useRef<Cancion[]>([]);
@@ -75,13 +77,20 @@ export function PlaylistModulo({
   }, [evento]);
 
   React.useEffect(() => {
-    if (cargado) localStorage.setItem(claveVotos(evento), JSON.stringify(misVotos));
+    if (cargado) guardarLocal(claveVotos(evento), JSON.stringify(misVotos));
   }, [misVotos, cargado, evento]);
 
   const yaVote = (id: string) => misVotos.includes(id);
 
-  const agregar = (e: React.FormEvent) => {
+  /* ---- Nada de "guardar y confiar" (arreglado el 6 ago 2026) ---------------
+   * Las dos acciones lanzaban el guardado con `void` y seguían como si hubiera
+   * funcionado: con mala cobertura la canción no llegaba nunca al DJ y la
+   * pantalla decía "¡Agregada!" igual. Y al VOTAR se apuntaba el voto en este
+   * teléfono aunque fallara, dejando el botón muerto para siempre. */
+
+  const agregar = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (enviando) return; // doble toque: una sola canción, no dos
     if (!form.titulo.trim()) {
       setError("Escribe al menos el nombre de la canción.");
       return;
@@ -97,18 +106,38 @@ export function PlaylistModulo({
       ...(form.link.trim() ? { link: form.link.trim() } : {}),
       ...(form.nombre.trim() ? { pedidaPor: form.nombre.trim() } : {}),
     };
-    void obtenerSync().guardar(evento, COLECCION_CANCIONES, c);
+
+    setEnviando(true);
+    try {
+      await obtenerSync().guardar(evento, COLECCION_CANCIONES, c);
+    } catch {
+      setError("No pudimos enviar tu canción. Revisa tu conexión e inténtalo de nuevo.");
+      return;
+    } finally {
+      setEnviando(false);
+    }
+
     setMisVotos((v) => (v.includes(c.id) ? v : [...v, c.id]));
     setForm({ titulo: "", artista: "", link: "", nombre: "" });
     setAgregada(true);
     setTimeout(() => setAgregada(false), 2500);
   };
 
-  const votar = (id: string) => {
+  const votar = async (id: string) => {
     if (misVotosRef.current.includes(id)) return;
     const actual = cancionesRef.current.find((c) => c.id === id);
     if (!actual) return;
-    void obtenerSync().guardar(evento, COLECCION_CANCIONES, { ...actual, votos: actual.votos + 1 });
+    setErrorVoto("");
+    try {
+      await obtenerSync().guardar(evento, COLECCION_CANCIONES, {
+        ...actual,
+        votos: actual.votos + 1,
+      });
+    } catch {
+      // Sin apuntar nada: así puede volver a intentarlo.
+      setErrorVoto("No pudimos registrar tu voto. Revisa tu conexión e inténtalo otra vez.");
+      return;
+    }
     setMisVotos((v) => (v.includes(id) ? v : [...v, id]));
   };
 
@@ -151,8 +180,12 @@ export function PlaylistModulo({
             maxLength={40}
           />
           {error ? <p className="text-sm text-red-600 dark:text-red-400">{error}</p> : null}
-          <Button type="submit" className="w-full">
-            {agregada ? (
+          <Button type="submit" className="w-full" disabled={enviando}>
+            {enviando ? (
+              <>
+                <Loader2 className="size-4 animate-spin" /> Enviando…
+              </>
+            ) : agregada ? (
               <>
                 <Check className="size-4" /> ¡Agregada! Vota más abajo
               </>
@@ -170,6 +203,10 @@ export function PlaylistModulo({
           <h2 className="text-lg font-semibold">Vota por tus favoritas</h2>
           <span className="text-sm text-muted-foreground">{pendientes.length} en cola</span>
         </div>
+
+        {errorVoto ? (
+          <p className="mb-3 text-sm text-red-600 dark:text-red-400">{errorVoto}</p>
+        ) : null}
 
         {!cargado ? null : pendientes.length === 0 ? (
           <p className="rounded-[var(--radius)] border border-dashed border-border py-10 text-center text-sm text-muted-foreground">
@@ -203,7 +240,7 @@ export function PlaylistModulo({
                   </div>
                   <button
                     type="button"
-                    onClick={() => votar(c.id)}
+                    onClick={() => void votar(c.id)}
                     disabled={votado}
                     aria-label={votado ? `Ya votaste por ${c.titulo}` : `Votar por ${c.titulo}`}
                     className={cn(

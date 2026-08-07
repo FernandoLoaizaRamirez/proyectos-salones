@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Plus, ThumbsUp, Check, Music, ExternalLink } from "lucide-react";
+import { Plus, ThumbsUp, Check, Music, ExternalLink, Loader2 } from "lucide-react";
 import { Button, Card, cn } from "@salones/ui";
 import { useCanciones } from "@/lib/use-canciones";
 import { evento, porVotos, plataformaDeLink, EstadoCancion } from "@/lib/playlist";
@@ -14,27 +14,47 @@ export function PedirCliente() {
   const [form, setForm] = React.useState({ titulo: "", artista: "", link: "", nombre: "" });
   const [error, setError] = React.useState("");
   const [agregada, setAgregada] = React.useState(false);
+  const [enviando, setEnviando] = React.useState(false);
+  const [errorVoto, setErrorVoto] = React.useState("");
 
   const pendientes = canciones
     .filter((c) => c.estado === EstadoCancion.Pendiente)
     .sort(porVotos);
 
-  const enviar = (e: React.FormEvent) => {
+  const enviar = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (enviando) return; // doble toque: una sola canción, no dos
     if (!form.titulo.trim()) {
       setError("Escribe al menos el nombre de la canción.");
       return;
     }
     setError("");
-    agregar({
+    setEnviando(true);
+    const ok = await agregar({
       titulo: form.titulo.trim(),
       artista: form.artista.trim() || undefined,
       link: form.link.trim() || undefined,
       pedidaPor: form.nombre.trim() || undefined,
     });
+    setEnviando(false);
+
+    // Solo se limpia el formulario y se da las gracias si de verdad se guardó:
+    // antes se decía "¡Agregada!" pasara lo que pasara, y con mala señal la
+    // canción no llegaba nunca al DJ.
+    if (!ok) {
+      setError("No pudimos enviar tu canción. Revisa tu conexión e inténtalo de nuevo.");
+      return;
+    }
     setForm({ titulo: "", artista: "", link: "", nombre: "" });
     setAgregada(true);
     setTimeout(() => setAgregada(false), 2500);
+  };
+
+  const votarCancion = async (id: string) => {
+    setErrorVoto("");
+    if (!(await votar(id))) {
+      setErrorVoto("No pudimos registrar tu voto. Revisa tu conexión e inténtalo otra vez.");
+    }
   };
 
   return (
@@ -78,8 +98,12 @@ export function PedirCliente() {
             maxLength={40}
           />
           {error ? <p className="text-sm text-red-500">{error}</p> : null}
-          <Button type="submit" className="w-full">
-            {agregada ? (
+          <Button type="submit" className="w-full" disabled={enviando}>
+            {enviando ? (
+              <>
+                <Loader2 className="size-4 animate-spin" /> Enviando…
+              </>
+            ) : agregada ? (
               <>
                 <Check className="size-4" /> ¡Agregada! Vota más abajo
               </>
@@ -98,6 +122,7 @@ export function PedirCliente() {
           <h2 className="text-lg font-semibold">Vota por tus favoritas</h2>
           <span className="text-sm text-muted-foreground">{pendientes.length} en cola</span>
         </div>
+        {errorVoto ? <p className="mb-3 text-sm text-red-500">{errorVoto}</p> : null}
         {!cargado ? null : pendientes.length === 0 ? (
           <p className="rounded-[var(--radius)] border border-dashed border-border py-10 text-center text-sm text-muted-foreground">
             Aún no hay canciones. ¡Sé el primero en pedir una!
@@ -129,7 +154,7 @@ export function PedirCliente() {
                     </div>
                   </div>
                   <button
-                    onClick={() => votar(c.id)}
+                    onClick={() => void votarCancion(c.id)}
                     disabled={votado}
                     className={cn(
                       "flex shrink-0 items-center gap-1.5 rounded-[var(--radius)] border px-3 py-2 text-sm font-medium transition-colors",

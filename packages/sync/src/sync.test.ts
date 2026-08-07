@@ -458,3 +458,70 @@ describe("cuánto se baja de la nube", () => {
     expect(avisos.some((a) => a.tipo === "coleccion-llena")).toBe(false);
   });
 });
+
+/* ==========================================================================
+ * BORRAR DE VERDAD — "salió bien" no es lo mismo que "se borró"
+ * --------------------------------------------------------------------------
+ * PostgREST responde 204 aunque no haya borrado NI UNA fila: si la RLS la
+ * filtra (falta el pase de anfitrión), la petición sale perfecta y el contenido
+ * sigue ahí. Comprobado contra el Supabase real el 6 ago 2026.
+ *
+ * Se veía así: el anfitrión quitaba un mensaje subido de tono desde su teléfono,
+ * la app no protestaba, y el mensaje seguía en la pantalla grande de la fiesta.
+ * ========================================================================== */
+
+/**
+ * Supabase de mentira para el borrado.
+ *   `devuelveBorradas` → qué contesta el DELETE (vacío = "no borré nada").
+ *   `quedaLaFila`      → si al comprobar después, la fila sigue existiendo.
+ */
+async function cargarParaBorrar(o: { devuelveBorradas: unknown[]; quedaLaFila: boolean }) {
+  vi.resetModules();
+  vi.unstubAllGlobals();
+  process.env.NEXT_PUBLIC_SUPABASE_URL = "https://falso.supabase.co";
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "sb_publishable_de_mentira";
+
+  const fetchFalso = vi.fn(async (url: string, init?: { method?: string }) => {
+    if (url.includes("/rpc/")) return { ok: false, status: 404, json: async () => null };
+    if (url.includes("/functions/v1/")) return { ok: true, json: async () => ({}) };
+    if (init?.method === "DELETE") {
+      return { ok: true, text: async () => JSON.stringify(o.devuelveBorradas) };
+    }
+    // La comprobación posterior: ¿sigue ahí?
+    return { ok: true, json: async () => (o.quedaLaFila ? [{ id: "x1" }] : []) };
+  });
+
+  vi.stubGlobal("window", {
+    location: { search: "", hostname: "prueba.vercel.app", pathname: "/" },
+    localStorage: { getItem: () => null, setItem: () => {}, removeItem: () => {} },
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    setTimeout: () => 0,
+    clearTimeout: () => {},
+  });
+  vi.stubGlobal("document", { hidden: false, addEventListener: () => {}, removeEventListener: () => {} });
+  vi.stubGlobal("navigator", { userAgent: "prueba" });
+  vi.stubGlobal("fetch", fetchFalso);
+
+  const sync = await import("./index");
+  return sync;
+}
+
+describe("eliminar — que no diga que borró si no borró", () => {
+  it("si el servidor devuelve la fila borrada, todo en orden", async () => {
+    const sync = await cargarParaBorrar({ devuelveBorradas: [{ id: "x1" }], quedaLaFila: false });
+    await expect(sync.obtenerSync().eliminar("boda", "mensajes", "x1")).resolves.toBeUndefined();
+  });
+
+  it("SI NO BORRÓ NADA Y LA FILA SIGUE AHÍ, protesta (es el caso del anfitrión sin llave)", async () => {
+    const sync = await cargarParaBorrar({ devuelveBorradas: [], quedaLaFila: true });
+    await expect(sync.obtenerSync().eliminar("boda", "mensajes", "x1")).rejects.toThrow();
+  });
+
+  it("si no borró nada porque YA NO ESTABA, no inventa un fallo", async () => {
+    // Doble toque, o alguien que se adelantó desde otro teléfono: el resultado
+    // que quería el anfitrión (que no esté) ya se cumplió.
+    const sync = await cargarParaBorrar({ devuelveBorradas: [], quedaLaFila: false });
+    await expect(sync.obtenerSync().eliminar("boda", "mensajes", "x1")).resolves.toBeUndefined();
+  });
+});

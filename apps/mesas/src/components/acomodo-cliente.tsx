@@ -17,7 +17,7 @@ import {
   Search,
   Pencil,
 } from "lucide-react";
-import { Button, Card, cn } from "@salones/ui";
+import { Button, Card, cn, Confirmar, guardarLocal } from "@salones/ui";
 import { QR } from "@/components/qr";
 import {
   mesasIniciales,
@@ -64,6 +64,7 @@ export function AcomodoCliente() {
 
   const [busqueda, setBusqueda] = React.useState("");
   const [aviso, setAviso] = React.useState("");
+  const [confirmarReinicio, setConfirmarReinicio] = React.useState(false);
   const [arrastrando, setArrastrando] = React.useState<string | null>(null);
   const [sobre, setSobre] = React.useState<string | null>(null); // id de mesa o "libres"
   const [compartir, setCompartir] = React.useState(false);
@@ -108,10 +109,10 @@ export function AcomodoCliente() {
   }, []);
 
   React.useEffect(() => {
-    if (cargado) localStorage.setItem(K_MESAS, JSON.stringify(mesas));
+    if (cargado) guardarLocal(K_MESAS, JSON.stringify(mesas));
   }, [mesas, cargado]);
   React.useEffect(() => {
-    if (cargado) localStorage.setItem(K_INVITADOS, JSON.stringify(invitados));
+    if (cargado) guardarLocal(K_INVITADOS, JSON.stringify(invitados));
   }, [invitados, cargado]);
 
   const mostrarAviso = (texto: string) => {
@@ -269,6 +270,12 @@ export function AcomodoCliente() {
     e.target.value = "";
   };
 
+  /**
+   * ⚠️ ESTO BORRA EL TRABAJO DE TODA UNA TARDE y no hay deshacer: el acomodo
+   * solo vive en este navegador. Hasta el 6 ago 2026 lo hacía de un solo clic,
+   * sin preguntar nada — el día del evento y con prisa, eso pasa. Ahora hay que
+   * confirmar escribiendo, que obliga a leer lo que va a ocurrir.
+   */
   const reiniciar = () => {
     setMesas(mesasIniciales);
     setInvitados(invitadosIniciales);
@@ -276,6 +283,7 @@ export function AcomodoCliente() {
     setEditInvId(null);
     setMesaForm({ nombre: "", capacidad: "10" });
     setInvForm({ nombre: "", asientos: "1" });
+    setConfirmarReinicio(false);
     mostrarAviso("Volvimos al acomodo de ejemplo.");
   };
 
@@ -391,10 +399,27 @@ export function AcomodoCliente() {
           className="hidden"
           onChange={importar}
         />
-        <Button variant="ghost" onClick={reiniciar}>
+        <Button variant="ghost" onClick={() => setConfirmarReinicio(true)}>
           <RotateCcw className="size-4" /> Reiniciar
         </Button>
       </div>
+
+      <Confirmar
+        abierto={confirmarReinicio}
+        titulo="¿Borrar todo el acomodo?"
+        descripcion={
+          <>
+            Se pierden las <strong>{mesas.length}</strong> mesas y los{" "}
+            <strong>{invitados.length}</strong> invitados que llevas puestos, y se vuelve al
+            ejemplo. <strong>No hay forma de recuperarlo.</strong> Si quieres guardarlo antes,
+            cancela y usa <em>Exportar</em>.
+          </>
+        }
+        escribirParaConfirmar="BORRAR"
+        textoConfirmar="Sí, borrar el acomodo"
+        onConfirmar={reiniciar}
+        onCancelar={() => setConfirmarReinicio(false)}
+      />
 
       {aviso ? (
         <div className="mt-4 rounded-[var(--radius)] border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-sm text-amber-700 dark:text-amber-400">

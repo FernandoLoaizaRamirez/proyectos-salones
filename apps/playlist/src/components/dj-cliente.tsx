@@ -16,7 +16,7 @@ import {
   RotateCcw,
   Trash2,
 } from "lucide-react";
-import { Button, Card, cn } from "@salones/ui";
+import { Button, Card, cn, Confirmar } from "@salones/ui";
 import { sufijoEvento, esAnfitrion } from "@salones/sync";
 import { QR } from "@/components/qr";
 import { useCanciones } from "@/lib/use-canciones";
@@ -40,6 +40,25 @@ export function DjCliente() {
   // Solo el anfitrión (el DJ con su enlace privado) descarta canciones.
   // Arranca en false: ante la duda, se esconde el botón.
   const [anfitrion, setAnfitrion] = React.useState(false);
+  /** La canción que se va a quitar, esperando confirmación. */
+  const [porQuitar, setPorQuitar] = React.useState<Cancion | null>(null);
+  const [errorQuitar, setErrorQuitar] = React.useState("");
+
+  /**
+   * Quitar una canción es irreversible y, hasta el 6 ago 2026, además fallaba
+   * EN SILENCIO: si el borrado no llegaba al servidor, el DJ creía que la había
+   * quitado y la canción seguía en la lista de todos.
+   */
+  const confirmarQuitar = async () => {
+    if (!porQuitar) return;
+    const ok = await eliminar(porQuitar.id);
+    setPorQuitar(null);
+    setErrorQuitar(
+      ok
+        ? ""
+        : "No pudimos quitar la canción. Si el evento usa llave de anfitrión, ábrelo desde el enlace que la lleva.",
+    );
+  };
 
   React.useEffect(() => {
     // El enlace para pedir lleva el código del evento actual (?e=...).
@@ -119,6 +138,12 @@ export function DjCliente() {
       </div>
 
       {/* Lista */}
+      {errorQuitar ? (
+        <p className="mt-4 rounded-[var(--radius)] bg-red-500/10 px-3 py-2 text-sm text-red-600 dark:text-red-400">
+          {errorQuitar}
+        </p>
+      ) : null}
+
       <div className="mt-6 space-y-2">
         {!cargado ? null : lista.length === 0 ? (
           <p className="rounded-[var(--radius)] border border-dashed border-border py-12 text-center text-muted-foreground">
@@ -201,7 +226,7 @@ export function DjCliente() {
                   )}
                   {anfitrion ? (
                     <button
-                      onClick={() => eliminar(c.id)}
+                      onClick={() => setPorQuitar(c)}
                       aria-label="Eliminar"
                       className="grid size-9 place-items-center rounded-[var(--radius)] text-muted-foreground transition-colors hover:bg-muted hover:text-red-500"
                     >
@@ -266,6 +291,22 @@ export function DjCliente() {
           </Card>
         </div>
       ) : null}
+
+      <Confirmar
+        abierto={porQuitar !== null}
+        titulo="¿Quitar esta canción?"
+        descripcion={
+          <>
+            Se quita <strong>{porQuitar?.titulo}</strong>
+            {porQuitar?.artista ? ` de ${porQuitar.artista}` : ""} de la lista de todos, con sus{" "}
+            <strong>{porQuitar?.votos ?? 0}</strong> {porQuitar?.votos === 1 ? "voto" : "votos"}. No
+            se puede deshacer.
+          </>
+        }
+        textoConfirmar="Sí, quitarla"
+        onConfirmar={() => void confirmarQuitar()}
+        onCancelar={() => setPorQuitar(null)}
+      />
     </div>
   );
 }

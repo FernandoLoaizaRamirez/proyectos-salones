@@ -15,7 +15,7 @@ import {
   QrCode,
   Settings2,
 } from "lucide-react";
-import { Button, Card, cn } from "@salones/ui";
+import { Button, Card, cn, guardarLocal } from "@salones/ui";
 import { QR } from "@/components/qr";
 import {
   evento as eventoLocal,
@@ -101,10 +101,18 @@ export function MiMesaCliente() {
           return;
         }
         setAcomodo(a);
-        localStorage.setItem(K_ACOMODO, JSON.stringify(a));
+        // Si el navegador no deja guardar (modo privado, almacenamiento lleno) el
+        // acomodo SÍ se carga: solo no sobrevive al cierre. Antes ese fallo caía
+        // en el catch de abajo y decía "No se pudo leer el archivo", que es
+        // mentira y manda a revisar el archivo equivocado.
+        const guardado = guardarLocal(K_ACOMODO, JSON.stringify(a));
         setSeleccion(null);
         setQuery("");
-        setAviso("Acomodo cargado. Ya puedes compartirlo con tus invitados.");
+        setAviso(
+          guardado
+            ? "Acomodo cargado. Ya puedes compartirlo con tus invitados."
+            : "Acomodo cargado, pero este navegador no deja guardarlo: se perderá al cerrar la página.",
+        );
       } catch {
         setAviso("No se pudo leer el archivo.");
       }

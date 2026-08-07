@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Check, RefreshCw, PartyPopper } from "lucide-react";
-import { Button, Card, cn } from "@salones/ui";
+import { Button, Card, cn, guardarLocal } from "@salones/ui";
 import { bingoCasillas, BINGO_LADO, hayLineaBingo, bingoCompleto } from "@/lib/dinamicas";
 
 const K_BINGO = "dinamicas-bingo";
@@ -25,7 +25,7 @@ export function BingoJuego() {
   }, []);
 
   React.useEffect(() => {
-    if (cargado) localStorage.setItem(K_BINGO, JSON.stringify(marcadas));
+    if (cargado) guardarLocal(K_BINGO, JSON.stringify(marcadas));
   }, [marcadas, cargado]);
 
   const alternar = (i: number) =>

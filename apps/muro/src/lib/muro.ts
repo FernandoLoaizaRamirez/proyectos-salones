@@ -27,7 +27,13 @@ export type Mensaje = {
   id: string;
   nombre: string;
   texto: string;
-  foto?: string; // dataURL (o ruta a /img en la semilla)
+  /**
+   * Dónde está la foto. Con servidor es la DIRECCIÓN de la foto en el almacén
+   * (hay que pasarla por `resolverMedios` para verla, igual que en el álbum);
+   * en la demo local y en los mensajes de antes del 6 ago 2026, la foto misma
+   * en texto. Las tres formas se siguen viendo igual.
+   */
+  foto?: string;
   fecha: number; // marca de tiempo (ms)
 };
 
@@ -133,36 +139,12 @@ export function tiempoRelativo(fecha: number, ahora = Date.now()): string {
 }
 
 /**
- * Comprime una imagen a un dataURL manejable (máx. ~1200 px, JPEG). Así las
- * fotos ocupan poco y caben varias en el almacenamiento del dispositivo.
+ * La compresión vive ahora en `@salones/sync`, junto a `subirArchivo`: es el
+ * paso previo a subir, y así no hay una copia por app. Devuelve un **Blob**
+ * (antes daba texto), que es lo que permite subir la foto al almacén en vez de
+ * meterla dentro del mensaje.
  */
-export function comprimirImagen(file: File, maxLado = 1200, calidad = 0.82): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const img = new Image();
-      img.onload = () => {
-        const escala = Math.min(1, maxLado / Math.max(img.width, img.height));
-        const w = Math.round(img.width * escala);
-        const h = Math.round(img.height * escala);
-        const canvas = document.createElement("canvas");
-        canvas.width = w;
-        canvas.height = h;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) {
-          reject(new Error("No se pudo procesar la imagen."));
-          return;
-        }
-        ctx.drawImage(img, 0, 0, w, h);
-        resolve(canvas.toDataURL("image/jpeg", calidad));
-      };
-      img.onerror = () => reject(new Error("Imagen no válida."));
-      img.src = String(reader.result);
-    };
-    reader.onerror = () => reject(new Error("No se pudo leer el archivo."));
-    reader.readAsDataURL(file);
-  });
-}
+export { comprimirImagen } from "@salones/sync";
 
 /** Descarga todos los mensajes como un recuerdo en texto (para guardar o imprimir). */
 export function exportarRecuerdo(mensajes: Mensaje[]): void {

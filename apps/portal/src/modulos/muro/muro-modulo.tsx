@@ -11,7 +11,7 @@
 import * as React from "react";
 import { Camera, X, Send, Check, PenLine, Loader2, MessageSquare } from "lucide-react";
 import { Button, Card, cn } from "@salones/ui";
-import { obtenerSync, estaConectado } from "@salones/sync";
+import { obtenerSync, estaConectado, aTextoDeDatos, resolverMedios } from "@salones/sync";
 import {
   COLECCION_MENSAJES,
   comprimirImagen,
@@ -26,12 +26,54 @@ const campo =
 export function MuroModulo({ evento, nombreEvento }: { evento: string; nombreEvento: string }) {
   const [nombre, setNombre] = React.useState("");
   const [texto, setTexto] = React.useState("");
-  const [foto, setFoto] = React.useState<string | null>(null);
+  /* La foto se guarda en dos piezas: el BLOB comprimido (lo que sube al
+   * almacén) y una dirección temporal para la vista previa. Antes era una sola
+   * cosa: la foto en TEXTO dentro del propio mensaje, que hacía que el muro
+   * entero se volviera a bajar con todas las fotos dentro en cada refresco. */
+  const [fotoBlob, setFotoBlob] = React.useState<Blob | null>(null);
+  const [vistaPrevia, setVistaPrevia] = React.useState<string | null>(null);
   const [procesandoFoto, setProcesandoFoto] = React.useState(false);
   const [enviando, setEnviando] = React.useState(false);
   const [error, setError] = React.useState("");
   const [enviado, setEnviado] = React.useState<Mensaje | null>(null);
   const [mensajes, setMensajes] = React.useState<Mensaje[]>([]);
+
+  const quitarFoto = React.useCallback(() => {
+    setFotoBlob(null);
+    setVistaPrevia((previa) => {
+      if (previa) URL.revokeObjectURL(previa);
+      return null;
+    });
+  }, []);
+
+  /* ---- Las fotos, desde el 6 ago 2026 -------------------------------------
+   * Ahora la foto sube al almacén y en el mensaje queda su dirección, que en un
+   * almacén privado no sirve sola: hay que cambiarla por una FIRMADA, igual que
+   * en el álbum. `resolverMedios` devuelve tal cual lo que no sea del almacén
+   * (los mensajes viejos con la foto en texto), así que nada de antes se rompe. */
+  const [vistas, setVistas] = React.useState<Record<string, string>>({});
+  const mensajesVistos = React.useMemo(
+    () => mensajes.map((m) => (m.foto ? { ...m, foto: vistas[m.foto] ?? m.foto } : m)),
+    [mensajes, vistas],
+  );
+
+  const clavesFotos = mensajes
+    .map((m) => m.foto)
+    .filter(Boolean)
+    .join("|");
+  React.useEffect(() => {
+    const fotos = mensajes.map((m) => m.foto).filter((u): u is string => Boolean(u));
+    if (fotos.length === 0) return;
+    let vivo = true;
+    void resolverMedios(evento, fotos).then((mapa) => {
+      if (vivo) setVistas((previas) => ({ ...previas, ...mapa }));
+    });
+    return () => {
+      vivo = false;
+    };
+    // Depende de la LISTA de fotos, no del sondeo de cada 3 s.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clavesFotos, evento]);
   // Se calcula tras montar para no desincronizar el render del servidor.
   const [conectado, setConectado] = React.useState<boolean | null>(null);
   const fileRef = React.useRef<HTMLInputElement>(null);
@@ -52,7 +94,12 @@ export function MuroModulo({ evento, nombreEvento }: { evento: string; nombreEve
     setProcesandoFoto(true);
     setError("");
     try {
-      setFoto(await comprimirImagen(file));
+      const blob = await comprimirImagen(file);
+      setFotoBlob(blob);
+      setVistaPrevia((previa) => {
+        if (previa) URL.revokeObjectURL(previa);
+        return URL.createObjectURL(blob);
+      });
     } catch {
       setError("No pudimos usar esa imagen. Intenta con otra.");
     } finally {
@@ -68,15 +115,27 @@ export function MuroModulo({ evento, nombreEvento }: { evento: string; nombreEve
     }
     setError("");
     setEnviando(true);
-    const msg: Mensaje = {
-      id: nuevoIdMensaje(),
-      nombre: nombre.trim(),
-      texto: texto.trim(),
-      fecha: Date.now(),
-      ...(foto ? { foto } : {}),
-    };
+    const sync = obtenerSync();
     try {
-      await obtenerSync().guardar(evento, COLECCION_MENSAJES, msg);
+      /* La foto va al ALMACÉN y en el mensaje queda solo su dirección — el mismo
+       * camino del álbum. En modo LOCAL no hay almacén, así que ahí sí se guarda
+       * como texto: es lo que hace que la demo sobreviva a recargar. */
+      let foto: string | undefined;
+      if (fotoBlob) {
+        foto = estaConectado()
+          ? await sync.subirArchivo(evento, `muro-${Date.now()}.jpg`, fotoBlob, "image/jpeg")
+          : await aTextoDeDatos(fotoBlob);
+      }
+
+      const msg: Mensaje = {
+        id: nuevoIdMensaje(),
+        nombre: nombre.trim(),
+        texto: texto.trim(),
+        fecha: Date.now(),
+        ...(foto ? { foto } : {}),
+      };
+
+      await sync.guardar(evento, COLECCION_MENSAJES, msg);
       setEnviado(msg);
     } catch (err) {
       setError(
@@ -92,7 +151,11 @@ export function MuroModulo({ evento, nombreEvento }: { evento: string; nombreEve
   const otro = () => {
     setNombre("");
     setTexto("");
-    setFoto(null);
+    setFotoBlob(null);
+    setVistaPrevia((previa) => {
+      if (previa) URL.revokeObjectURL(previa);
+      return null;
+    });
     setError("");
     setEnviado(null);
   };
@@ -108,9 +171,9 @@ export function MuroModulo({ evento, nombreEvento }: { evento: string; nombreEve
           <p className="mt-2 text-muted-foreground">
             Tu mensaje quedó en el muro de {nombreEvento}.
           </p>
-          {enviado.foto ? (
+          {vistaPrevia ? (
             <img
-              src={enviado.foto}
+              src={vistaPrevia}
               alt="Tu foto"
               className="mx-auto mt-5 max-h-48 rounded-[var(--radius)] object-cover"
             />
@@ -161,12 +224,12 @@ export function MuroModulo({ evento, nombreEvento }: { evento: string; nombreEve
 
             <div>
               <label className="mb-1.5 block text-sm font-medium">Foto (opcional)</label>
-              {foto ? (
+              {vistaPrevia ? (
                 <div className="relative overflow-hidden rounded-[var(--radius)] border border-border">
-                  <img src={foto} alt="Vista previa" className="max-h-56 w-full object-cover" />
+                  <img src={vistaPrevia} alt="Vista previa" className="max-h-56 w-full object-cover" />
                   <button
                     type="button"
-                    onClick={() => setFoto(null)}
+                    onClick={quitarFoto}
                     aria-label="Quitar foto"
                     className="absolute right-2 top-2 grid size-8 place-items-center rounded-full bg-black/60 text-white transition-colors hover:bg-black/80"
                   >
@@ -227,7 +290,7 @@ export function MuroModulo({ evento, nombreEvento }: { evento: string; nombreEve
           </p>
         ) : (
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            {mensajes.map((m) => (
+            {mensajesVistos.map((m) => (
               <Card key={m.id} className="p-4">
                 {m.foto ? (
                   <img

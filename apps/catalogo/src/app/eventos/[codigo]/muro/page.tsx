@@ -30,7 +30,7 @@ import {
   X,
 } from "lucide-react";
 import { Button, Card, EmptyState } from "@salones/ui";
-import { obtenerSync } from "@salones/sync";
+import { obtenerSync, resolverMedios } from "@salones/sync";
 import { obtenerSupabase } from "@/lib/supabase";
 import { obtenerEvento, type EventoFila } from "@/lib/eventos";
 import { COLECCION_MENSAJES, enlaceFirmar, exportarRecuerdo, tiempoRelativo, type Mensaje } from "@/lib/muro";
@@ -52,6 +52,34 @@ export default function MuroDelEvento({ params }: { params: Promise<{ codigo: st
   const [aviso, setAviso] = React.useState("");
   // El reloj se fija tras montar para no desincronizar el render del servidor.
   const [ahora, setAhora] = React.useState(0);
+
+  /* Desde el 6 ago 2026 la foto del muro sube al almacén y en el mensaje queda
+   * su dirección, que en un almacén privado no sirve sola: hay que cambiarla por
+   * una FIRMADA, igual que en el álbum. Lo que no sea del almacén (los mensajes
+   * viejos con la foto en texto) se devuelve tal cual, así que nada se rompe. */
+  const [vistas, setVistas] = React.useState<Record<string, string>>({});
+  const mensajesVistos = React.useMemo(
+    () => mensajes.map((m) => (m.foto ? { ...m, foto: vistas[m.foto] ?? m.foto } : m)),
+    [mensajes, vistas],
+  );
+
+  const clavesFotos = mensajes
+    .map((m) => m.foto)
+    .filter(Boolean)
+    .join("|");
+  React.useEffect(() => {
+    const fotos = mensajes.map((m) => m.foto).filter((u): u is string => Boolean(u));
+    if (fotos.length === 0) return;
+    let vivo = true;
+    void resolverMedios(codigo, fotos).then((mapa) => {
+      if (vivo) setVistas((previas) => ({ ...previas, ...mapa }));
+    });
+    return () => {
+      vivo = false;
+    };
+    // Depende de la LISTA de fotos, no del sondeo de cada 3 s.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clavesFotos, codigo]);
 
   const urlFirmar = enlaceFirmar(codigo, baseDeApp("muro"));
 
@@ -183,7 +211,7 @@ export default function MuroDelEvento({ params }: { params: Promise<{ codigo: st
           />
         ) : (
           <div className="columns-1 gap-4 sm:columns-2 lg:columns-3">
-            {mensajes.map((m) => (
+            {mensajesVistos.map((m) => (
               <article
                 key={m.id}
                 className="group relative mb-4 break-inside-avoid rounded-[var(--radius)] border border-border bg-card p-5 shadow-sm"
@@ -274,7 +302,7 @@ export default function MuroDelEvento({ params }: { params: Promise<{ codigo: st
       {/* Modo pantalla */}
       {pantalla ? (
         <ModoPantalla
-          mensajes={mensajes}
+          mensajes={mensajesVistos}
           nombreEvento={evento.nombre}
           urlFirmar={urlFirmar}
           onClose={() => setPantalla(false)}

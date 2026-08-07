@@ -3,7 +3,7 @@
 import * as React from "react";
 import { Camera, X, Send, Check, PenLine, MessageCircle, Loader2 } from "lucide-react";
 import { Button, Card, cn, AvisoParticipacion } from "@salones/ui";
-import { obtenerSync, estaConectado, eventoActual } from "@salones/sync";
+import { obtenerSync, estaConectado, eventoActual, aTextoDeDatos } from "@salones/sync";
 import {
   evento,
   comprimirImagen,
@@ -17,12 +17,37 @@ const campo =
 export function FirmaForm() {
   const [nombre, setNombre] = React.useState("");
   const [texto, setTexto] = React.useState("");
-  const [foto, setFoto] = React.useState<string | null>(null);
+  /**
+   * La foto se guarda en dos piezas: el BLOB comprimido (lo que se sube) y una
+   * dirección temporal para la vista previa de esta pantalla.
+   *
+   * Antes era una sola cosa: la foto convertida a TEXTO, que viajaba dentro del
+   * propio mensaje. Eso hacía que el muro entero se volviera a bajar con todas
+   * las fotos dentro en cada refresco, y que las fotos no pasaran por el candado
+   * de fotos privadas. Ahora sube al almacén, como el álbum.
+   */
+  const [fotoBlob, setFotoBlob] = React.useState<Blob | null>(null);
+  const [vistaPrevia, setVistaPrevia] = React.useState<string | null>(null);
   const [procesandoFoto, setProcesandoFoto] = React.useState(false);
   const [enviando, setEnviando] = React.useState(false);
   const [error, setError] = React.useState("");
   const [enviado, setEnviado] = React.useState<Mensaje | null>(null);
   const fileRef = React.useRef<HTMLInputElement>(null);
+
+  const quitarFoto = React.useCallback(() => {
+    setVistaPrevia((previa) => {
+      if (previa) URL.revokeObjectURL(previa);
+      return null;
+    });
+    setFotoBlob(null);
+  }, []);
+
+  // Si se cierra la pantalla con una foto elegida, se suelta su memoria.
+  React.useEffect(() => {
+    return () => {
+      if (vistaPrevia) URL.revokeObjectURL(vistaPrevia);
+    };
+  }, [vistaPrevia]);
 
   const elegirFoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -31,8 +56,12 @@ export function FirmaForm() {
     setProcesandoFoto(true);
     setError("");
     try {
-      const dataUrl = await comprimirImagen(file);
-      setFoto(dataUrl);
+      const blob = await comprimirImagen(file);
+      setFotoBlob(blob);
+      setVistaPrevia((previa) => {
+        if (previa) URL.revokeObjectURL(previa);
+        return URL.createObjectURL(blob);
+      });
     } catch {
       setError("No pudimos usar esa imagen. Intenta con otra.");
     } finally {
@@ -48,18 +77,32 @@ export function FirmaForm() {
     }
     setError("");
     setEnviando(true);
-    const msg: Mensaje = {
-      id: "MS-" + Math.random().toString(36).slice(2, 8).toUpperCase(),
-      nombre: nombre.trim(),
-      texto: texto.trim(),
-      fecha: Date.now(),
-      ...(foto ? { foto } : {}),
-    };
+    const sync = obtenerSync();
+    const eventoId = eventoActual();
     try {
+      /* La foto va al ALMACÉN y en el mensaje queda solo su dirección — el
+       * mismo camino del álbum. En modo LOCAL no hay almacén donde subirla, así
+       * que ahí sí se guarda como texto: es lo que hace que la demo sobreviva a
+       * recargar la página. */
+      let foto: string | undefined;
+      if (fotoBlob) {
+        foto = estaConectado()
+          ? await sync.subirArchivo(eventoId, `muro-${Date.now()}.jpg`, fotoBlob, "image/jpeg")
+          : await aTextoDeDatos(fotoBlob);
+      }
+
+      const msg: Mensaje = {
+        id: "MS-" + Math.random().toString(36).slice(2, 8).toUpperCase(),
+        nombre: nombre.trim(),
+        texto: texto.trim(),
+        fecha: Date.now(),
+        ...(foto ? { foto } : {}),
+      };
+
       // Escribe en el "lugar central" (@salones/sync) del evento del enlace:
       // en local queda en este dispositivo; con el servicio gestionado llega al
       // muro de todos los invitados de ESTE evento.
-      await obtenerSync().guardar(eventoActual(), COLECCION_MENSAJES, msg);
+      await sync.guardar(eventoId, COLECCION_MENSAJES, msg);
       setEnviado(msg);
     } catch (err) {
       setError(
@@ -91,7 +134,7 @@ export function FirmaForm() {
   const otro = () => {
     setNombre("");
     setTexto("");
-    setFoto(null);
+    quitarFoto();
     setError("");
     setEnviado(null);
   };
@@ -106,9 +149,9 @@ export function FirmaForm() {
         <p className="mt-2 text-muted-foreground">
           Tu mensaje quedó guardado en el muro de {evento.nombre}. ¡Los novios lo van a atesorar!
         </p>
-        {enviado.foto ? (
+        {vistaPrevia ? (
           <img
-            src={enviado.foto}
+            src={vistaPrevia}
             alt="Tu foto"
             className="mx-auto mt-5 max-h-48 rounded-[var(--radius)] object-cover"
           />
@@ -166,12 +209,12 @@ export function FirmaForm() {
 
         <div>
           <label className="mb-1.5 block text-sm font-medium">Foto (opcional)</label>
-          {foto ? (
+          {vistaPrevia ? (
             <div className="relative overflow-hidden rounded-[var(--radius)] border border-border">
-              <img src={foto} alt="Vista previa" className="max-h-56 w-full object-cover" />
+              <img src={vistaPrevia} alt="Vista previa" className="max-h-56 w-full object-cover" />
               <button
                 type="button"
-                onClick={() => setFoto(null)}
+                onClick={quitarFoto}
                 aria-label="Quitar foto"
                 className="absolute right-2 top-2 grid size-8 place-items-center rounded-full bg-black/60 text-white transition-colors hover:bg-black/80"
               >

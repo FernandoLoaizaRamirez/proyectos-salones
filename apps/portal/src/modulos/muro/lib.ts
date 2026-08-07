@@ -45,33 +45,8 @@ export function tiempoRelativo(fecha: number, ahora = Date.now()): string {
 }
 
 /**
- * Comprime una imagen a un dataURL manejable (máx. ~1200 px, JPEG), para que las
- * fotos ocupen poco. Solo corre en el navegador (usa canvas).
+ * La compresión vive en `@salones/sync`, junto a `subirArchivo`. Devuelve un
+ * **Blob** (antes daba texto), que es lo que permite subir la foto al almacén
+ * en vez de meterla dentro del mensaje.
  */
-export function comprimirImagen(file: File, maxLado = 1200, calidad = 0.82): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const img = new Image();
-      img.onload = () => {
-        const escala = Math.min(1, maxLado / Math.max(img.width, img.height));
-        const w = Math.round(img.width * escala);
-        const h = Math.round(img.height * escala);
-        const canvas = document.createElement("canvas");
-        canvas.width = w;
-        canvas.height = h;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) {
-          reject(new Error("No se pudo procesar la imagen."));
-          return;
-        }
-        ctx.drawImage(img, 0, 0, w, h);
-        resolve(canvas.toDataURL("image/jpeg", calidad));
-      };
-      img.onerror = () => reject(new Error("Imagen no válida."));
-      img.src = String(reader.result);
-    };
-    reader.onerror = () => reject(new Error("No se pudo leer el archivo."));
-    reader.readAsDataURL(file);
-  });
-}
+export { comprimirImagen } from "@salones/sync";

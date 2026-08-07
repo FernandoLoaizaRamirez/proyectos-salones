@@ -14,7 +14,13 @@ import {
   PenLine,
 } from "lucide-react";
 import { Button, Card, EmptyState, cn } from "@salones/ui";
-import { obtenerSync, eventoActual, sufijoEvento, esAnfitrion } from "@salones/sync";
+import {
+  obtenerSync,
+  eventoActual,
+  sufijoEvento,
+  esAnfitrion,
+  resolverMedios,
+} from "@salones/sync";
 import { QR } from "@/components/qr";
 import { ModoPantalla } from "@/components/modo-pantalla";
 import {
@@ -37,6 +43,43 @@ export function MuroCliente() {
   // Arranca en false a propósito: si algo fallara, se esconde el botón de
   // borrar en vez de enseñárselo a un invitado.
   const [anfitrion, setAnfitrion] = React.useState(false);
+
+  /* ---- Las fotos del muro, desde el 6 ago 2026 ----------------------------
+   * Antes la foto viajaba como TEXTO dentro del propio mensaje, así que se
+   * pintaba tal cual. Ahora sube al almacén y en el mensaje queda su dirección,
+   * que en un almacén privado no sirve sola: hay que cambiarla por una FIRMADA,
+   * igual que en el álbum.
+   *
+   * `resolverMedios` no estropea nada de lo anterior: lo que no sea del almacén
+   * central —los mensajes viejos con la foto en texto, las fotos de ejemplo en
+   * /img— lo devuelve tal cual. Por eso el muro de una boda que ya está en
+   * marcha se sigue viendo igual. */
+  const [vistas, setVistas] = React.useState<Record<string, string>>({});
+  const ver = React.useCallback((u: string) => vistas[u] ?? u, [vistas]);
+
+  /** Los mensajes con la foto ya lista para pintar (tarjetas y proyector). */
+  const mensajesVistos = React.useMemo(
+    () => mensajes.map((m) => (m.foto ? { ...m, foto: ver(m.foto) } : m)),
+    [mensajes, ver],
+  );
+
+  const clavesFotos = mensajes
+    .map((m) => m.foto)
+    .filter(Boolean)
+    .join("|");
+  React.useEffect(() => {
+    const fotos = mensajes.map((m) => m.foto).filter((u): u is string => Boolean(u));
+    if (fotos.length === 0) return;
+    let vivo = true;
+    void resolverMedios(eventoActual(), fotos).then((mapa) => {
+      if (vivo) setVistas((previas) => ({ ...previas, ...mapa }));
+    });
+    return () => {
+      vivo = false;
+    };
+    // Depende de la LISTA de fotos, no del sondeo de cada 3 s.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clavesFotos]);
 
   // Carga + sincronización en vivo desde el "lugar central" (@salones/sync).
   // En local se sincroniza entre pestañas de este dispositivo; con el servicio
@@ -132,7 +175,7 @@ export function MuroCliente() {
           />
         ) : (
           <div className="columns-1 gap-4 sm:columns-2 lg:columns-3">
-            {mensajes.map((m) => (
+            {mensajesVistos.map((m) => (
               <article
                 key={m.id}
                 className="group relative mb-4 break-inside-avoid rounded-[var(--radius)] border border-border bg-card p-5 shadow-sm"
@@ -220,7 +263,11 @@ export function MuroCliente() {
 
       {/* Modo pantalla */}
       {pantalla ? (
-        <ModoPantalla mensajes={mensajes} urlFirmar={urlFirmar} onClose={() => setPantalla(false)} />
+        <ModoPantalla
+          mensajes={mensajesVistos}
+          urlFirmar={urlFirmar}
+          onClose={() => setPantalla(false)}
+        />
       ) : null}
     </div>
   );

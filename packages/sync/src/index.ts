@@ -871,6 +871,64 @@ export async function resolverMedios(
 }
 
 /* ================================================================== */
+/* Preparar una foto antes de subirla                                  */
+/* ================================================================== */
+
+/**
+ * Comprime una imagen a JPEG y devuelve un **Blob** listo para `subirArchivo`.
+ *
+ * Devuelve Blob y no texto a propósito. El muro guardaba la foto convertida a
+ * TEXTO dentro del propio mensaje, y eso salía caro por todos lados: la fila
+ * pesaba cientos de kilobytes, el muro entero se volvía a bajar en cada
+ * refresco, no pasaba por la red de entrega rápida y se saltaba el candado de
+ * fotos privadas de la 0013. El álbum ya lo hacía bien; esto es lo mismo, aquí
+ * para que no haya tres copias.
+ */
+export function comprimirImagen(file: File, maxLado = 1200, calidad = 0.82): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const escala = Math.min(1, maxLado / Math.max(img.width, img.height));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(img.width * escala);
+      canvas.height = Math.round(img.height * escala);
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        reject(new Error("No se pudo procesar la imagen."));
+        return;
+      }
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob(
+        (b) => (b ? resolve(b) : reject(new Error("No se pudo procesar la imagen."))),
+        "image/jpeg",
+        calidad,
+      );
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("Imagen no válida."));
+    };
+    img.src = url;
+  });
+}
+
+/**
+ * Convierte un Blob en texto (dataURL). Solo para el MODO LOCAL: ahí no hay
+ * almacén donde subir la foto, y guardarla como texto es lo que hace que la
+ * demo sobreviva a recargar la página.
+ */
+export function aTextoDeDatos(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const lector = new FileReader();
+    lector.onload = () => resolve(String(lector.result));
+    lector.onerror = () => reject(new Error("No se pudo preparar la imagen."));
+    lector.readAsDataURL(blob);
+  });
+}
+
+/* ================================================================== */
 /* Bajar los medios de un evento — la ENTREGA al cliente               */
 /* ================================================================== */
 

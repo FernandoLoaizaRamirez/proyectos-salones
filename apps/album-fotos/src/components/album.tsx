@@ -19,6 +19,8 @@ import {
   eventoActual,
   esAnfitrion,
   resolverMedios,
+  descargarMedios,
+  type ResultadoDescarga,
 } from "@salones/sync";
 import {
   fotosEjemplo,
@@ -36,6 +38,10 @@ export function Album() {
   const [arrastrando, setArrastrando] = React.useState(false);
   const [subiendo, setSubiendo] = React.useState(0);
   const [errorSubida, setErrorSubida] = React.useState("");
+  const [descarga, setDescarga] = React.useState<{ hechas: number; total: number } | null>(null);
+  const [resultadoDescarga, setResultadoDescarga] = React.useState<ResultadoDescarga | null>(null);
+  /** Lo lee `descargarMedios` entre archivo y archivo para poder detenerse. */
+  const cancelarDescarga = React.useRef(false);
   const [idx, setIdx] = React.useState<number | null>(null);
   const inputRef = React.useRef<HTMLInputElement>(null);
   const contador = React.useRef(0);
@@ -133,15 +139,29 @@ export function Album() {
     });
   }, []);
 
-  const descargarTodo = React.useCallback(() => {
-    archivos.forEach((f) => {
-      const a = document.createElement("a");
-      a.href = ver(f.url);
-      a.download = f.nombre;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-    });
+  /**
+   * Baja el álbum entero.
+   *
+   * ⚠️ ANTES ESTABA ROTO: apuntaba un enlace `<a download>` a cada archivo, y el
+   * navegador IGNORA `download` cuando el archivo es de otro dominio —el almacén
+   * siempre lo es—, así que los ABRÍA en pestañas en vez de guardarlos; y al
+   * dispararlos todos de golpe, además, los bloqueaba por parecer ventanas
+   * emergentes. `descargarMedios` los baja de verdad (fetch → blob), de uno en
+   * uno, y dice cuántos fallaron.
+   */
+  const descargarTodo = React.useCallback(async () => {
+    setResultadoDescarga(null);
+    cancelarDescarga.current = false;
+    setDescarga({ hechas: 0, total: archivos.length });
+
+    const r = await descargarMedios(
+      archivos.map((f) => ({ nombre: f.nombre, url: ver(f.url) })),
+      (hechas, total) => setDescarga({ hechas, total }),
+      () => !cancelarDescarga.current,
+    );
+
+    setDescarga(null);
+    setResultadoDescarga(r);
     // `ver` va en las dependencias a propósito: sin él, al descargar se usarían
     // las direcciones de la primera carga, que ya habrían caducado.
   }, [archivos, ver]);
@@ -223,15 +243,50 @@ export function Album() {
       </div>
 
       {/* Contador + descargar */}
-      <div className="flex items-center justify-between gap-4">
-        <p className="text-sm text-muted-foreground">
-          <span className="font-semibold text-foreground">{archivos.length}</span>{" "}
-          {archivos.length === 1 ? "recuerdo" : "recuerdos"} en el álbum
-        </p>
-        {archivos.length > 0 ? (
-          <Button variant="outline" size="sm" onClick={descargarTodo}>
-            <Download className="size-4" /> Descargar todo
-          </Button>
+      <div className="space-y-2">
+        <div className="flex items-center justify-between gap-4">
+          <p className="text-sm text-muted-foreground">
+            <span className="font-semibold text-foreground">{archivos.length}</span>{" "}
+            {archivos.length === 1 ? "recuerdo" : "recuerdos"} en el álbum
+          </p>
+          {archivos.length > 0 ? (
+            descarga ? (
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">
+                  Guardando {descarga.hechas} de {descarga.total}…
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    cancelarDescarga.current = true;
+                  }}
+                >
+                  Detener
+                </Button>
+              </div>
+            ) : (
+              <Button variant="outline" size="sm" onClick={() => void descargarTodo()}>
+                <Download className="size-4" /> Descargar todo
+              </Button>
+            )
+          ) : null}
+        </div>
+
+        {resultadoDescarga ? (
+          resultadoDescarga.fallidas === 0 && !resultadoDescarga.cancelada ? (
+            <p className="text-sm text-emerald-600 dark:text-emerald-400">
+              Listo: se guardaron {resultadoDescarga.guardadas}{" "}
+              {resultadoDescarga.guardadas === 1 ? "archivo" : "archivos"} en tu dispositivo.
+            </p>
+          ) : (
+            <p className="text-sm text-destructive">
+              {resultadoDescarga.cancelada
+                ? `Descarga detenida: se guardaron ${resultadoDescarga.guardadas}.`
+                : `Se guardaron ${resultadoDescarga.guardadas}, pero ${resultadoDescarga.fallidas} no se pudieron bajar.`}{" "}
+              Revisa tu conexión e inténtalo de nuevo.
+            </p>
+          )
         ) : null}
       </div>
 

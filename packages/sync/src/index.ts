@@ -742,6 +742,83 @@ export async function resolverMedios(
   return salida;
 }
 
+/* ================================================================== */
+/* Bajar los medios de un evento — la ENTREGA al cliente               */
+/* ================================================================== */
+
+/**
+ * Lo mínimo que hace falta para bajar un archivo. A propósito NO es el tipo
+ * `Foto` de ninguna app: así cada una pasa el suyo sin tener que convertirlo.
+ */
+export type MedioDescargable = { nombre: string; url: string };
+
+/** Cómo terminó una descarga masiva. */
+export type ResultadoDescarga = { guardadas: number; fallidas: number; cancelada: boolean };
+
+/** Nombre numerado, para que no se pisen al guardarse en la misma carpeta. */
+function nombreDeArchivo(medio: MedioDescargable, indice: number): string {
+  const limpio = (medio.nombre || "recuerdo").replace(/[\\/:*?"<>|]/g, "-").slice(-60);
+  return `${String(indice + 1).padStart(3, "0")}-${limpio}`;
+}
+
+/**
+ * Descarga una lista de fotos y videos, archivo por archivo.
+ *
+ * ⚠️ POR QUÉ NO BASTA CON UN ENLACE `<a download>` (el fallo que esto arregla):
+ *   El navegador **ignora el atributo `download` cuando el archivo es de otro
+ *   dominio** —y el almacén siempre lo es—, así que en vez de guardarlo lo ABRE
+ *   en una pestaña. Encima, disparar muchos enlaces seguidos hace que el
+ *   navegador bloquee casi todos por parecer ventanas emergentes. Resultado: el
+ *   salón creía haber entregado la boda y no había bajado ni un archivo.
+ *   Bajándolo aquí (fetch → blob) el archivo llega de verdad, y además se puede
+ *   COMPROBAR si llegó, que es lo que permite bloquear el borrado si algo falló.
+ *
+ * Va de uno en uno, avisando del avance y dejando cancelar: una boda pueden ser
+ * cientos de archivos y hacerlo todo de golpe tumba la pestaña.
+ *
+ * Vivía en `apps/catalogo/src/lib/album.ts`; se subió aquí para que la usen
+ * también las apps del invitado en vez de reimplementarla mal.
+ */
+export async function descargarMedios(
+  medios: MedioDescargable[],
+  alAvanzar: (hechas: number, total: number) => void,
+  seguir: () => boolean,
+): Promise<ResultadoDescarga> {
+  let guardadas = 0;
+  let fallidas = 0;
+  let cancelada = false;
+
+  for (let i = 0; i < medios.length; i++) {
+    if (!seguir()) {
+      cancelada = true;
+      break;
+    }
+    const medio = medios[i];
+    if (!medio) continue;
+    try {
+      const res = await fetch(medio.url);
+      if (!res.ok) throw new Error(`descarga ${res.status}`);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = nombreDeArchivo(medio, i);
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      guardadas++;
+    } catch {
+      fallidas++;
+    }
+    alAvanzar(i + 1, medios.length);
+    // Un respiro entre archivos: el navegador encola mejor y no se atraganta.
+    await new Promise((r) => setTimeout(r, 150));
+  }
+
+  return { guardadas, fallidas, cancelada };
+}
+
 /**
  * ¿Este dispositivo es el del ANFITRIÓN de este evento?
  *

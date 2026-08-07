@@ -155,22 +155,38 @@ export default function AlbumDelEvento({ params }: { params: Promise<{ codigo: s
     setAviso("");
     descargandoRef.current = true;
     setDescarga({ hechas: 0, total: fotos.length });
-    const r = await descargarAlbum(
-      // Con las direcciones ya firmadas: en un almacén privado, la guardada no
-      // se descarga sola. `descargarAlbum` no cambia; recibe la lista resuelta.
-      fotos.map((f) => ({ ...f, url: ver(f.url) })),
-      (hechas, total) => setDescarga({ hechas, total }),
-      () => descargandoRef.current,
-    );
-    descargandoRef.current = false;
-    setDescarga(null);
-    setAviso(
-      r.cancelada
-        ? `Descarga detenida: se guardaron ${r.guardadas}.`
-        : r.fallidas > 0
-          ? `Se guardaron ${r.guardadas} archivos; ${r.fallidas} no se pudieron bajar. Inténtalo otra vez con esos.`
-          : `Listo: se guardaron ${r.guardadas} archivos.`,
-    );
+
+    try {
+      // LA ENTREGA PIDE LA LISTA COMPLETA, no la que se ve en pantalla. El
+      // sondeo en vivo se queda en las más recientes para no fundir el teléfono
+      // de los invitados; si la entrega usara eso, en una boda grande el salón
+      // se llevaría solo una parte del álbum creyendo que se lo llevó todo.
+      const todas = [...(await obtenerSync().listar<Foto>(codigo, COLECCION_FOTOS))].sort(porFecha);
+      // Y sus direcciones firmadas: las ya resueltas solo cubren lo que se pintó.
+      const firmadas = await resolverMedios(
+        codigo,
+        todas.map((f) => f.url),
+      );
+      setDescarga({ hechas: 0, total: todas.length });
+
+      const r = await descargarAlbum(
+        todas.map((f) => ({ ...f, url: firmadas[f.url] ?? ver(f.url) })),
+        (hechas, total) => setDescarga({ hechas, total }),
+        () => descargandoRef.current,
+      );
+      setAviso(
+        r.cancelada
+          ? `Descarga detenida: se guardaron ${r.guardadas} de ${todas.length}.`
+          : r.fallidas > 0
+            ? `Se guardaron ${r.guardadas} archivos; ${r.fallidas} no se pudieron bajar. Inténtalo otra vez con esos.`
+            : `Listo: se guardaron ${r.guardadas} archivos.`,
+      );
+    } catch {
+      setAviso("No pudimos preparar la entrega. Revisa tu conexión e inténtalo de nuevo.");
+    } finally {
+      descargandoRef.current = false;
+      setDescarga(null);
+    }
   };
 
   const copiar = async () => {

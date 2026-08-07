@@ -26,16 +26,24 @@ export type ItemSync = { id: string; [clave: string]: unknown };
 export interface ProveedorSync {
   /** "local" (mismo dispositivo) o "servidor" (todos los teléfonos). */
   readonly nombre: "local" | "servidor";
-  /** Lee todos los items actuales de una colección de un evento. */
+  /**
+   * Lee la colección ENTERA (por páginas si hace falta). Es la que hay que usar
+   * cuando no puede faltar nada: contar, exportar o ENTREGAR el álbum al
+   * cliente. A cambio es la cara: no la pongas en un sondeo.
+   */
   listar<T extends ItemSync>(evento: string, coleccion: string): Promise<T[]>;
   /** Agrega o actualiza (por id) un item. */
   guardar<T extends ItemSync>(evento: string, coleccion: string, item: T): Promise<void>;
   /** Elimina un item por id. */
   eliminar(evento: string, coleccion: string, id: string): Promise<void>;
   /**
-   * Se suscribe a los cambios de una colección. Llama a `cb` con la lista
-   * completa de inmediato y cada vez que algo cambia. Devuelve una función para
-   * cancelar la suscripción.
+   * Se suscribe a los cambios de una colección. Llama a `cb` de inmediato y
+   * cada vez que algo cambia. Devuelve una función para cancelar.
+   *
+   * ⚠️ Entrega los MÁS RECIENTES, no necesariamente todos: en un evento enorme
+   * se corta por arriba para que el teléfono de un invitado no se descargue
+   * miles de fotos cada pocos segundos. **Para entregar o exportar usa
+   * `listar`**, que sí trae la colección completa.
    */
   suscribir<T extends ItemSync>(
     evento: string,
@@ -343,7 +351,30 @@ function crearProveedorServidor(url: string, anon: string): ProveedorSync {
   /** Almacenamiento central de fotos/videos (bucket "media" del proyecto). */
   const almacen = `${raiz}/storage/v1`;
   const BUCKET = "media";
+
+  /* ---- Cuánto se baja y cada cuánto (arreglado el 6 ago 2026) --------------
+   * ANTES: la consulta no llevaba NINGÚN tope y el sondeo la repetía cada 3 s.
+   * O sea, cada teléfono conectado se descargaba el álbum, el muro o la lista
+   * ENTERA veinte veces por minuto. Cuanta más gente participaba, peor iba la
+   * fiesta: justo al revés de lo que tiene que pasar.
+   *
+   * El reparto que hay ahora:
+   *   · `suscribir` (lo que corre en el teléfono de cada invitado) trae solo los
+   *     más recientes, hasta TOPE_SONDEO.
+   *   · `listar` (lo que se usa para CONTAR y para ENTREGAR el álbum al cliente)
+   *     sigue trayendo la colección entera, por páginas. Ahí la exactitud manda
+   *     sobre la velocidad: entregar 200 fotos de 800 sería perder recuerdos.
+   *
+   * El tope NO es silencioso: si una colección lo alcanza, queda un aviso en el
+   * diagnóstico para que se sepa que hay contenido que no se está mostrando. */
+  const TOPE_SONDEO = 500;
+  const PAGINA = 1000;
+  /** Freno de mano por si algo se descontrola; no debería alcanzarse nunca. */
+  const TOPE_ABSOLUTO = 20000;
+
   const INTERVALO_MS = 3000;
+  /** Con la pestaña de fondo nadie está mirando: se sondea mucho más despacio. */
+  const INTERVALO_OCULTO_MS = 15000;
 
   /* ---- Direcciones de lectura que caducan (migración 0013) ----------------
    * Lo que se guarda en la base deja de ser una dirección que sirva sola y pasa
@@ -517,18 +548,40 @@ function crearProveedorServidor(url: string, anon: string): ProveedorSync {
   const filtro = (evento: string, coleccion: string) =>
     `evento=eq.${encodeURIComponent(evento)}&coleccion=eq.${encodeURIComponent(coleccion)}`;
 
-  async function pedir<T extends ItemSync>(evento: string, coleccion: string): Promise<T[]> {
-    const q = `${base}?${filtro(evento, coleccion)}&select=id,dato&order=creado.desc`;
+  /** Una tanda, de la más reciente a la más antigua. */
+  async function pedir<T extends ItemSync>(
+    evento: string,
+    coleccion: string,
+    limite: number,
+    desplazamiento = 0,
+  ): Promise<T[]> {
+    const q =
+      `${base}?${filtro(evento, coleccion)}&select=id,dato&order=creado.desc` +
+      `&limit=${limite}&offset=${desplazamiento}`;
     const res = await fetch(q, { headers: await headersDe(evento) });
     if (!res.ok) throw new Error(`sync/listar ${res.status}`);
     const filas = (await res.json()) as { id: string; dato: Record<string, unknown> }[];
     return filas.map((f) => ({ ...(f.dato ?? {}), id: f.id })) as T[];
   }
 
+  /**
+   * La colección ENTERA, tanda a tanda. Es lo que usa `listar`, y por tanto lo
+   * que usan el contador del panel y la entrega del álbum al cliente: ahí no
+   * puede faltar ni una foto.
+   */
+  async function pedirTodo<T extends ItemSync>(evento: string, coleccion: string): Promise<T[]> {
+    const todo: T[] = [];
+    for (let desplazamiento = 0; ; desplazamiento += PAGINA) {
+      const tanda = await pedir<T>(evento, coleccion, PAGINA, desplazamiento);
+      todo.push(...tanda);
+      if (tanda.length < PAGINA || todo.length >= TOPE_ABSOLUTO) return todo;
+    }
+  }
+
   return {
     nombre: "servidor",
     async listar(evento, coleccion) {
-      return pedir(evento, coleccion);
+      return pedirTodo(evento, coleccion);
     },
     async guardar(evento, coleccion, item) {
       const { id, ...dato } = item;
@@ -550,10 +603,21 @@ function crearProveedorServidor(url: string, anon: string): ProveedorSync {
     suscribir(evento, coleccion, cb) {
       let vivo = true;
       let firma = "";
+      let temporizador: number | null = null;
+
       const revisar = async () => {
         try {
-          const items = await pedir(evento, coleccion);
+          const items = await pedir(evento, coleccion, TOPE_SONDEO);
           if (!vivo) return;
+          // El tope NUNCA es silencioso: si se alcanza, hay contenido que el
+          // invitado no está viendo y tiene que quedar constancia.
+          if (items.length >= TOPE_SONDEO) {
+            reportar(
+              "coleccion-llena",
+              `${coleccion}: se muestran los ${TOPE_SONDEO} más recientes`,
+              evento,
+            );
+          }
           const nueva = JSON.stringify(items);
           if (nueva !== firma) {
             firma = nueva;
@@ -570,11 +634,38 @@ function crearProveedorServidor(url: string, anon: string): ProveedorSync {
           );
         }
       };
-      revisar();
-      const t = hayNavegador() ? window.setInterval(revisar, INTERVALO_MS) : null;
+
+      /**
+       * Se reprograma sola en vez de usar un intervalo fijo, por dos razones:
+       * el ritmo cambia según la pestaña esté a la vista o de fondo, y así
+       * nunca se solapan dos sondeos si la red va lenta.
+       */
+      const programar = () => {
+        if (!vivo || !hayNavegador()) return;
+        const espera =
+          typeof document !== "undefined" && document.hidden ? INTERVALO_OCULTO_MS : INTERVALO_MS;
+        temporizador = window.setTimeout(() => {
+          void revisar().then(programar);
+        }, espera);
+      };
+
+      /** Al volver a la pestaña, refrescar YA en vez de esperar al turno. */
+      const alCambiarVisibilidad = () => {
+        if (typeof document !== "undefined" && !document.hidden) void revisar();
+      };
+
+      void revisar();
+      programar();
+      if (hayNavegador() && typeof document !== "undefined") {
+        document.addEventListener("visibilitychange", alCambiarVisibilidad);
+      }
+
       return () => {
         vivo = false;
-        if (t !== null) window.clearInterval(t);
+        if (temporizador !== null) window.clearTimeout(temporizador);
+        if (hayNavegador() && typeof document !== "undefined") {
+          document.removeEventListener("visibilitychange", alCambiarVisibilidad);
+        }
       };
     },
     async subirArchivo(evento, nombre, blob, tipo) {

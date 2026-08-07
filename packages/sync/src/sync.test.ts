@@ -81,6 +81,10 @@ async function cargarSync(o: Opciones = {}) {
       removeEventListener: () => {},
       setInterval: () => 0,
       clearInterval: () => {},
+      // El sondeo se reprograma con setTimeout. Devolver 0 y no ejecutar nada
+      // deja que la prueba controle cuántas vueltas se dan.
+      setTimeout: () => 0,
+      clearTimeout: () => {},
     });
   }
 
@@ -306,5 +310,151 @@ describe("resolverMedios — la promesa de la 0013: nunca romper una foto", () =
     const d = "https://falso.supabase.co/storage/v1/object/public/media/boda-ana/1.jpg";
     const mapa = await sync.resolverMedios("boda-ana", [d, d]);
     expect(mapa[d]).toBe(d);
+  });
+});
+
+/* ==========================================================================
+ * CUÁNTO SE BAJA — el tope del sondeo frente a la entrega completa
+ * --------------------------------------------------------------------------
+ * Hasta el 6 ago 2026 la consulta no llevaba NINGÚN tope y el sondeo la repetía
+ * cada 3 s: cada teléfono se descargaba el álbum entero veinte veces por minuto.
+ *
+ * El arreglo reparte el trabajo, y ESE REPARTO ES LO DELICADO:
+ *   · `suscribir` (lo que corre en el teléfono del invitado) trae solo los más
+ *     recientes. Si esto se descontrola, se funde la fiesta.
+ *   · `listar` trae la colección ENTERA. Si esto se corta, el salón entrega un
+ *     álbum incompleto creyendo que lo entregó todo — y después borra la boda.
+ *     Por eso la prueba de que `listar` no se deja nada es la importante.
+ * ========================================================================== */
+
+/** Un Supabase de mentira con `total` items, que respeta limit y offset. */
+async function cargarConServidor(total: number) {
+  vi.resetModules();
+  vi.unstubAllGlobals();
+  process.env.NEXT_PUBLIC_SUPABASE_URL = "https://falso.supabase.co";
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "sb_publishable_de_mentira";
+
+  const pedidosItems: { limite: number; desplazamiento: number }[] = [];
+  const avisos: Record<string, unknown>[] = [];
+
+  const fetchFalso = vi.fn(async (url: string, init?: { body?: string }) => {
+    // El pase todavía no existe en este Supabase de mentira: 404 es el camino
+    // "no fatal" que el propio módulo contempla, y no ensucia la prueba.
+    if (url.includes("/rpc/")) return { ok: false, status: 404, json: async () => null };
+
+    if (url.includes("/functions/v1/diagnostico")) {
+      avisos.push(JSON.parse(init?.body ?? "{}"));
+      return { ok: true, json: async () => ({}) };
+    }
+
+    if (url.includes("/rest/v1/items")) {
+      const u = new URL(url);
+      const limite = Number(u.searchParams.get("limit") ?? "0");
+      const desplazamiento = Number(u.searchParams.get("offset") ?? "0");
+      pedidosItems.push({ limite, desplazamiento });
+      const filas: { id: string; dato: { n: number } }[] = [];
+      for (let i = desplazamiento; i < Math.min(total, desplazamiento + limite); i++) {
+        filas.push({ id: `i${i}`, dato: { n: i } });
+      }
+      return { ok: true, json: async () => filas };
+    }
+    return { ok: true, json: async () => ({}) };
+  });
+
+  vi.stubGlobal("window", {
+    // `hostname` y `pathname` hacen falta: el diagnóstico los lee para saber de
+    // qué app viene el aviso, y si faltan se traga el error en silencio (está
+    // hecho así a propósito: avisar de un fallo no puede provocar otro).
+    location: { search: "", hostname: "prueba.vercel.app", pathname: "/" },
+    localStorage: { getItem: () => null, setItem: () => {}, removeItem: () => {} },
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    setTimeout: () => 0,
+    clearTimeout: () => {},
+    setInterval: () => 0,
+    clearInterval: () => {},
+  });
+  vi.stubGlobal("document", {
+    hidden: false,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+  });
+  vi.stubGlobal("navigator", { userAgent: "prueba" });
+  vi.stubGlobal("fetch", fetchFalso);
+
+  const sync = await import("./index");
+  return { sync, pedidosItems, avisos };
+}
+
+/** Deja correr los `await` pendientes del sondeo inicial. */
+const respirar = () => new Promise((r) => globalThis.setTimeout(r, 20));
+
+describe("cuánto se baja de la nube", () => {
+  it("LA ENTREGA SE LO TRAE TODO, aunque haga falta más de una página", async () => {
+    const { sync, pedidosItems } = await cargarConServidor(2300);
+
+    const items = await sync.obtenerSync().listar("boda", "fotos");
+
+    // Lo que de verdad importa: ni una foto de menos.
+    expect(items.length).toBe(2300);
+    expect(new Set(items.map((i) => i.id)).size).toBe(2300);
+    // Y que lo haya hecho por páginas, no de un tirón imposible.
+    expect(pedidosItems.length).toBeGreaterThan(1);
+  });
+
+  it("la entrega tampoco se deja nada cuando el total cae justo en el borde de una página", async () => {
+    const { sync } = await cargarConServidor(1000);
+    expect((await sync.obtenerSync().listar("boda", "fotos")).length).toBe(1000);
+  });
+
+  it("un álbum vacío no rompe la entrega ni pide páginas de más", async () => {
+    const { sync, pedidosItems } = await cargarConServidor(0);
+    expect((await sync.obtenerSync().listar("boda", "fotos")).length).toBe(0);
+    expect(pedidosItems.length).toBe(1);
+  });
+
+  it("el sondeo en vivo NO se descarga la colección entera: pide un tope y no pagina", async () => {
+    const { sync, pedidosItems } = await cargarConServidor(5000);
+
+    const cancelar = sync.obtenerSync().suscribir("boda", "fotos", () => {});
+    await respirar();
+    cancelar();
+
+    expect(pedidosItems.length).toBe(1);
+    expect(pedidosItems[0]!.limite).toBeLessThanOrEqual(500);
+    expect(pedidosItems[0]!.desplazamiento).toBe(0);
+  });
+
+  it("el sondeo entrega los items al suscriptor, recortados al tope", async () => {
+    const { sync } = await cargarConServidor(5000);
+
+    let recibidos: unknown[] = [];
+    const cancelar = sync.obtenerSync().suscribir("boda", "fotos", (items) => {
+      recibidos = items;
+    });
+    await respirar();
+    cancelar();
+
+    expect(recibidos.length).toBe(500);
+  });
+
+  it("cuando el tope se alcanza NO se calla: queda aviso en el diagnóstico", async () => {
+    const { sync, avisos } = await cargarConServidor(5000);
+
+    const cancelar = sync.obtenerSync().suscribir("boda", "fotos", () => {});
+    await respirar();
+    cancelar();
+
+    expect(avisos.some((a) => a.tipo === "coleccion-llena")).toBe(true);
+  });
+
+  it("por debajo del tope no avisa de nada (ni ruido ni falsas alarmas)", async () => {
+    const { sync, avisos } = await cargarConServidor(12);
+
+    const cancelar = sync.obtenerSync().suscribir("boda", "fotos", () => {});
+    await respirar();
+    cancelar();
+
+    expect(avisos.some((a) => a.tipo === "coleccion-llena")).toBe(false);
   });
 });

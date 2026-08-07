@@ -22,6 +22,10 @@ import { describe, it, expect, beforeAll } from "vitest";
  *   4. **Borrar sin sesión de staff → 403**, aunque se mande el pase de anfitrión.
  *   5. La llave pública no cuela como si fuera una sesión.
  *   6. Sin repetir el código del evento no se borra (400).
+ *   7. **El inventario entrega direcciones FIRMADAS que abren de verdad.**
+ *      Esta es la que caza la regresión del 5 ago 2026: la función repartía la
+ *      dirección `/object/public/`, que quedó muerta con el corte de la 0013, así
+ *      que la "entrega" bajaba cero fotos y aun así se ofrecía borrar la boda.
  *
  * Se saltan solas si faltan las env o si la función no está desplegada.
  */
@@ -117,6 +121,40 @@ suite("Cierre de evento (función evento-cierre)", () => {
       expect(inv.evento.codigo).toBe("demo");
       expect(typeof inv.resumen.registros).toBe("number");
       expect(inv.registros.length).toBe(inv.resumen.registros);
+    },
+    RED,
+  );
+
+  it(
+    "el inventario entrega direcciones FIRMADAS que abren de verdad",
+    async (ctx) => {
+      if (!desplegada) return ctx.skip();
+      const pase = await pedirPase("emitir_pase_anfitrion", { p_codigo: "demo", p_clave: "" });
+      if (!pase) return ctx.skip();
+
+      const res = await inventario("demo", { "x-evento-anfitrion": pase });
+      expect(res.status).toBe(200);
+
+      const inv = (await res.json()) as {
+        archivos: { nombre: string; url: string }[];
+        sinFirmar?: number;
+      };
+      const primero = inv.archivos[0];
+      // Sin archivos no hay nada que afirmar (el evento demo puede estar vacío).
+      if (!primero) return ctx.skip();
+
+      for (const a of inv.archivos) {
+        // La pública responde 400 desde el corte de la 0013: si alguna vuelve a
+        // colarse aquí, la entrega baja archivos rotos y esto tiene que avisar.
+        expect(a.url, `archivo ${a.nombre}`).not.toContain("/object/public/");
+        expect(a.url, `archivo ${a.nombre}`).toContain("/object/sign/");
+        expect(a.url, `archivo ${a.nombre}`).toContain("token=");
+      }
+      expect(inv.sinFirmar).toBe(0);
+
+      // Y que ABRA: una dirección firmada mal formada entregaría archivos vacíos
+      // igual que antes del arreglo.
+      expect((await fetch(primero.url)).status).toBe(200);
     },
     RED,
   );

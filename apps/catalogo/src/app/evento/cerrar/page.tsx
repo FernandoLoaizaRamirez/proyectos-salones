@@ -10,6 +10,18 @@
  * botón de borrar sigue apagado hasta que la entrega se ha bajado en este
  * navegador. Es la diferencia entre "cerrar un evento" y "perder una boda".
  *
+ * ⚠️ ESA REGLA ESTUVO ROTA (arreglado el 5 ago 2026). La pantalla apuntaba un
+ * enlace a cada archivo del almacén y daba la entrega por hecha al terminar el
+ * bucle, SIN COMPROBAR NADA. Dos fallos encadenados:
+ *   1. desde el corte de la 0013 el almacén es privado y esas direcciones ya no
+ *      abrían nada, y
+ *   2. aunque hubieran abierto, el navegador IGNORA `download` en archivos de
+ *      otro dominio: los abre en una pestaña en vez de guardarlos.
+ * O sea, se encendía el botón de borrar una boda cuyas fotos no se habían
+ * bajado. Ahora se descarga con `descargarAlbum` (fetch → blob, el mismo camino
+ * que ya usaba el álbum del panel) y **`entregado` solo se enciende si no falló
+ * ni un archivo**.
+ *
  * Encima de eso, el borrado exige escribir el código del evento a mano, y el
  * servidor vuelve a comprobar por su cuenta que quien llama es dueño o
  * administrador de ESE salón (ver la función `evento-cierre`).
@@ -25,9 +37,11 @@ import {
   Trash2,
   TriangleAlert,
   CheckCircle2,
+  XCircle,
 } from "lucide-react";
 import { Button, Card } from "@salones/ui";
 import { obtenerSupabase } from "@/lib/supabase";
+import { descargarAlbum, type ResultadoDescarga } from "@/lib/album";
 
 type Inventario = {
   evento: { codigo: string; nombre: string; estado: string };
@@ -39,7 +53,11 @@ type Inventario = {
     bytes: number;
   };
   registros: { id: string; coleccion: string; dato: Record<string, unknown>; creado: string }[];
+  /** `url` viene FIRMADA y caduca. Vacía = el servidor no pudo firmarla. */
   archivos: { nombre: string; tamano: number; url: string }[];
+  /** Cuántos archivos quedaron sin dirección utilizable. Ausente = función vieja. */
+  sinFirmar?: number;
+  vigenciaSeg?: number;
 };
 
 const NOMBRES: Record<string, string> = {
@@ -76,7 +94,10 @@ export default function CerrarEvento() {
   const [inv, setInv] = React.useState<Inventario | null>(null);
   const [error, setError] = React.useState("");
   const [entregado, setEntregado] = React.useState(false);
-  const [descargando, setDescargando] = React.useState(0);
+  const [avance, setAvance] = React.useState<{ hechas: number; total: number } | null>(null);
+  const [resultado, setResultado] = React.useState<ResultadoDescarga | null>(null);
+  /** Lo lee `descargarAlbum` entre archivo y archivo para poder detenerse. */
+  const cancelar = React.useRef(false);
   const [confirmacion, setConfirmacion] = React.useState("");
   const [borrando, setBorrando] = React.useState(false);
   const [borrado, setBorrado] = React.useState<{ archivosBorrados: number } | null>(null);
@@ -114,6 +135,8 @@ export default function CerrarEvento() {
     setError("");
     setInv(null);
     setEntregado(false);
+    setResultado(null);
+    setAvance(null);
     setBorrado(null);
     setConfirmacion("");
     setCargando(true);
@@ -132,32 +155,52 @@ export default function CerrarEvento() {
     }
   };
 
-  /** La ENTREGA: los datos en JSON, la lista de enlaces, y los archivos. */
+  /**
+   * La ENTREGA: los datos en JSON, la lista de enlaces, y los archivos.
+   *
+   * Los dos primeros se fabrican aquí mismo, así que siempre se guardan bien.
+   * Los archivos se bajan de verdad, uno a uno, contando aciertos y fallos: de
+   * ese recuento —y solo de él— depende que se encienda el botón de borrar.
+   */
   const descargarTodo = async () => {
     if (!inv) return;
+    setError("");
+    setResultado(null);
     const base = `evento-${inv.evento.codigo}`;
 
     descargarTexto(`${base}-datos.json`, JSON.stringify(inv, null, 2), "application/json");
     descargarTexto(
       `${base}-archivos.txt`,
-      inv.archivos.map((a) => a.url).join("\n"),
+      inv.archivos.map((a) => a.url || `(sin dirección) ${a.nombre}`).join("\n"),
       "text/plain",
     );
 
-    // Los archivos, uno a uno. El navegador pide permiso una vez para descargas
-    // múltiples. Con muchos archivos conviene además guardar el .txt de enlaces.
-    setDescargando(inv.archivos.length);
-    for (const archivo of inv.archivos) {
-      const a = document.createElement("a");
-      a.href = archivo.url;
-      a.download = archivo.nombre.split("/").pop() ?? "archivo";
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      await new Promise((r) => setTimeout(r, 250));
-      setDescargando((n) => n - 1);
-    }
-    setEntregado(true);
+    // Un archivo sin dirección firmada no se intenta: `fetch("")` pediría ESTA
+    // misma página y respondería 200, o sea, se contaría como acierto y bajaría
+    // una página HTML disfrazada de foto. Se cuenta como fallo de entrada.
+    const conUrl = inv.archivos.filter((a) => a.url);
+    const sinUrl = inv.archivos.length - conUrl.length;
+
+    cancelar.current = false;
+    setAvance({ hechas: 0, total: conUrl.length });
+
+    const r = await descargarAlbum(
+      conUrl.map((a, i) => ({
+        id: a.nombre,
+        nombre: a.nombre.split("/").pop() || `archivo-${i + 1}`,
+        url: a.url,
+        tipo: "",
+      })),
+      (hechas, total) => setAvance({ hechas, total }),
+      () => !cancelar.current,
+    );
+
+    setAvance(null);
+    const fallidas = r.fallidas + sinUrl;
+    setResultado({ ...r, fallidas });
+    // LA REGLA, ahora de verdad: solo se considera entregado si TODOS los
+    // archivos se guardaron y no se detuvo a medias.
+    setEntregado(fallidas === 0 && !r.cancelada);
   };
 
   const borrar = async () => {
@@ -275,21 +318,60 @@ export default function CerrarEvento() {
               </ul>
             ) : null}
 
-            <Button className="mt-5 w-full" onClick={descargarTodo} disabled={descargando > 0}>
-              {descargando > 0 ? (
+            <Button className="mt-5 w-full" onClick={descargarTodo} disabled={avance !== null}>
+              {avance ? (
                 <>
-                  <Loader2 className="size-4 animate-spin" /> Descargando… quedan {descargando}
+                  <Loader2 className="size-4 animate-spin" /> Descargando… {avance.hechas} de{" "}
+                  {avance.total}
                 </>
               ) : (
                 <>
-                  <Download className="size-4" /> Descargar la entrega completa
+                  <Download className="size-4" />{" "}
+                  {resultado ? "Reintentar la entrega" : "Descargar la entrega completa"}
                 </>
               )}
             </Button>
+
+            {avance ? (
+              <Button
+                variant="outline"
+                className="mt-2 w-full"
+                onClick={() => {
+                  cancelar.current = true;
+                }}
+              >
+                Detener
+              </Button>
+            ) : null}
+
             <p className="mt-2 text-xs text-muted-foreground">
-              Baja un archivo con todos los datos, una lista con los enlaces de los archivos, y los
-              archivos uno a uno. El navegador puede pedirte permiso para descargas múltiples.
+              Baja un archivo con todos los datos, una lista con los enlaces, y los archivos uno a
+              uno. El navegador puede pedirte permiso para descargas múltiples.
             </p>
+
+            {resultado ? (
+              resultado.fallidas === 0 && !resultado.cancelada ? (
+                <p className="mt-3 flex items-start gap-2 rounded-[var(--radius)] bg-green-500/10 p-3 text-sm text-green-700 dark:text-green-400">
+                  <CheckCircle2 className="mt-0.5 size-4 shrink-0" />
+                  <span>
+                    Entrega completa: se guardaron {resultado.guardadas} archivo
+                    {resultado.guardadas === 1 ? "" : "s"} en esta computadora. Revísalos antes de
+                    borrar nada.
+                  </span>
+                </p>
+              ) : (
+                <p className="mt-3 flex items-start gap-2 rounded-[var(--radius)] bg-red-500/10 p-3 text-sm text-red-600 dark:text-red-400">
+                  <XCircle className="mt-0.5 size-4 shrink-0" />
+                  <span>
+                    {resultado.cancelada
+                      ? `Entrega detenida: se guardaron ${resultado.guardadas} de ${inv.resumen.archivos}.`
+                      : `Se guardaron ${resultado.guardadas} archivos, pero ${resultado.fallidas} no se pudieron bajar.`}{" "}
+                    El borrado sigue bloqueado. Vuelve a intentarlo; si sigue fallando, revisa tu
+                    conexión o avisa antes de tocar nada.
+                  </span>
+                </p>
+              )
+            ) : null}
           </Card>
 
           {/* Borrado */}

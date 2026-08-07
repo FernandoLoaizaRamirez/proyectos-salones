@@ -39,6 +39,17 @@ const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const BUCKET = "media";
 const ROLES_QUE_PUEDEN_BORRAR = ["owner", "admin"];
 
+/**
+ * Vigencia de las direcciones de la ENTREGA. Aquí NO vale la hora que usa
+ * `media-ver`: bajar los cientos de archivos de una boda, de uno en uno y con
+ * una pausa entre cada uno, se pasa de una hora con facilidad, y a mitad de la
+ * entrega las direcciones dejarían de servir.
+ */
+const VIGENCIA_ENTREGA_SEG = 24 * 3600;
+
+/** Tope de rutas por petición al almacén, igual que en `media-ver`. */
+const MAX_FIRMA = 500;
+
 const CORS: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -153,6 +164,51 @@ async function listarArchivos(codigo: string): Promise<{ nombre: string; tamano:
   }
 }
 
+/**
+ * Firma las rutas en tandas. Devuelve `{ ruta: direcciónFirmada }`.
+ *
+ * POR QUÉ LA ENTREGA NO PUEDE USAR `/object/public/` (arreglado el 5 ago 2026):
+ *   Esta función repartía la dirección PÚBLICA de cada archivo. Desde el corte
+ *   de la 0013 el bucket es PRIVADO, así que esas direcciones responden 400 y la
+ *   entrega bajaba CERO fotos y CERO videos — justo antes de ofrecer el botón de
+ *   borrar la boda. Aquí ya tenemos la llave de servicio, así que firmamos
+ *   nosotros, por el mismo camino que `media-ver`.
+ *
+ * Un archivo que no se pueda firmar (borrado entre el listado y la firma) se
+ * omite del mapa a propósito: la pantalla lo cuenta como fallo y NO da la
+ * entrega por buena, en vez de fingir que se entregó.
+ */
+async function firmarLote(rutas: string[]): Promise<Record<string, string>> {
+  const salida: Record<string, string> = {};
+
+  for (let i = 0; i < rutas.length; i += MAX_FIRMA) {
+    const tanda = rutas.slice(i, i + MAX_FIRMA);
+    const res = await fetch(`${URL_SUPABASE}/storage/v1/object/sign/${BUCKET}`, {
+      method: "POST",
+      headers: cabecerasServicio,
+      body: JSON.stringify({ expiresIn: VIGENCIA_ENTREGA_SEG, paths: tanda }),
+    });
+    if (!res.ok) throw new Error(`firmar → ${res.status}`);
+
+    const filas = (await res.json()) as {
+      path?: string;
+      signedURL?: string;
+      signedUrl?: string;
+      error?: string | null;
+    }[];
+
+    for (const fila of filas) {
+      const relativa = fila.signedURL ?? fila.signedUrl;
+      if (!fila.path || !relativa || fila.error) continue;
+      salida[fila.path] = relativa.startsWith("http")
+        ? relativa
+        : `${URL_SUPABASE}/storage/v1${relativa}`;
+    }
+  }
+
+  return salida;
+}
+
 async function inventario(ev: Evento) {
   const [items, archivos] = await Promise.all([
     rest<Item[]>(
@@ -164,6 +220,9 @@ async function inventario(ev: Evento) {
   const porColeccion: Record<string, number> = {};
   for (const it of items) porColeccion[it.coleccion] = (porColeccion[it.coleccion] ?? 0) + 1;
 
+  const firmadas = await firmarLote(archivos.map((a) => a.nombre));
+  const conUrl = archivos.map((a) => ({ ...a, url: firmadas[a.nombre] ?? "" }));
+
   return {
     evento: { codigo: ev.codigo, nombre: ev.nombre, estado: ev.estado },
     generado: new Date().toISOString(),
@@ -174,10 +233,11 @@ async function inventario(ev: Evento) {
       bytes: archivos.reduce((s, a) => s + a.tamano, 0),
     },
     registros: items,
-    archivos: archivos.map((a) => ({
-      ...a,
-      url: `${URL_SUPABASE}/storage/v1/object/public/${BUCKET}/${a.nombre}`,
-    })),
+    archivos: conUrl,
+    // Cuántos se quedaron SIN dirección utilizable. La pantalla lo suma a los
+    // fallos: mientras esto no sea 0, la entrega no está completa.
+    sinFirmar: conUrl.filter((a) => !a.url).length,
+    vigenciaSeg: VIGENCIA_ENTREGA_SEG,
   };
 }
 

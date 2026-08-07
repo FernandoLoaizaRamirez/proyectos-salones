@@ -12,3 +12,8 @@ coverage
 .DS_Store
 .vercel
 next-env.d.ts
+
+# Copias de trabajo aisladas de Claude y caché de la herramienta de Supabase
+# (`functions deploy` la crea sola). Ninguna de las dos debe viajar en un commit.
+.claude/worktrees/
+supabase/.temp/

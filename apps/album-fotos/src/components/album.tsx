@@ -12,7 +12,7 @@ import {
   Play,
   Loader2,
 } from "lucide-react";
-import { Button, EmptyState, cn, AvisoParticipacion } from "@salones/ui";
+import { Button, EmptyState, cn, AvisoParticipacion, Confirmar } from "@salones/ui";
 import {
   obtenerSync,
   estaConectado,
@@ -38,6 +38,8 @@ export function Album() {
   const [arrastrando, setArrastrando] = React.useState(false);
   const [subiendo, setSubiendo] = React.useState(0);
   const [errorSubida, setErrorSubida] = React.useState("");
+  const [porQuitar, setPorQuitar] = React.useState<Archivo | null>(null);
+  const [errorQuitar, setErrorQuitar] = React.useState("");
   const [descarga, setDescarga] = React.useState<{ hechas: number; total: number } | null>(null);
   const [resultadoDescarga, setResultadoDescarga] = React.useState<ResultadoDescarga | null>(null);
   /** Lo lee `descargarMedios` entre archivo y archivo para poder detenerse. */
@@ -126,17 +128,26 @@ export function Album() {
     }
   }, []);
 
-  const eliminar = React.useCallback((id: string) => {
+  /* ---- Moderación (arreglado el 6 ago 2026) -----------------------------
+   * Quitar un recuerdo es irreversible. Tenía tres defectos: no preguntaba, el
+   * botón solo aparecía al pasar el ratón (invisible en un teléfono, pero
+   * PULSABLE igual) y el fallo se tragaba en silencio. */
+  const eliminar = React.useCallback(async (f: Archivo): Promise<boolean> => {
     if (estaConectado()) {
       // Se quita del álbum compartido; la suscripción refresca la vista sola.
-      void obtenerSync().eliminar(eventoActual(), COLECCION_FOTOS, id);
-      return;
+      try {
+        await obtenerSync().eliminar(eventoActual(), COLECCION_FOTOS, f.id);
+        return true;
+      } catch {
+        return false;
+      }
     }
     setArchivos((prev) => {
-      const encontrado = prev.find((x) => x.id === id);
+      const encontrado = prev.find((x) => x.id === f.id);
       if (encontrado && encontrado.url.startsWith("blob:")) URL.revokeObjectURL(encontrado.url);
-      return prev.filter((x) => x.id !== id);
+      return prev.filter((x) => x.id !== f.id);
     });
+    return true;
   }, []);
 
   /**
@@ -230,6 +241,7 @@ export function Album() {
             )}
           </Button>
           {errorSubida ? <p className="text-sm text-red-500">{errorSubida}</p> : null}
+          {errorQuitar ? <p className="text-sm text-red-500">{errorQuitar}</p> : null}
           <input
             ref={inputRef}
             type="file"
@@ -334,8 +346,8 @@ export function Album() {
                 <button
                   type="button"
                   aria-label={`Eliminar ${f.nombre}`}
-                  onClick={() => eliminar(f.id)}
-                  className="absolute right-2 top-2 grid size-8 place-items-center rounded-full bg-black/60 text-white opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+                  onClick={() => setPorQuitar(f)}
+                  className="absolute right-2 top-2 grid size-8 place-items-center rounded-full bg-black/60 text-white transition-colors hover:bg-black/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
                 >
                   <Trash2 className="size-4" />
                 </button>
@@ -396,6 +408,31 @@ export function Album() {
           </div>
         </div>
       ) : null}
+
+      <Confirmar
+        abierto={porQuitar !== null}
+        titulo={porQuitar?.tipo.startsWith("video/") ? "¿Quitar este video?" : "¿Quitar esta foto?"}
+        descripcion={
+          <>
+            Se quita <strong>{porQuitar?.nombre}</strong> del álbum de todos los invitados. No se
+            puede deshacer, y si nadie la descargó antes, se pierde.
+          </>
+        }
+        textoConfirmar="Sí, quitarla"
+        onConfirmar={() => {
+          const f = porQuitar;
+          setPorQuitar(null);
+          if (!f) return;
+          void eliminar(f).then((ok) =>
+            setErrorQuitar(
+              ok
+                ? ""
+                : `No pudimos quitar ${f.nombre}. Si este evento usa llave de anfitrión, ábrelo desde el enlace que la lleva.`,
+            ),
+          );
+        }}
+        onCancelar={() => setPorQuitar(null)}
+      />
     </div>
   );
 }

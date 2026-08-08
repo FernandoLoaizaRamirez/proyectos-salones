@@ -27,7 +27,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { Button, EmptyState, cn } from "@salones/ui";
+import { Button, EmptyState, cn, Confirmar } from "@salones/ui";
 import { esAnfitrion, estaConectado, obtenerSync, resolverMedios } from "@salones/sync";
 import {
   COLECCION_FOTOS,
@@ -54,6 +54,8 @@ export function AlbumModulo({ evento, nombreEvento }: { evento: string; nombreEv
   const [anfitrion, setAnfitrion] = React.useState(false);
   const [arrastrando, setArrastrando] = React.useState(false);
   const [subiendo, setSubiendo] = React.useState(0);
+  const [porQuitar, setPorQuitar] = React.useState<Foto | null>(null);
+  const [errorQuitar, setErrorQuitar] = React.useState("");
   const [error, setError] = React.useState("");
   const [idx, setIdx] = React.useState<number | null>(null);
   const inputRef = React.useRef<HTMLInputElement>(null);
@@ -202,16 +204,25 @@ export function AlbumModulo({ evento, nombreEvento }: { evento: string; nombreEv
     [evento, anotarMias],
   );
 
+  /* ---- Moderación (arreglado el 6 ago 2026) -----------------------------
+   * Quitar un recuerdo es irreversible. Tenía tres defectos: no preguntaba, el
+   * botón solo aparecía al pasar el ratón (invisible en un teléfono, pero
+   * PULSABLE igual) y el fallo se tragaba en silencio. */
   const eliminar = React.useCallback(
-    (f: Foto) => {
+    async (f: Foto): Promise<boolean> => {
       if (estaConectado()) {
         // Se quita del álbum compartido; la suscripción refresca la vista sola.
-        void obtenerSync().eliminar(evento, COLECCION_FOTOS, f.id);
+        try {
+          await obtenerSync().eliminar(evento, COLECCION_FOTOS, f.id);
+        } catch {
+          return false;
+        }
       } else {
         setFotos((prev) => prev.filter((x) => x.id !== f.id));
         if (f.url.startsWith("blob:")) URL.revokeObjectURL(f.url);
       }
       anotarMias([f.id], true);
+      return true;
     },
     [evento, anotarMias],
   );
@@ -366,8 +377,8 @@ export function AlbumModulo({ evento, nombreEvento }: { evento: string; nombreEv
                 <button
                   type="button"
                   aria-label={`Quitar ${f.nombre} del álbum`}
-                  onClick={() => eliminar(f)}
-                  className="absolute right-2 top-2 grid size-8 place-items-center rounded-full bg-black/60 text-white opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+                  onClick={() => setPorQuitar(f)}
+                  className="absolute right-2 top-2 grid size-8 place-items-center rounded-full bg-black/60 text-white transition-colors hover:bg-black/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
                 >
                   <Trash2 className="size-4" />
                 </button>
@@ -457,6 +468,33 @@ export function AlbumModulo({ evento, nombreEvento }: { evento: string; nombreEv
           </div>
         </div>
       ) : null}
+
+      {errorQuitar ? (
+        <p className="mt-4 rounded-[var(--radius)] bg-red-500/10 px-3 py-2 text-sm text-red-600 dark:text-red-400">
+          {errorQuitar}
+        </p>
+      ) : null}
+
+      <Confirmar
+        abierto={porQuitar !== null}
+        titulo={porQuitar?.tipo?.startsWith("video/") ? "¿Quitar este video?" : "¿Quitar esta foto?"}
+        descripcion={
+          <>
+            Se quita <strong>{porQuitar?.nombre}</strong> del álbum del evento. No se puede
+            deshacer.
+          </>
+        }
+        textoConfirmar="Sí, quitarla"
+        onConfirmar={() => {
+          const f = porQuitar;
+          setPorQuitar(null);
+          if (!f) return;
+          void eliminar(f).then((ok) =>
+            setErrorQuitar(ok ? "" : `No pudimos quitar ${f.nombre}. Inténtalo de nuevo.`),
+          );
+        }}
+        onCancelar={() => setPorQuitar(null)}
+      />
     </div>
   );
 }

@@ -29,7 +29,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { Button, Card, EmptyState } from "@salones/ui";
+import { Button, Card, EmptyState, Confirmar } from "@salones/ui";
 import { obtenerSync, resolverMedios } from "@salones/sync";
 import { obtenerSupabase } from "@/lib/supabase";
 import { obtenerEvento, type EventoFila } from "@/lib/eventos";
@@ -114,6 +114,9 @@ export default function MuroDelEvento({ params }: { params: Promise<{ codigo: st
   }, [evento, codigo]);
 
   /** Moderación: quitar un mensaje de la pantalla grande. */
+  /** Siempre visible: antes solo salía al pasar el ratón (invisible en móvil). */
+  const [porQuitar, setPorQuitar] = React.useState<Mensaje | null>(null);
+
   const quitar = async (m: Mensaje) => {
     setAviso("");
     try {
@@ -217,9 +220,9 @@ export default function MuroDelEvento({ params }: { params: Promise<{ codigo: st
                 className="group relative mb-4 break-inside-avoid rounded-[var(--radius)] border border-border bg-card p-5 shadow-sm"
               >
                 <button
-                  onClick={() => void quitar(m)}
+                  onClick={() => setPorQuitar(m)}
                   aria-label={`Quitar el mensaje de ${m.nombre}`}
-                  className="absolute right-2 top-2 grid size-8 place-items-center rounded-full bg-background/70 text-muted-foreground opacity-0 transition-opacity hover:text-red-500 focus-visible:opacity-100 group-hover:opacity-100"
+                  className="absolute right-2 top-2 grid size-8 place-items-center rounded-full bg-background/80 text-muted-foreground ring-1 ring-border transition-colors hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   <Trash2 className="size-4" />
                 </button>
@@ -308,6 +311,24 @@ export default function MuroDelEvento({ params }: { params: Promise<{ codigo: st
           onClose={() => setPantalla(false)}
         />
       ) : null}
+
+      <Confirmar
+        abierto={porQuitar !== null}
+        titulo="¿Quitar este mensaje del muro?"
+        descripcion={
+          <>
+            Se quita el mensaje de <strong>{porQuitar?.nombre}</strong> del muro de todos los
+            invitados y del proyector. No se puede deshacer.
+          </>
+        }
+        textoConfirmar="Sí, quitarlo"
+        onConfirmar={() => {
+          const m = porQuitar;
+          setPorQuitar(null);
+          if (m) void quitar(m);
+        }}
+        onCancelar={() => setPorQuitar(null)}
+      />
     </main>
   );
 }

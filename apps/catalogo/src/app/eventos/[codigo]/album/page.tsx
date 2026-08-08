@@ -33,7 +33,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { Button, Card, EmptyState } from "@salones/ui";
+import { Button, Card, EmptyState, Confirmar } from "@salones/ui";
 import { obtenerSync, resolverMedios } from "@salones/sync";
 import { obtenerSupabase } from "@/lib/supabase";
 import { obtenerEvento, type EventoFila } from "@/lib/eventos";
@@ -138,6 +138,9 @@ export default function AlbumDelEvento({ params }: { params: Promise<{ codigo: s
     };
   }, [abierto, cerrarVisor, irVisor]);
   const actual = idx === null ? null : fotos[idx];
+
+  /** Siempre visible: antes solo salía al pasar el ratón (invisible en móvil). */
+  const [porQuitar, setPorQuitar] = React.useState<Foto | null>(null);
 
   const quitar = async (f: Foto) => {
     setAviso("");
@@ -339,8 +342,8 @@ export default function AlbumDelEvento({ params }: { params: Promise<{ codigo: s
                 <button
                   type="button"
                   aria-label={`Quitar ${f.nombre} del álbum`}
-                  onClick={() => void quitar(f)}
-                  className="absolute right-2 top-2 grid size-8 place-items-center rounded-full bg-black/60 text-white opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100"
+                  onClick={() => setPorQuitar(f)}
+                  className="absolute right-2 top-2 grid size-8 place-items-center rounded-full bg-black/60 text-white transition-colors hover:bg-black/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
                 >
                   <Trash2 className="size-4" />
                 </button>
@@ -475,6 +478,24 @@ export default function AlbumDelEvento({ params }: { params: Promise<{ codigo: s
           onClose={() => setPantalla(false)}
         />
       ) : null}
+
+      <Confirmar
+        abierto={porQuitar !== null}
+        titulo={porQuitar?.tipo?.startsWith("video/") ? "¿Quitar este video?" : "¿Quitar esta foto?"}
+        descripcion={
+          <>
+            Se quita <strong>{porQuitar?.nombre}</strong> del álbum del evento. No se puede
+            deshacer, y si nadie la descargó antes, se pierde.
+          </>
+        }
+        textoConfirmar="Sí, quitarla"
+        onConfirmar={() => {
+          const f = porQuitar;
+          setPorQuitar(null);
+          if (f) void quitar(f);
+        }}
+        onCancelar={() => setPorQuitar(null)}
+      />
     </main>
   );
 }

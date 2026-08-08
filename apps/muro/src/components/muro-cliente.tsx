@@ -13,7 +13,7 @@ import {
   QrCode,
   PenLine,
 } from "lucide-react";
-import { Button, Card, EmptyState, cn } from "@salones/ui";
+import { Button, Card, EmptyState, cn, Confirmar } from "@salones/ui";
 import {
   obtenerSync,
   eventoActual,
@@ -118,10 +118,29 @@ export function MuroCliente() {
     };
   }, []);
 
-  // Quitar un mensaje (moderación del anfitrión): se borra del lugar central y
-  // la suscripción refresca la vista sola.
-  const eliminar = (id: string) => {
-    void obtenerSync().eliminar(eventoActual(), COLECCION_MENSAJES, id);
+  /* ---- Moderación (arreglado el 6 ago 2026) -------------------------------
+   * Quitar un mensaje es irreversible y afecta al muro de TODOS. Tenía tres
+   * defectos a la vez: no preguntaba, el botón era invisible en un teléfono
+   * (solo aparecía al pasar el ratón) y, si el borrado fallaba, no se decía
+   * nada — el anfitrión creía que había quitado el mensaje y seguía puesto. */
+  const [porQuitar, setPorQuitar] = React.useState<Mensaje | null>(null);
+  const [quitando, setQuitando] = React.useState(false);
+  const [errorQuitar, setErrorQuitar] = React.useState("");
+
+  const confirmarQuitar = async () => {
+    if (!porQuitar) return;
+    setQuitando(true);
+    try {
+      await obtenerSync().eliminar(eventoActual(), COLECCION_MENSAJES, porQuitar.id);
+      setErrorQuitar("");
+    } catch {
+      setErrorQuitar(
+        `No pudimos quitar el mensaje de ${porQuitar.nombre}. Si este evento usa llave de anfitrión, ábrelo desde el enlace que la lleva.`,
+      );
+    } finally {
+      setQuitando(false);
+      setPorQuitar(null);
+    }
   };
 
   const copiar = async () => {
@@ -160,6 +179,12 @@ export function MuroCliente() {
         </span>
       </div>
 
+      {errorQuitar ? (
+        <p className="mt-4 rounded-[var(--radius)] bg-red-500/10 px-3 py-2 text-sm text-red-600 dark:text-red-400">
+          {errorQuitar}
+        </p>
+      ) : null}
+
       {/* Muro */}
       <div className="mt-8">
         {!cargado ? null : mensajes.length === 0 ? (
@@ -181,10 +206,13 @@ export function MuroCliente() {
                 className="group relative mb-4 break-inside-avoid rounded-[var(--radius)] border border-border bg-card p-5 shadow-sm"
               >
                 {anfitrion ? (
+                  // Siempre visible: antes solo aparecía al pasar el ratón, y en
+                  // un teléfono eso lo dejaba invisible… pero PULSABLE, así que
+                  // un toque a ciegas en esta esquina borraba un mensaje.
                   <button
-                    onClick={() => eliminar(m.id)}
+                    onClick={() => setPorQuitar(m)}
                     aria-label={`Quitar el mensaje de ${m.nombre}`}
-                    className="absolute right-2 top-2 grid size-8 place-items-center rounded-full bg-background/70 text-muted-foreground opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100"
+                    className="absolute right-2 top-2 grid size-8 place-items-center rounded-full bg-background/80 text-muted-foreground ring-1 ring-border transition-colors hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
                     <Trash2 className="size-4" />
                   </button>
@@ -269,6 +297,21 @@ export function MuroCliente() {
           onClose={() => setPantalla(false)}
         />
       ) : null}
+
+      <Confirmar
+        abierto={porQuitar !== null}
+        titulo="¿Quitar este mensaje del muro?"
+        descripcion={
+          <>
+            Se quita el mensaje de <strong>{porQuitar?.nombre}</strong> del muro de todos los
+            invitados y del proyector{porQuitar?.foto ? ", junto con su foto" : ""}. No se puede
+            deshacer.
+          </>
+        }
+        textoConfirmar={quitando ? "Quitando…" : "Sí, quitarlo"}
+        onConfirmar={() => void confirmarQuitar()}
+        onCancelar={() => setPorQuitar(null)}
+      />
     </div>
   );
 }

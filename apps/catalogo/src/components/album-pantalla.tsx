@@ -12,7 +12,7 @@
  * medias distrae más que suma. Se ven desde el álbum, no desde aquí.
  */
 import * as React from "react";
-import { Camera, QrCode, X } from "lucide-react";
+import { Camera, QrCode, Trash2, X } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { esVideo, type Foto } from "@/lib/album";
 
@@ -24,11 +24,18 @@ export function AlbumPantalla({
   nombreEvento,
   urlSubir,
   onClose,
+  onQuitar,
+  pausado = false,
 }: {
   fotos: Foto[];
   nombreEvento: string;
   urlSubir: string;
   onClose: () => void;
+  /** Si se pasa, aparece el boton de quitar la foto que esta en pantalla. */
+  onQuitar?: (f: Foto) => void;
+  /** Con la confirmacion abierta el turno se detiene: si no, la foto cambia
+   *  debajo de quien esta confirmando y se acaba quitando otra. */
+  pausado?: boolean;
 }) {
   const soloFotos = React.useMemo(() => fotos.filter((f) => !esVideo(f.tipo)), [fotos]);
   const [i, setI] = React.useState(0);
@@ -59,10 +66,10 @@ export function AlbumPantalla({
 
   // El turno se programa tras cada cambio: al usar las flechas, vuelve a contar.
   React.useEffect(() => {
-    if (soloFotos.length <= 1) return;
+    if (soloFotos.length <= 1 || pausado) return;
     const t = window.setTimeout(() => mover(1), TURNO_MS);
     return () => window.clearTimeout(t);
-  }, [i, soloFotos.length, mover]);
+  }, [i, soloFotos.length, mover, pausado]);
 
   React.useEffect(() => {
     if (i >= soloFotos.length) setI(0);
@@ -79,13 +86,24 @@ export function AlbumPantalla({
           </div>
           <div className="text-2xl font-semibold tracking-tight">{nombreEvento}</div>
         </div>
-        <button
-          onClick={onClose}
-          aria-label="Salir del modo pantalla"
-          className="grid size-11 place-items-center rounded-full border border-border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-        >
-          <X className="size-5" />
-        </button>
+        <div className="flex items-center gap-3">
+          {onQuitar && actual ? (
+            <button
+              onClick={() => onQuitar(actual)}
+              aria-label={`Quitar ${actual.nombre}, la foto que está en pantalla`}
+              className="flex h-11 items-center gap-2 rounded-full border border-border px-4 text-sm font-medium text-muted-foreground transition-colors hover:border-red-500/50 hover:text-red-500"
+            >
+              <Trash2 className="size-4" /> Quitar esta foto
+            </button>
+          ) : null}
+          <button
+            onClick={onClose}
+            aria-label="Salir del modo pantalla"
+            className="grid size-11 place-items-center rounded-full border border-border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            <X className="size-5" />
+          </button>
+        </div>
       </div>
 
       <div className="flex flex-1 items-center justify-center px-8 pb-4">

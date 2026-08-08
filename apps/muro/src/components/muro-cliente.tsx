@@ -295,6 +295,11 @@ export function MuroCliente() {
           mensajes={mensajesVistos}
           urlFirmar={urlFirmar}
           onClose={() => setPantalla(false)}
+          // El anfitrión puede quitar sin salir del proyector. La confirmación
+          // es la misma de las tarjetas y se pinta encima (va después en el
+          // árbol), y mientras está abierta el turno se detiene.
+          onQuitar={anfitrion ? setPorQuitar : undefined}
+          pausado={porQuitar !== null}
         />
       ) : null}
 

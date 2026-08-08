@@ -13,7 +13,7 @@
  *   • Si el muro está vacío, invita a firmar en vez de quedarse en negro.
  */
 import * as React from "react";
-import { QrCode, X } from "lucide-react";
+import { QrCode, Trash2, X } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { tiempoRelativo, type Mensaje } from "@/lib/muro";
 
@@ -25,11 +25,18 @@ export function ModoPantalla({
   nombreEvento,
   urlFirmar,
   onClose,
+  onQuitar,
+  pausado = false,
 }: {
   mensajes: Mensaje[];
   nombreEvento: string;
   urlFirmar: string;
   onClose: () => void;
+  /** Si se pasa, aparece el boton de quitar el mensaje que esta en pantalla. */
+  onQuitar?: (m: Mensaje) => void;
+  /** Con la confirmacion abierta el turno se detiene: si no, el mensaje cambia
+   *  debajo de quien esta confirmando y se acaba quitando otro. */
+  pausado?: boolean;
 }) {
   const [i, setI] = React.useState(0);
 
@@ -62,10 +69,10 @@ export function ModoPantalla({
   // El turno se programa DESPUÉS de cada cambio (no con un intervalo fijo): así,
   // al mover con las flechas, el siguiente salto vuelve a contar desde cero.
   React.useEffect(() => {
-    if (mensajes.length <= 1) return;
+    if (mensajes.length <= 1 || pausado) return;
     const t = window.setTimeout(() => mover(1), TURNO_MS);
     return () => window.clearTimeout(t);
-  }, [i, mensajes.length, mover]);
+  }, [i, mensajes.length, mover, pausado]);
 
   // Si se borran mensajes mientras se proyecta, el índice no puede quedar fuera.
   React.useEffect(() => {
@@ -81,13 +88,24 @@ export function ModoPantalla({
           <div className="text-sm font-medium text-primary">Muro de mensajes</div>
           <div className="text-2xl font-semibold tracking-tight">{nombreEvento}</div>
         </div>
-        <button
-          onClick={onClose}
-          aria-label="Salir del modo pantalla"
-          className="grid size-11 place-items-center rounded-full border border-border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-        >
-          <X className="size-5" />
-        </button>
+        <div className="flex items-center gap-3">
+          {onQuitar && actual ? (
+            <button
+              onClick={() => onQuitar(actual)}
+              aria-label={`Quitar el mensaje de ${actual.nombre} que está en pantalla`}
+              className="flex h-11 items-center gap-2 rounded-full border border-border px-4 text-sm font-medium text-muted-foreground transition-colors hover:border-red-500/50 hover:text-red-500"
+            >
+              <Trash2 className="size-4" /> Quitar este mensaje
+            </button>
+          ) : null}
+          <button
+            onClick={onClose}
+            aria-label="Salir del modo pantalla"
+            className="grid size-11 place-items-center rounded-full border border-border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            <X className="size-5" />
+          </button>
+        </div>
       </div>
 
       <div className="flex flex-1 items-center justify-center px-8 pb-8">

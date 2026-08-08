@@ -476,6 +476,10 @@ export default function AlbumDelEvento({ params }: { params: Promise<{ codigo: s
           nombreEvento={evento.nombre}
           urlSubir={urlSubir}
           onClose={() => setPantalla(false)}
+          // Moderar sin salir del proyector: la confirmación es la misma de la
+          // rejilla y se pinta encima. Mientras está abierta, el turno se para.
+          onQuitar={setPorQuitar}
+          pausado={porQuitar !== null}
         />
       ) : null}
 

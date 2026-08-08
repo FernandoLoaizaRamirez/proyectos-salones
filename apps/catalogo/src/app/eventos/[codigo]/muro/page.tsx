@@ -309,6 +309,11 @@ export default function MuroDelEvento({ params }: { params: Promise<{ codigo: st
           nombreEvento={evento.nombre}
           urlFirmar={urlFirmar}
           onClose={() => setPantalla(false)}
+          // Moderar sin salir del proyector: la confirmación es la misma de las
+          // tarjetas y se pinta encima (va después en el árbol). Mientras está
+          // abierta, el turno se detiene.
+          onQuitar={setPorQuitar}
+          pausado={porQuitar !== null}
         />
       ) : null}
 

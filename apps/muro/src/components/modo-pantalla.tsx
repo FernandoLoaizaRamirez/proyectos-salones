@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { X, QrCode } from "lucide-react";
+import { X, QrCode, Trash2 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { evento, tiempoRelativo, type Mensaje } from "@/lib/muro";
 
@@ -9,15 +9,27 @@ import { evento, tiempoRelativo, type Mensaje } from "@/lib/muro";
  * Modo pantalla: ocupa toda la pantalla y va pasando los mensajes uno por uno,
  * ideal para proyectar en la fiesta. Muestra un QR para que los invitados
  * sigan firmando. Se cierra con la X o con la tecla Esc.
+ *
+ * MODERAR DESDE AQUÍ (añadido el 6 ago 2026): es la pantalla donde un mensaje
+ * subido de tono se ve GIGANTE delante de todos, y hasta ahora era la única sin
+ * forma de quitarlo — había que salir del proyector, buscar la tarjeta y
+ * borrarla ahí, con el mensaje en la pared todo ese rato.
  */
 export function ModoPantalla({
   mensajes,
   urlFirmar,
   onClose,
+  onQuitar,
+  pausado = false,
 }: {
   mensajes: Mensaje[];
   urlFirmar: string;
   onClose: () => void;
+  /** Si se pasa, aparece el botón de quitar. Solo el anfitrión lo recibe. */
+  onQuitar?: (m: Mensaje) => void;
+  /** Con la confirmación abierta el turno se detiene: si no, el mensaje cambia
+   *  debajo de quien está confirmando y se acaba borrando otro. */
+  pausado?: boolean;
 }) {
   const [i, setI] = React.useState(0);
 
@@ -39,12 +51,14 @@ export function ModoPantalla({
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  // Avanzar automáticamente cada 6 segundos.
+  // Avanzar automáticamente cada 6 segundos. En pausa mientras se confirma un
+  // borrado: el turno no puede cambiar el mensaje debajo de quien lo está
+  // quitando.
   React.useEffect(() => {
-    if (mensajes.length <= 1) return;
+    if (mensajes.length <= 1 || pausado) return;
     const t = window.setInterval(() => setI((n) => (n + 1) % mensajes.length), 6000);
     return () => window.clearInterval(t);
-  }, [mensajes.length]);
+  }, [mensajes.length, pausado]);
 
   // Si cambia la cantidad de mensajes, mantener el índice dentro de rango.
   React.useEffect(() => {
@@ -61,13 +75,24 @@ export function ModoPantalla({
           <div className="text-sm font-medium text-primary">Muro de mensajes</div>
           <div className="text-2xl font-semibold tracking-tight">{evento.nombre}</div>
         </div>
-        <button
-          onClick={onClose}
-          aria-label="Salir del modo pantalla"
-          className="grid size-11 place-items-center rounded-full border border-border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-        >
-          <X className="size-5" />
-        </button>
+        <div className="flex items-center gap-3">
+          {onQuitar && actual ? (
+            <button
+              onClick={() => onQuitar(actual)}
+              aria-label={`Quitar el mensaje de ${actual.nombre} que está en pantalla`}
+              className="flex h-11 items-center gap-2 rounded-full border border-border px-4 text-sm font-medium text-muted-foreground transition-colors hover:border-red-500/50 hover:text-red-500"
+            >
+              <Trash2 className="size-4" /> Quitar este mensaje
+            </button>
+          ) : null}
+          <button
+            onClick={onClose}
+            aria-label="Salir del modo pantalla"
+            className="grid size-11 place-items-center rounded-full border border-border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            <X className="size-5" />
+          </button>
+        </div>
       </div>
 
       {/* Mensaje grande al centro */}

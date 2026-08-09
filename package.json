@@ -19,7 +19,7 @@
     "@salones/config": "workspace:*",
     "eslint": "^9.39.5",
     "prettier": "^3.9.6",
-    "turbo": "^2.10.5",
+    "turbo": "^2.10.8",
     "typescript": "^6.0.3",
     "vitest": "^3.2.4"
   }

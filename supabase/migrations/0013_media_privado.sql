@@ -33,8 +33,11 @@
 
 
 -- ============================================================================
--- BLOQUE UNICO — EL CORTE  ·  ¡NO CORRER TODAVIA!
+-- BLOQUE FINAL — EL CORTE  ·  ✅ YA CORRIDO (24 jul 2026)
 -- ----------------------------------------------------------------------------
+-- ⚠️ NO copies este bloque comentado: quedó aquí como historia. El SQL de este
+--    corte, listo para correr y comprobado, vive en `0014_cortes_aplicados.sql`.
+--    En un proyecto nuevo, corre la 0014; no hace falta descomentar nada aquí.
 -- Toda esta migracion ES el corte: no hay parte aditiva que aplicar antes.
 --
 -- CORRER SOLO CUANDO:

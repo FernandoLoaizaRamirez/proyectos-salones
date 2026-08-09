@@ -47,8 +47,11 @@ grant execute on function evento_del_pase_anfitrion(text) to service_role;
 
 
 -- ============================================================================
--- BLOQUE FINAL — EL CORTE DEL ALMACEN  ·  ¡NO CORRER TODAVIA!
+-- BLOQUE FINAL — EL CORTE  ·  ✅ YA CORRIDO (24 jul 2026)
 -- ----------------------------------------------------------------------------
+-- ⚠️ NO copies este bloque comentado: quedó aquí como historia. El SQL de este
+--    corte, listo para correr y comprobado, vive en `0014_cortes_aplicados.sql`.
+--    En un proyecto nuevo, corre la 0014; no hace falta descomentar nada aquí.
 -- Quita la regla que deja subir a cualquiera. A partir de ahi, la UNICA forma
 -- de escribir en el bucket `media` es con una URL firmada por `media-subir`,
 -- que solo se consigue presentando un pase valido del evento.

@@ -20,11 +20,33 @@ export const evento = {
   organizador: { nombre: "Suite para Salones", whatsapp: "526673349236" },
 };
 
+/**
+ * Las dos colecciones del evento. Van separadas y con prefijos de id distintos
+ * (M- y G-) porque en la tabla `items` el `id` es llave primaria de TODA la
+ * tabla, no de la colección: una mesa y un invitado con el mismo id se pisarían.
+ */
+export const COLECCION_MESAS = "mesas";
+export const COLECCION_ACOMODO = "acomodo";
+
+/** Ordena por el campo `orden`; lo que no lo tenga, al final y por nombre. */
+export function porOrden<T extends { orden?: number; nombre: string }>(a: T, b: T): number {
+  const x = a.orden ?? Number.MAX_SAFE_INTEGER;
+  const y = b.orden ?? Number.MAX_SAFE_INTEGER;
+  return x === y ? a.nombre.localeCompare(b.nombre, "es", { numeric: true }) : x - y;
+}
+
 /** Una mesa del salón: un nombre y cuántas personas caben. */
 export type Mesa = {
   id: string;
   nombre: string;
   capacidad: number;
+  /**
+   * Para pintarlas siempre en el mismo orden. Hace falta desde que el acomodo
+   * vive en el evento: lo que llega del servidor viene de lo más nuevo a lo más
+   * viejo, y sin esto las mesas se reordenarían solas cada tres segundos —
+   * buscar "Mesa 5" sería imposible. Es la marca de tiempo de cuando se creó.
+   */
+  orden?: number;
 };
 
 /**
@@ -37,6 +59,8 @@ export type Invitado = {
   nombre: string;
   asientos: number;
   mesaId: string | null;
+  /** Mismo motivo que en Mesa: que la lista no baile en cada refresco. */
+  orden?: number;
 };
 
 /** El acomodo completo: lo que se exporta, se importa y se comparte por enlace. */
@@ -109,22 +133,37 @@ export function sinAsignar(invitados: Invitado[]): Invitado[] {
   return invitados.filter((i) => i.mesaId === null);
 }
 
-/** Genera un id de mesa corto y único. */
+/**
+ * Ids de 8 caracteres con azar criptográfico.
+ *
+ * ⚠️ Antes eran 4 de `Math.random()` comprobados solo contra lo que había EN
+ * MEMORIA. Bastaba cuando cada tablet vivía en su mundo; ahora los acomodos de
+ * todas las bodas comparten la misma tabla y el `id` es llave primaria GLOBAL,
+ * así que dos eventos que sacaran el mismo id se pisarían la mesa — y guardar es
+ * un upsert, o sea que lo harían en silencio.
+ */
+const ABC = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // sin I/O/0/1
+
+function azar(prefijo: string): string {
+  const bytes = new Uint8Array(8);
+  crypto.getRandomValues(bytes);
+  return prefijo + Array.from(bytes, (b) => ABC[b % ABC.length]).join("");
+}
+
 export function nuevoIdMesa(existentes: Mesa[]): string {
   const usados = new Set(existentes.map((m) => m.id));
   let id = "";
   do {
-    id = "M-" + Math.random().toString(36).slice(2, 6).toUpperCase();
+    id = azar("M-");
   } while (usados.has(id));
   return id;
 }
 
-/** Genera un id de invitado corto y único. */
 export function nuevoIdInvitado(existentes: Invitado[]): string {
   const usados = new Set(existentes.map((i) => i.id));
   let id = "";
   do {
-    id = "G-" + Math.random().toString(36).slice(2, 6).toUpperCase();
+    id = azar("G-");
   } while (usados.has(id));
   return id;
 }
@@ -187,10 +226,14 @@ export function decodificarAcomodo(datos: string): Acomodo | null {
     const o = JSON.parse(base64ATexto(datos)) as Partial<AcomodoCompacto>;
     if (!Array.isArray(o.m) || !Array.isArray(o.g)) return null;
 
+    // `orden: i` — en el enlace el orden va en la POSICIÓN (así el QR cabe).
+    // Si no se devolviera aquí al campo, al ordenar la lista saldría alfabética
+    // y el acomodo llegaría distinto del que armó el salón.
     const mesas: Mesa[] = o.m.map((par, i) => ({
       id: "M" + i,
       nombre: String(par?.[0] ?? `Mesa ${i + 1}`),
       capacidad: Math.max(1, Number(par?.[1]) || 1),
+      orden: i,
     }));
 
     const invitados: Invitado[] = o.g.map((tri, i) => {
@@ -201,6 +244,7 @@ export function decodificarAcomodo(datos: string): Acomodo | null {
         nombre: String(tri?.[0] ?? "Invitado"),
         asientos: Math.max(1, Number(tri?.[1]) || 1),
         mesaId: mesa ? mesa.id : null,
+        orden: i,
       };
     });
 
@@ -235,6 +279,8 @@ export function validarAcomodo(obj: unknown): Acomodo | null {
       id: mm.id,
       nombre: mm.nombre,
       capacidad: Math.max(1, Number(mm.capacidad) || 1),
+      // Se conserva: si se perdiera, un acomodo importado saldría desordenado.
+      ...(typeof mm.orden === "number" ? { orden: mm.orden } : {}),
     });
   }
 
@@ -248,6 +294,7 @@ export function validarAcomodo(obj: unknown): Acomodo | null {
       nombre: ii.nombre,
       asientos: Math.max(1, Number(ii.asientos) || 1),
       mesaId: typeof ii.mesaId === "string" ? ii.mesaId : null,
+      ...(typeof ii.orden === "number" ? { orden: ii.orden } : {}),
     });
   }
 

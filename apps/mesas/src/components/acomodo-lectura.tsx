@@ -3,6 +3,7 @@
 import * as React from "react";
 import { Users, Search, MapPin } from "lucide-react";
 import { Card, ThemeToggle, cn } from "@salones/ui";
+import { obtenerSync, eventoActual } from "@salones/sync";
 import {
   decodificarAcomodo,
   asientosUsados,
@@ -10,13 +11,13 @@ import {
   sinAsignar,
   normaliza,
   evento as eventoLocal,
-  mesasIniciales,
-  invitadosIniciales,
+  porOrden,
+  COLECCION_MESAS,
+  COLECCION_ACOMODO,
+  type Mesa,
+  type Invitado,
   type Acomodo,
 } from "@/lib/mesas";
-
-const K_MESAS = "mesas-mesas";
-const K_INVITADOS = "mesas-invitados";
 
 export function AcomodoLectura() {
   const [acomodo, setAcomodo] = React.useState<Acomodo | null | "cargando">("cargando");
@@ -28,24 +29,38 @@ export function AcomodoLectura() {
       setAcomodo(decodificarAcomodo(hash) ?? null);
       return;
     }
-    // Sin datos en el enlace: mostramos lo guardado en este dispositivo (vista previa).
-    try {
-      const m = localStorage.getItem(K_MESAS);
-      const g = localStorage.getItem(K_INVITADOS);
-      setAcomodo({
-        v: 1,
-        evento: { nombre: eventoLocal.nombre, fecha: eventoLocal.fecha, lugar: eventoLocal.lugar },
-        mesas: m ? JSON.parse(m) : mesasIniciales,
-        invitados: g ? JSON.parse(g) : invitadosIniciales,
-      });
-    } catch {
-      setAcomodo({
-        v: 1,
-        evento: { nombre: eventoLocal.nombre, fecha: eventoLocal.fecha, lugar: eventoLocal.lugar },
-        mesas: mesasIniciales,
-        invitados: invitadosIniciales,
-      });
-    }
+    /* Sin datos en el enlace: es la VISTA PREVIA del organizador, así que
+     * mostramos el acomodo del evento y lo seguimos en vivo (si lo mueven en la
+     * otra pestaña, aquí se ve). El invitado no pasa por aquí: su enlace lleva
+     * el acomodo dentro (#), y ese camino se atiende arriba sin tocar la red.
+     *
+     * Antes esta pantalla leía a mano las dos llaves de este aparato, copiadas
+     * de la otra pantalla; al mudarse el acomodo al evento se habría quedado
+     * enseñando para siempre lo último que hubo en ESTA tablet. */
+    const eventoId = eventoActual();
+    const sync = obtenerSync();
+    const cabecera = {
+      nombre: eventoLocal.nombre,
+      fecha: eventoLocal.fecha,
+      lugar: eventoLocal.lugar,
+    };
+
+    let mesas: Mesa[] = [];
+    let invitados: Invitado[] = [];
+    const pintar = () => setAcomodo({ v: 1, evento: cabecera, mesas, invitados });
+
+    const cancelarMesas = sync.suscribir<Mesa>(eventoId, COLECCION_MESAS, (filas) => {
+      mesas = [...filas].sort(porOrden);
+      pintar();
+    });
+    const cancelarAcomodo = sync.suscribir<Invitado>(eventoId, COLECCION_ACOMODO, (filas) => {
+      invitados = [...filas].sort(porOrden);
+      pintar();
+    });
+    return () => {
+      cancelarMesas();
+      cancelarAcomodo();
+    };
   }, []);
 
   if (acomodo === "cargando") {

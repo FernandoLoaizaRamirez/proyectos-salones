@@ -17,7 +17,8 @@ import {
   Search,
   Pencil,
 } from "lucide-react";
-import { Button, Card, cn, Confirmar, guardarLocal } from "@salones/ui";
+import { Button, Card, cn, Confirmar } from "@salones/ui";
+import { obtenerSync, eventoActual } from "@salones/sync";
 import { QR } from "@/components/qr";
 import {
   mesasIniciales,
@@ -31,12 +32,19 @@ import {
   normaliza,
   codificarAcomodo,
   validarAcomodo,
+  porOrden,
+  COLECCION_MESAS,
+  COLECCION_ACOMODO,
   type Mesa,
   type Invitado,
 } from "@/lib/mesas";
 
-const K_MESAS = "mesas-mesas";
-const K_INVITADOS = "mesas-invitados";
+/**
+ * El acomodo vive ahora en el evento (@salones/sync), no en dos llaves de este
+ * aparato. Antes las claves no llevaban el código del evento, así que dos bodas
+ * en la misma tablet compartían literalmente las mismas dos cajas — y si el
+ * navegador se limpiaba, el acomodo de la boda se iba con él.
+ */
 
 /** Máx. de caracteres del enlace para que su QR siga siendo fácil de escanear. */
 const UMBRAL_QR = 1200;
@@ -54,7 +62,6 @@ function tonoOcupacion(usados: number, cap: number): string {
 export function AcomodoCliente() {
   const [mesas, setMesas] = React.useState<Mesa[]>([]);
   const [invitados, setInvitados] = React.useState<Invitado[]>([]);
-  const [cargado, setCargado] = React.useState(false);
 
   // Formularios (dan de alta y también editan, como en el resto de la suite).
   const [mesaForm, setMesaForm] = React.useState({ nombre: "", capacidad: "10" });
@@ -75,45 +82,97 @@ export function AcomodoCliente() {
   const invFormRef = React.useRef<HTMLDivElement>(null);
   const avisoTimer = React.useRef<number | null>(null);
 
-  // Carga inicial + sincronización en vivo entre pestañas.
-  React.useEffect(() => {
-    try {
-      const m = localStorage.getItem(K_MESAS);
-      setMesas(m ? JSON.parse(m) : mesasIniciales);
-      const g = localStorage.getItem(K_INVITADOS);
-      setInvitados(g ? JSON.parse(g) : invitadosIniciales);
-    } catch {
-      setMesas(mesasIniciales);
-      setInvitados(invitadosIniciales);
-    }
-    setCargado(true);
-
-    const onStorage = (ev: StorageEvent) => {
-      if (ev.key === K_MESAS && ev.newValue) {
-        try {
-          setMesas(JSON.parse(ev.newValue));
-        } catch {
-          /* noop */
-        }
-      }
-      if (ev.key === K_INVITADOS && ev.newValue) {
-        try {
-          setInvitados(JSON.parse(ev.newValue));
-        } catch {
-          /* noop */
-        }
-      }
+  /* ---- VENTANA DE GRACIA (lo más delicado de este cambio) -----------------
+   * El sondeo trae la lista entera cada 3 segundos y la reemplaza. Sin esto,
+   * arrastrar un invitado a una mesa lo devolvería a su sitio anterior antes de
+   * que el guardado llegue al servidor: la ficha "saltaría" sola delante de
+   * quien está acomodando.
+   *
+   * Durante ~2,5 s después de tocar algo aquí manda lo que se ve en pantalla;
+   * pasado ese rato, manda el servidor. Para un acomodo —que normalmente hace
+   * UNA persona— es de sobra, y es fácil de razonar. */
+  const mandaLoLocal = React.useRef(0);
+  const tocado = React.useCallback(() => {
+    mandaLoLocal.current = Date.now() + 2500;
+  }, []);
+  const deFuera = React.useCallback(<T,>(aplicar: (filas: T[]) => void) => {
+    return (filas: T[]) => {
+      if (Date.now() < mandaLoLocal.current) return;
+      aplicar(filas);
     };
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
   }, []);
 
   React.useEffect(() => {
-    if (cargado) guardarLocal(K_MESAS, JSON.stringify(mesas));
-  }, [mesas, cargado]);
-  React.useEffect(() => {
-    if (cargado) guardarLocal(K_INVITADOS, JSON.stringify(invitados));
-  }, [invitados, cargado]);
+    const eventoId = eventoActual();
+    const sync = obtenerSync();
+
+    const cancelarMesas = sync.suscribir<Mesa>(
+      eventoId,
+      COLECCION_MESAS,
+      deFuera<Mesa>((filas) => setMesas([...filas].sort(porOrden))),
+    );
+    const cancelarAcomodo = sync.suscribir<Invitado>(
+      eventoId,
+      COLECCION_ACOMODO,
+      deFuera<Invitado>((filas) => setInvitados([...filas].sort(porOrden))),
+    );
+    // Solo en la demo local: los ejemplos NUNCA viajan al servidor. Sus ids son
+    // fijos y la llave primaria de `items` es global, así que dos eventos
+    // sembrados chocarían, y cada boda real nacería con la de Ana & Rodrigo.
+    if (sync.nombre === "local") {
+      void sync.listar<Mesa>(eventoId, COLECCION_MESAS).then((filas) => {
+        if (filas.length > 0) return;
+        mesasIniciales.forEach((m, i) => {
+          void sync.guardar(eventoId, COLECCION_MESAS, { ...m, orden: i });
+        });
+        invitadosIniciales.forEach((g, i) => {
+          void sync.guardar(eventoId, COLECCION_ACOMODO, { ...g, orden: i });
+        });
+      });
+    }
+
+    return () => {
+      cancelarMesas();
+      cancelarAcomodo();
+    };
+  }, [deFuera]);
+
+  /**
+   * Guarda en el evento. Todo lo que cambia el acomodo pasa por aquí: primero se
+   * pinta (ya está hecho por quien llama) y después se guarda, porque acomodar
+   * con la ficha esperando a la red sería insufrible.
+   */
+  const guardarEnEvento = React.useCallback(
+    async (coleccion: string, fila: Mesa | Invitado): Promise<boolean> => {
+      try {
+        await obtenerSync().guardar(eventoActual(), coleccion, fila);
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    [],
+  );
+
+  /**
+   * Quita del evento. ⚠️ Desde el corte de la 0009, BORRAR exige el pase de
+   * ANFITRIÓN: si la app se abrió sin el enlace que lo lleva (`&a=`), esto falla
+   * — y falla avisando, no en silencio.
+   */
+  const quitarDelEvento = React.useCallback(
+    async (coleccion: string, id: string): Promise<boolean> => {
+      try {
+        await obtenerSync().eliminar(eventoActual(), coleccion, id);
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    [],
+  );
+
+  const avisoSinLlave =
+    "No pudimos quitarlo del evento. Para borrar hace falta abrir el acomodo con el enlace de anfitrión (el que lleva &a=), que sale del panel del salón.";
 
   const mostrarAviso = (texto: string) => {
     setAviso(texto);
@@ -155,7 +214,12 @@ export function AcomodoCliente() {
         return false;
       }
     }
+    // Se pinta ya (con su ventana de gracia) y se guarda después.
+    tocado();
     setInvitados((l) => l.map((i) => (i.id === invId ? { ...i, mesaId: destino } : i)));
+    void guardarEnEvento(COLECCION_ACOMODO, { ...inv, mesaId: destino }).then((ok) => {
+      if (!ok) mostrarAviso("No pudimos guardar el cambio. Revisa tu conexión.");
+    });
     return true;
   };
 
@@ -165,11 +229,15 @@ export function AcomodoCliente() {
     const nombre = mesaForm.nombre.trim();
     if (!nombre) return;
     const capacidad = Math.max(1, parseInt(mesaForm.capacidad, 10) || 1);
-    if (editMesaId) {
-      setMesas((l) => l.map((m) => (m.id === editMesaId ? { ...m, nombre, capacidad } : m)));
-    } else {
-      setMesas((l) => [...l, { id: nuevoIdMesa(l), nombre, capacidad }]);
-    }
+    tocado();
+    const anterior = editMesaId ? mesas.find((m) => m.id === editMesaId) : null;
+    const mesa: Mesa = anterior
+      ? { ...anterior, nombre, capacidad }
+      : { id: nuevoIdMesa(mesas), nombre, capacidad, orden: Date.now() };
+    setMesas((l) => (anterior ? l.map((m) => (m.id === mesa.id ? mesa : m)) : [...l, mesa]));
+    void guardarEnEvento(COLECCION_MESAS, mesa).then((ok) => {
+      if (!ok) mostrarAviso("No pudimos guardar la mesa. Revisa tu conexión.");
+    });
     setMesaForm({ nombre: "", capacidad: "10" });
     setEditMesaId(null);
   };
@@ -183,13 +251,23 @@ export function AcomodoCliente() {
   >(null);
 
   const eliminarMesa = (id: string) => {
-    // Sus invitados vuelven a "sin asignar".
+    tocado();
+    // Sus invitados vuelven a "sin asignar". Se hace ANTES de quitar la mesa:
+    // si el borrado fallara, quedan sin sentar (visible y arreglable) en vez de
+    // apuntando a una mesa que ya no existe, que no se ve en ninguna parte.
+    const desalojados = invitados.filter((i) => i.mesaId === id);
     setInvitados((l) => l.map((i) => (i.mesaId === id ? { ...i, mesaId: null } : i)));
     setMesas((l) => l.filter((m) => m.id !== id));
     if (editMesaId === id) {
       setEditMesaId(null);
       setMesaForm({ nombre: "", capacidad: "10" });
     }
+    void (async () => {
+      for (const inv of desalojados) {
+        await guardarEnEvento(COLECCION_ACOMODO, { ...inv, mesaId: null });
+      }
+      if (!(await quitarDelEvento(COLECCION_MESAS, id))) mostrarAviso(avisoSinLlave);
+    })();
   };
 
   /* -------------------- Alta / edición invitados ------------------- */
@@ -198,11 +276,15 @@ export function AcomodoCliente() {
     const nombre = invForm.nombre.trim();
     if (!nombre) return;
     const asientos = Math.max(1, parseInt(invForm.asientos, 10) || 1);
-    if (editInvId) {
-      setInvitados((l) => l.map((i) => (i.id === editInvId ? { ...i, nombre, asientos } : i)));
-    } else {
-      setInvitados((l) => [...l, { id: nuevoIdInvitado(l), nombre, asientos, mesaId: null }]);
-    }
+    tocado();
+    const anterior = editInvId ? invitados.find((i) => i.id === editInvId) : null;
+    const inv: Invitado = anterior
+      ? { ...anterior, nombre, asientos }
+      : { id: nuevoIdInvitado(invitados), nombre, asientos, mesaId: null, orden: Date.now() };
+    setInvitados((l) => (anterior ? l.map((i) => (i.id === inv.id ? inv : i)) : [...l, inv]));
+    void guardarEnEvento(COLECCION_ACOMODO, inv).then((ok) => {
+      if (!ok) mostrarAviso("No pudimos guardar al invitado. Revisa tu conexión.");
+    });
     setInvForm({ nombre: "", asientos: "1" });
     setEditInvId(null);
   };
@@ -212,11 +294,15 @@ export function AcomodoCliente() {
     invFormRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
   };
   const eliminarInvitado = (id: string) => {
+    tocado();
     setInvitados((l) => l.filter((i) => i.id !== id));
     if (editInvId === id) {
       setEditInvId(null);
       setInvForm({ nombre: "", asientos: "1" });
     }
+    void quitarDelEvento(COLECCION_ACOMODO, id).then((ok) => {
+      if (!ok) mostrarAviso(avisoSinLlave);
+    });
   };
 
   /* --------------------- Arrastrar y soltar ------------------------ */
@@ -264,9 +350,33 @@ export function AcomodoCliente() {
           mostrarAviso("El archivo no tiene el formato de un acomodo de mesas.");
           return;
         }
-        setMesas(data.mesas);
-        setInvitados(data.invitados);
-        mostrarAviso("Acomodo importado correctamente.");
+        tocado();
+        // El orden se pone ANTES de ordenar. Un archivo de los de antes de este
+        // cambio no trae `orden`: sin esto se pintaría alfabético en pantalla y
+        // se guardaría posicional en el evento — dos acomodos a la vez.
+        const mesasN = data.mesas.map((m, i) => ({ ...m, orden: m.orden ?? i }));
+        const invN = data.invitados.map((g, i) => ({ ...g, orden: g.orden ?? i }));
+        setMesas([...mesasN].sort(porOrden));
+        setInvitados([...invN].sort(porOrden));
+        mostrarAviso("Acomodo importado. Guardándolo en el evento…");
+        // Se escriben una a una. NO borra lo que ya había: con un almacén
+        // central eso serían N borrados sin transacción y con la llave de
+        // anfitrión de por medio; cortarse a la mitad dejaría media boda vieja
+        // y media nueva. Para quitar algo está su botón de borrar.
+        void (async () => {
+          let fallidas = 0;
+          for (const m of mesasN) {
+            if (!(await guardarEnEvento(COLECCION_MESAS, m))) fallidas++;
+          }
+          for (const g of invN) {
+            if (!(await guardarEnEvento(COLECCION_ACOMODO, g))) fallidas++;
+          }
+          mostrarAviso(
+            fallidas === 0
+              ? "Acomodo importado y guardado en el evento."
+              : `Se importó, pero ${fallidas} no se pudieron guardar. Revisa tu conexión.`,
+          );
+        })();
       } catch {
         mostrarAviso("No se pudo leer el archivo.");
       }
@@ -281,15 +391,48 @@ export function AcomodoCliente() {
    * sin preguntar nada — el día del evento y con prisa, eso pasa. Ahora hay que
    * confirmar escribiendo, que obliga a leer lo que va a ocurrir.
    */
+  /**
+   * Empezar de cero.
+   *
+   * En la demo local vuelve al acomodo de ejemplo, como siempre. Con el evento
+   * conectado NO siembra nada: los ejemplos nunca van al servidor, así que lo
+   * deja VACÍO. Y borrar exige la llave de anfitrión: si no está, se avisa.
+   */
   const reiniciar = () => {
-    setMesas(mesasIniciales);
-    setInvitados(invitadosIniciales);
+    const sync = obtenerSync();
+    const local = sync.nombre === "local";
+    const mesasPrevias = mesas;
+    const invPrevios = invitados;
+
+    tocado();
+    setMesas(local ? mesasIniciales : []);
+    setInvitados(local ? invitadosIniciales : []);
     setEditMesaId(null);
     setEditInvId(null);
     setMesaForm({ nombre: "", capacidad: "10" });
     setInvForm({ nombre: "", asientos: "1" });
     setConfirmarReinicio(false);
-    mostrarAviso("Volvimos al acomodo de ejemplo.");
+
+    void (async () => {
+      let sinPermiso = false;
+      for (const m of mesasPrevias) {
+        if (!(await quitarDelEvento(COLECCION_MESAS, m.id))) sinPermiso = true;
+      }
+      for (const g of invPrevios) {
+        if (!(await quitarDelEvento(COLECCION_ACOMODO, g.id))) sinPermiso = true;
+      }
+      if (sinPermiso) {
+        mostrarAviso(avisoSinLlave);
+        return;
+      }
+      if (local) {
+        mesasIniciales.forEach((m, i) => void guardarEnEvento(COLECCION_MESAS, { ...m, orden: i }));
+        invitadosIniciales.forEach((g, i) => void guardarEnEvento(COLECCION_ACOMODO, { ...g, orden: i }));
+        mostrarAviso("Volvimos al acomodo de ejemplo.");
+      } else {
+        mostrarAviso("El acomodo quedó vacío.");
+      }
+    })();
   };
 
   /* ---------------------------- Compartir -------------------------- */

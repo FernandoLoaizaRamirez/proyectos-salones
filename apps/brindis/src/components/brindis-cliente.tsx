@@ -17,7 +17,7 @@ import {
   Film,
   UploadCloud,
 } from "lucide-react";
-import { Button, Card, cn, AvisoParticipacion } from "@salones/ui";
+import { Button, Card, cn, AvisoParticipacion, Confirmar } from "@salones/ui";
 import { estaConectado, eventoActual, sufijoEvento } from "@salones/sync";
 import { QR } from "@/components/qr";
 import {
@@ -389,12 +389,15 @@ export function BrindisCliente() {
     const ok = await compartirVideo(it.blob, it.mime);
     if (!ok) descargarVideo(it.blob, it.mime);
   };
+  const [porQuitar, setPorQuitar] = React.useState<ItemGaleria | null>(null);
+
   const borrarGaleria = async (id: string) => {
     try {
       await borrarVideoLocal(id);
       await cargarGaleria();
     } catch {
-      /* noop */
+      // Ya no en silencio: un brindis borrado a medias tiene que notarse.
+      setError("No pudimos borrar ese video. Inténtalo de nuevo.");
     }
   };
 
@@ -447,7 +450,7 @@ export function BrindisCliente() {
                         <Share2 className="size-4" /> Compartir
                       </Button>
                       <button
-                        onClick={() => borrarGaleria(it.id)}
+                        onClick={() => setPorQuitar(it)}
                         aria-label="Eliminar video"
                         className="grid size-9 place-items-center rounded-[var(--radius)] text-muted-foreground transition-colors hover:bg-muted hover:text-red-500"
                       >
@@ -615,6 +618,24 @@ export function BrindisCliente() {
           <AvisoParticipacion accion="enviar tu brindis" className="mt-2 text-center" />
         </div>
       ) : null}
+
+      <Confirmar
+        abierto={porQuitar !== null}
+        titulo="¿Borrar este brindis?"
+        descripcion={
+          <>
+            Se borra el video de este dispositivo. Si no se ha enviado a los novios,{" "}
+            <strong>se pierde para siempre</strong>: es la grabación de esa persona.
+          </>
+        }
+        textoConfirmar="Sí, borrarlo"
+        onConfirmar={() => {
+          const it = porQuitar;
+          setPorQuitar(null);
+          if (it) void borrarGaleria(it.id);
+        }}
+        onCancelar={() => setPorQuitar(null)}
+      />
     </div>
   );
 }

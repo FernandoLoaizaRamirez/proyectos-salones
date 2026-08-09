@@ -35,7 +35,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { Button, Card, cn } from "@salones/ui";
+import { Button, Card, cn, Confirmar } from "@salones/ui";
 import { obtenerSync } from "@salones/sync";
 import { obtenerSupabase } from "@/lib/supabase";
 import { obtenerEvento, type EventoFila } from "@/lib/eventos";
@@ -121,6 +121,8 @@ export default function PanelDj({ params }: { params: Promise<{ codigo: string }
       setAviso("No pudimos guardar el cambio. Revisa tu conexión e inténtalo de nuevo.");
     }
   };
+
+  const [porQuitar, setPorQuitar] = React.useState<Cancion | null>(null);
 
   const quitar = async (c: Cancion) => {
     setAviso("");
@@ -338,7 +340,7 @@ export default function PanelDj({ params }: { params: Promise<{ codigo: string }
                     </button>
                   )}
                   <button
-                    onClick={() => void quitar(c)}
+                    onClick={() => setPorQuitar(c)}
                     aria-label={`Eliminar ${c.titulo}`}
                     className="grid size-9 place-items-center rounded-[var(--radius)] text-muted-foreground transition-colors hover:bg-muted hover:text-red-500"
                   >
@@ -405,6 +407,26 @@ export default function PanelDj({ params }: { params: Promise<{ codigo: string }
           </Card>
         </div>
       ) : null}
+
+      <Confirmar
+        abierto={porQuitar !== null}
+        titulo="¿Quitar esta canción?"
+        descripcion={
+          <>
+            Se quita <strong>{porQuitar?.titulo}</strong>
+            {porQuitar?.artista ? ` de ${porQuitar.artista}` : ""} de la lista de todos, con sus{" "}
+            <strong>{porQuitar?.votos ?? 0}</strong> {porQuitar?.votos === 1 ? "voto" : "votos"}. No
+            se puede deshacer.
+          </>
+        }
+        textoConfirmar="Sí, quitarla"
+        onConfirmar={() => {
+          const c = porQuitar;
+          setPorQuitar(null);
+          if (c) void quitar(c);
+        }}
+        onCancelar={() => setPorQuitar(null)}
+      />
     </main>
   );
 }

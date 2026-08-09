@@ -123,6 +123,8 @@ export function PasesCliente() {
     setForm({ nombre: "", mesa: "", personas: "2", tipo: "General" });
     setFormError("");
   };
+  const [porQuitar, setPorQuitar] = React.useState<Invitado | null>(null);
+
   const eliminar = (id: string) => {
     setInvitados((l) => l.filter((i) => i.id !== id));
     setIngresados((s) => {
@@ -444,7 +446,7 @@ export function PasesCliente() {
                         Editar
                       </Button>
                       <button
-                        onClick={() => eliminar(inv.id)}
+                        onClick={() => setPorQuitar(inv)}
                         aria-label={`Eliminar ${inv.nombre}`}
                         className="grid size-9 place-items-center rounded-[var(--radius)] text-muted-foreground transition-colors hover:bg-muted hover:text-red-500"
                       >
@@ -634,6 +636,25 @@ export function PasesCliente() {
           </div>
         </div>
       ) : null}
+
+      <Confirmar
+        abierto={porQuitar !== null}
+        titulo="¿Borrar este pase?"
+        descripcion={
+          <>
+            Se borra a <strong>{porQuitar?.nombre}</strong> de la lista de la puerta, con su pase y su
+            registro de entrada. <strong>El QR que ya le enviaste dejará de valer.</strong> No se
+            puede deshacer.
+          </>
+        }
+        textoConfirmar="Sí, borrarlo"
+        onConfirmar={() => {
+          const inv = porQuitar;
+          setPorQuitar(null);
+          if (inv) eliminar(inv.id);
+        }}
+        onCancelar={() => setPorQuitar(null)}
+      />
     </div>
   );
 }

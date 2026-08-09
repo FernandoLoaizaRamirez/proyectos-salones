@@ -177,6 +177,11 @@ export function AcomodoCliente() {
     setEditMesaId(m.id);
     setMesaForm({ nombre: m.nombre, capacidad: String(m.capacidad) });
   };
+  /** Lo que espera confirmación: una mesa entera, o un invitado sin sentar. */
+  const [porQuitar, setPorQuitar] = React.useState<
+    { tipo: "mesa"; mesa: Mesa } | { tipo: "invitado"; inv: Invitado } | null
+  >(null);
+
   const eliminarMesa = (id: string) => {
     // Sus invitados vuelven a "sin asignar".
     setInvitados((l) => l.map((i) => (i.mesaId === id ? { ...i, mesaId: null } : i)));
@@ -359,7 +364,7 @@ export function AcomodoCliente() {
       </button>
       {enMesa ? null : (
         <button
-          onClick={() => eliminarInvitado(inv.id)}
+          onClick={() => setPorQuitar({ tipo: "invitado", inv })}
           aria-label={`Eliminar ${inv.nombre}`}
           className="grid size-7 shrink-0 place-items-center rounded-[var(--radius)] text-muted-foreground transition-colors hover:bg-muted hover:text-red-500"
         >
@@ -632,7 +637,7 @@ export function AcomodoCliente() {
                           <Pencil className="size-4" />
                         </button>
                         <button
-                          onClick={() => eliminarMesa(mesa.id)}
+                          onClick={() => setPorQuitar({ tipo: "mesa", mesa })}
                           aria-label={`Eliminar ${mesa.nombre}`}
                           className="grid size-8 place-items-center rounded-[var(--radius)] text-muted-foreground transition-colors hover:bg-muted hover:text-red-500"
                         >
@@ -719,6 +724,33 @@ export function AcomodoCliente() {
           </Card>
         </div>
       ) : null}
+
+      <Confirmar
+        abierto={porQuitar !== null}
+        titulo={porQuitar?.tipo === "mesa" ? "¿Borrar esta mesa?" : "¿Borrar a este invitado?"}
+        descripcion={
+          porQuitar?.tipo === "mesa" ? (
+            <>
+              Se borra <strong>{porQuitar.mesa.nombre}</strong>. Quien estuviera sentado ahí vuelve a
+              la lista de sin acomodar, no se pierde.
+            </>
+          ) : (
+            <>
+              Se borra a <strong>{porQuitar?.inv.nombre}</strong> del acomodo. No se puede deshacer:
+              habría que volver a capturarlo.
+            </>
+          )
+        }
+        textoConfirmar={porQuitar?.tipo === "mesa" ? "Sí, borrar la mesa" : "Sí, borrarlo"}
+        onConfirmar={() => {
+          const p = porQuitar;
+          setPorQuitar(null);
+          if (!p) return;
+          if (p.tipo === "mesa") eliminarMesa(p.mesa.id);
+          else eliminarInvitado(p.inv.id);
+        }}
+        onCancelar={() => setPorQuitar(null)}
+      />
     </div>
   );
 }

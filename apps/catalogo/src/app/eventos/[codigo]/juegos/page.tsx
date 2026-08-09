@@ -33,7 +33,7 @@ import {
   Users,
   X,
 } from "lucide-react";
-import { Button, Card, cn } from "@salones/ui";
+import { Button, Card, cn, Confirmar } from "@salones/ui";
 import { obtenerSync } from "@salones/sync";
 import { obtenerSupabase } from "@/lib/supabase";
 import { obtenerEvento, type EventoFila } from "@/lib/eventos";
@@ -104,6 +104,8 @@ export default function TableroJuegos({ params }: { params: Promise<{ codigo: st
     if (!evento) return;
     return obtenerSync().suscribir<Jugador>(codigo, COLECCION_RANKING, setJugadores);
   }, [evento, codigo]);
+
+  const [porQuitar, setPorQuitar] = React.useState<Jugador | null>(null);
 
   const quitar = async (j: Jugador) => {
     setAviso("");
@@ -242,9 +244,9 @@ export default function TableroJuegos({ params }: { params: Promise<{ codigo: st
                       {j.aciertos}/{j.total}
                     </span>
                     <button
-                      onClick={() => void quitar(j)}
+                      onClick={() => setPorQuitar(j)}
                       aria-label={`Quitar a ${j.nombre} del ranking`}
-                      className="grid size-7 shrink-0 place-items-center rounded-[var(--radius)] text-muted-foreground opacity-0 transition-opacity hover:text-red-500 focus-visible:opacity-100 group-hover:opacity-100"
+                      className="grid size-7 shrink-0 place-items-center rounded-[var(--radius)] text-muted-foreground transition-colors hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
                       <Trash2 className="size-3.5" />
                     </button>
@@ -323,6 +325,25 @@ export default function TableroJuegos({ params }: { params: Promise<{ codigo: st
           onClose={() => setPantalla(false)}
         />
       ) : null}
+
+      <Confirmar
+        abierto={porQuitar !== null}
+        titulo="¿Quitar a este jugador del ranking?"
+        descripcion={
+          <>
+            Se borra a <strong>{porQuitar?.nombre}</strong> y sus{" "}
+            <strong>{porQuitar?.aciertos ?? 0}</strong> aciertos. No se puede deshacer, y si vuelve
+            a jugar empezará de cero.
+          </>
+        }
+        textoConfirmar="Sí, quitarlo"
+        onConfirmar={() => {
+          const j = porQuitar;
+          setPorQuitar(null);
+          if (j) void quitar(j);
+        }}
+        onCancelar={() => setPorQuitar(null)}
+      />
     </main>
   );
 }

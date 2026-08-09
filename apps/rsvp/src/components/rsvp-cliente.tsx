@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Plus, Check, Trash2, MessageCircle, Clock } from "lucide-react";
-import { Button, Card, cn, guardarLocal } from "@salones/ui";
+import { Button, Card, cn, Confirmar, guardarLocal } from "@salones/ui";
 import { obtenerSync, eventoActual, sufijoEvento, esAnfitrion } from "@salones/sync";
 import {
   invitadosIniciales,
@@ -113,8 +113,19 @@ export function RsvpCliente() {
   const personasSueltas = sueltas
     .filter((r) => r.estado === EstadoRSVP.Confirmado)
     .reduce((s, r) => s + (r.personas ?? 0), 0);
-  const olvidarSuelta = (id: string) => {
-    void obtenerSync().eliminar(eventoActual(), COLECCION_RESPUESTAS, id);
+  /** Lo que espera confirmación: un invitado de la lista, o una respuesta suelta. */
+  const [porQuitar, setPorQuitar] = React.useState<
+    { tipo: "invitado"; inv: Invitado } | { tipo: "suelta"; id: string; nombre: string } | null
+  >(null);
+  const [errorQuitar, setErrorQuitar] = React.useState("");
+
+  const olvidarSuelta = async (id: string) => {
+    try {
+      await obtenerSync().eliminar(eventoActual(), COLECCION_RESPUESTAS, id);
+      setErrorQuitar("");
+    } catch {
+      setErrorQuitar("No pudimos descartar esa confirmación. Inténtalo de nuevo.");
+    }
   };
 
   const confirmados = invitados.filter((i) => estadoDe(i.id) === EstadoRSVP.Confirmado);
@@ -147,9 +158,16 @@ export function RsvpCliente() {
     setForm({ nombre: inv.nombre, cupos: String(inv.cupos) });
     formRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
   };
-  const eliminar = (id: string) => {
-    setInvitados((l) => l.filter((i) => i.id !== id));
-    void obtenerSync().eliminar(eventoActual(), COLECCION_RESPUESTAS, id);
+  const eliminar = async (inv: Invitado) => {
+    setInvitados((l) => l.filter((i) => i.id !== inv.id));
+    try {
+      await obtenerSync().eliminar(eventoActual(), COLECCION_RESPUESTAS, inv.id);
+      setErrorQuitar("");
+    } catch {
+      setErrorQuitar(
+        `Borramos a ${inv.nombre} de esta lista, pero su confirmación sigue en el servidor.`,
+      );
+    }
   };
 
   const marcar = (inv: Invitado, estado: Estado) => {
@@ -360,7 +378,7 @@ export function RsvpCliente() {
                       </Button>
                       {anfitrion ? (
                         <button
-                          onClick={() => eliminar(inv.id)}
+                          onClick={() => setPorQuitar({ tipo: "invitado", inv })}
                           aria-label={`Eliminar ${inv.nombre}`}
                           className="grid size-9 place-items-center rounded-[var(--radius)] text-muted-foreground transition-colors hover:bg-muted hover:text-red-500"
                         >
@@ -409,7 +427,9 @@ export function RsvpCliente() {
                   ) : null}
                 </div>
                 <button
-                  onClick={() => olvidarSuelta(r.id)}
+                  onClick={() =>
+                    setPorQuitar({ tipo: "suelta", id: r.id, nombre: r.nombre || "sin nombre" })
+                  }
                   aria-label={`Descartar la confirmación de ${r.nombre || "sin nombre"}`}
                   className="grid size-9 place-items-center rounded-[var(--radius)] text-muted-foreground transition-colors hover:bg-muted hover:text-red-500"
                 >
@@ -420,6 +440,41 @@ export function RsvpCliente() {
           </div>
         </Card>
       ) : null}
+
+      {errorQuitar ? (
+        <p className="mt-4 rounded-[var(--radius)] bg-red-500/10 px-3 py-2 text-sm text-red-600 dark:text-red-400">
+          {errorQuitar}
+        </p>
+      ) : null}
+
+      <Confirmar
+        abierto={porQuitar !== null}
+        titulo={
+          porQuitar?.tipo === "invitado" ? "¿Borrar a este invitado?" : "¿Descartar esta confirmación?"
+        }
+        descripcion={
+          porQuitar?.tipo === "invitado" ? (
+            <>
+              Se borra a <strong>{porQuitar.inv.nombre}</strong> de la lista, junto con su
+              confirmación. No se puede deshacer.
+            </>
+          ) : (
+            <>
+              Se descarta la confirmación de <strong>{porQuitar?.nombre}</strong>, que no está en la
+              lista de invitados. Si vuelve a confirmar desde su enlace, reaparecerá.
+            </>
+          )
+        }
+        textoConfirmar={porQuitar?.tipo === "invitado" ? "Sí, borrarlo" : "Sí, descartarla"}
+        onConfirmar={() => {
+          const p = porQuitar;
+          setPorQuitar(null);
+          if (!p) return;
+          if (p.tipo === "invitado") void eliminar(p.inv);
+          else void olvidarSuelta(p.id);
+        }}
+        onCancelar={() => setPorQuitar(null)}
+      />
     </div>
   );
 }

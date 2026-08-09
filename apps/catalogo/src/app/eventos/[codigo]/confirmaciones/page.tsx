@@ -30,7 +30,7 @@ import {
   Share2,
   Trash2,
 } from "lucide-react";
-import { Button, Card, cn } from "@salones/ui";
+import { Button, Card, cn, Confirmar } from "@salones/ui";
 import { EstadoRSVP } from "@salones/core";
 import { obtenerSync } from "@salones/sync";
 import { obtenerSupabase } from "@/lib/supabase";
@@ -177,6 +177,11 @@ export default function Confirmaciones({ params }: { params: Promise<{ codigo: s
     setEditId(inv.id);
     setForm({ nombre: inv.nombre, cupos: String(inv.cupos) });
   };
+
+  /** Lo que espera confirmación: un invitado de la lista, o una respuesta suelta. */
+  const [porQuitar, setPorQuitar] = React.useState<
+    { tipo: "invitado"; inv: Invitado } | { tipo: "suelta"; id: string; nombre: string } | null
+  >(null);
 
   const eliminar = async (inv: Invitado) => {
     const supabase = obtenerSupabase();
@@ -460,7 +465,7 @@ export default function Confirmaciones({ params }: { params: Promise<{ codigo: s
                           Editar
                         </Button>
                         <button
-                          onClick={() => void eliminar(inv)}
+                          onClick={() => setPorQuitar({ tipo: "invitado", inv })}
                           aria-label={`Eliminar a ${inv.nombre}`}
                           className="grid size-9 place-items-center rounded-[var(--radius)] text-muted-foreground transition-colors hover:bg-muted hover:text-red-500"
                         >
@@ -516,7 +521,9 @@ export default function Confirmaciones({ params }: { params: Promise<{ codigo: s
                     ) : null}
                   </div>
                   <button
-                    onClick={() => descartarSuelta(r.id)}
+                    onClick={() =>
+                      setPorQuitar({ tipo: "suelta", id: r.id, nombre: r.nombre || "sin nombre" })
+                    }
                     aria-label={`Descartar la confirmación de ${r.nombre || "sin nombre"}`}
                     className="grid size-9 place-items-center rounded-[var(--radius)] text-muted-foreground transition-colors hover:bg-muted hover:text-red-500"
                   >
@@ -528,6 +535,35 @@ export default function Confirmaciones({ params }: { params: Promise<{ codigo: s
           </div>
         </Card>
       ) : null}
+
+      <Confirmar
+        abierto={porQuitar !== null}
+        titulo={
+          porQuitar?.tipo === "invitado" ? "¿Borrar a este invitado?" : "¿Descartar esta confirmación?"
+        }
+        descripcion={
+          porQuitar?.tipo === "invitado" ? (
+            <>
+              Se borra a <strong>{porQuitar.inv.nombre}</strong> de la lista del evento, junto con su
+              confirmación. No se puede deshacer: habría que volver a capturarlo.
+            </>
+          ) : (
+            <>
+              Se descarta la confirmación de <strong>{porQuitar?.nombre}</strong>, que no está en tu
+              lista de invitados. Si vuelve a confirmar desde su enlace, reaparecerá.
+            </>
+          )
+        }
+        textoConfirmar={porQuitar?.tipo === "invitado" ? "Sí, borrarlo" : "Sí, descartarla"}
+        onConfirmar={() => {
+          const p = porQuitar;
+          setPorQuitar(null);
+          if (!p) return;
+          if (p.tipo === "invitado") void eliminar(p.inv);
+          else descartarSuelta(p.id);
+        }}
+        onCancelar={() => setPorQuitar(null)}
+      />
     </main>
   );
 }

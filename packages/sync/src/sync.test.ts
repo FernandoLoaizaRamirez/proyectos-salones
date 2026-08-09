@@ -525,3 +525,54 @@ describe("eliminar — que no diga que borró si no borró", () => {
     await expect(sync.obtenerSync().eliminar("boda", "mensajes", "x1")).resolves.toBeUndefined();
   });
 });
+
+/* ==========================================================================
+ * recordarClaveAnfitrion — entregar la llave sin pasar por un enlace
+ * --------------------------------------------------------------------------
+ * La llave solo llegaba por la query del enlace, y ninguna pantalla la
+ * entregaba: había que sacarla con SQL. Con esto el panel del salón puede
+ * dejarla activa para el evento que está mirando. Como se guarda una llave que
+ * luego habrá que leer, valida con EL MISMO criterio que `claveAnfitrion`: si
+ * no, se podría dejar guardada una que después no se acepta.
+ * ========================================================================== */
+
+describe("recordarClaveAnfitrion — activar la moderación en este dispositivo", () => {
+  it("guarda una llave válida y luego se lee", async () => {
+    const { sync, guardado } = await cargarSync({ servidor: true });
+    expect(sync.recordarClaveAnfitrion("boda-ana", LLAVE)).toBe(true);
+    expect(guardado["salones:anfitrion:boda-ana"]).toBe(LLAVE);
+    expect(sync.claveAnfitrion("boda-ana")).toBe(LLAVE);
+  });
+
+  it("con la llave puesta, esAnfitrion pasa a ser cierto", async () => {
+    // Es lo que enciende los botones de moderar del panel.
+    const { sync } = await cargarSync({ servidor: true });
+    expect(sync.esAnfitrion("boda-ana")).toBe(false);
+    sync.recordarClaveAnfitrion("boda-ana", LLAVE);
+    expect(sync.esAnfitrion("boda-ana")).toBe(true);
+  });
+
+  it("NO guarda una llave con formato que luego no se aceptaría", async () => {
+    const { sync, guardado } = await cargarSync({ servidor: true });
+    for (const mala of ["corta", "a".repeat(129), "con espacios", "<script>", ""]) {
+      expect(sync.recordarClaveAnfitrion("boda-ana", mala)).toBe(false);
+    }
+    expect(guardado["salones:anfitrion:boda-ana"]).toBeUndefined();
+  });
+
+  it("la llave de una boda no se cuela en otra", async () => {
+    const { sync } = await cargarSync({ servidor: true });
+    sync.recordarClaveAnfitrion("boda-ana", LLAVE);
+    expect(sync.claveAnfitrion("boda-beto")).toBeNull();
+  });
+
+  it("con el almacenamiento bloqueado avisa en vez de reventar", async () => {
+    const { sync } = await cargarSync({ servidor: true, almacenRoto: true });
+    expect(sync.recordarClaveAnfitrion("boda-ana", LLAVE)).toBe(false);
+  });
+
+  it("en el servidor (sin navegador) no hace nada", async () => {
+    const { sync } = await cargarSync({ navegador: false });
+    expect(sync.recordarClaveAnfitrion("boda-ana", LLAVE)).toBe(false);
+  });
+});

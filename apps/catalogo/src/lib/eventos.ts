@@ -20,9 +20,22 @@ export type EventoFila = {
   fecha: string | null;
   estado: string;
   creado: string;
+  /**
+   * La llave privada del anfitrión (migración 0009). Es lo ÚNICO que permite
+   * quitar contenido de un evento. Solo la ve el staff del salón, porque la RLS
+   * de `events` acota por salón; nunca sale hacia el invitado.
+   */
+  clave_anfitrion?: string | null;
 };
 
 const COLUMNAS = "id,codigo,nombre,fecha,estado,creado";
+
+/**
+ * La ficha de UN evento sí trae la llave de anfitrión, porque desde ahí se
+ * entrega. La LISTA no: no la necesita, y una llave que no se pide es una llave
+ * que no se puede filtrar por accidente (un registro, una captura de pantalla).
+ */
+const COLUMNAS_FICHA = `${COLUMNAS},clave_anfitrion`;
 
 /**
  * Los eventos del salón, del más nuevo al más viejo. NO filtra por tenant: lo
@@ -46,7 +59,7 @@ export async function obtenerEvento(
 ): Promise<EventoFila | null> {
   const { data, error } = await supabase
     .from("events")
-    .select(COLUMNAS)
+    .select(COLUMNAS_FICHA)
     .eq("codigo", codigo)
     .maybeSingle();
   if (error) return null;

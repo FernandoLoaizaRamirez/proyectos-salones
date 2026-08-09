@@ -213,6 +213,30 @@ export function claveAnfitrion(evento: string): string | null {
 }
 
 /**
+ * Recuerda la llave de anfitrión de un evento en ESTE dispositivo, sin pasar por
+ * un enlace `&a=…`.
+ *
+ * POR QUÉ HACE FALTA (6 ago 2026): la llave solo llegaba por la query del
+ * enlace, y NINGUNA pantalla la entregaba — había que sacarla con una consulta
+ * SQL. Resultado: en un evento real, todos los botones de moderar del panel del
+ * salón no hacían nada, porque el panel tampoco tenía la llave en su navegador.
+ * Con esto el panel puede activarla él mismo para el evento que está mirando.
+ *
+ * Valida con la MISMA regla que `claveAnfitrion`, para que no se pueda dejar
+ * guardada una llave con un formato que luego no se aceptaría al leerla.
+ */
+export function recordarClaveAnfitrion(evento: string, clave: string): boolean {
+  if (!hayNavegador()) return false;
+  if (!/^[a-zA-Z0-9_-]{8,128}$/.test(clave)) return false;
+  try {
+    window.localStorage.setItem(claveAnfitrionKey(evento), clave);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Olvida la llave de anfitrión guardada en ESTE dispositivo. Útil cuando el
  * enlace se abrió en una pantalla prestada (la del salón, un proyector).
  */

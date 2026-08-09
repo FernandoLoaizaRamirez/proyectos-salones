@@ -23,11 +23,18 @@ import {
   ExternalLink,
   Loader2,
   MessageCircle,
+  KeyRound,
   RefreshCw,
   SearchX,
   Share2,
+  ShieldCheck,
 } from "lucide-react";
 import { Button, Card } from "@salones/ui";
+import {
+  claveAnfitrion,
+  olvidarClaveAnfitrion,
+  recordarClaveAnfitrion,
+} from "@salones/sync";
 import { obtenerSupabase } from "@/lib/supabase";
 import {
   RESUMEN_VACIO,
@@ -52,6 +59,8 @@ export default function PanelEvento({ params }: { params: Promise<{ codigo: stri
   const [resumen, setResumen] = React.useState<ResumenEvento>(RESUMEN_VACIO);
   const [midiendo, setMidiendo] = React.useState(false);
   const [copiado, setCopiado] = React.useState("");
+  /** ¿Este navegador ya tiene la llave de anfitrión de ESTE evento? */
+  const [moderacionActiva, setModeracionActiva] = React.useState(false);
 
   const portal = enlacePortal(codigo);
 
@@ -67,6 +76,7 @@ export default function PanelEvento({ params }: { params: Promise<{ codigo: stri
         router.replace("/entrar");
         return;
       }
+      setModeracionActiva(claveAnfitrion(codigo) !== null);
       setEvento(await obtenerEvento(supabase, codigo));
       setCargando(false);
     });
@@ -88,6 +98,25 @@ export default function PanelEvento({ params }: { params: Promise<{ codigo: stri
     const t = window.setInterval(() => void medir(), REFRESCO_MS);
     return () => window.clearInterval(t);
   }, [evento, medir]);
+
+  /**
+   * Los enlaces de las pantallas, pero con la llave puesta (`&a=…`). Solo para
+   * quien organiza: abrir uno deja la moderación activa en esa app.
+   */
+  const enlacesDeAnfitrion = (): string => {
+    const clave = evento?.clave_anfitrion;
+    if (!clave) return "";
+    const externas = PANTALLAS.filter((p) => !esInterna(p))
+      .map((p) => ({ nombre: p.nombre, href: enlacePantalla(p, codigo) }))
+      .filter((x) => x.href);
+    return [
+      `Enlaces de ANFITRIÓN · ${evento?.nombre ?? codigo}`,
+      "",
+      "⚠️ NO los compartas con los invitados: quien los abra puede borrar.",
+      "",
+      ...externas.map((x) => `• ${x.nombre}\n${x.href}&a=${clave}`),
+    ].join("\n");
+  };
 
   const copiar = async (texto: string, clave: string) => {
     try {
@@ -208,6 +237,96 @@ export default function PanelEvento({ params }: { params: Promise<{ codigo: stri
           </div>
         </div>
       </Card>
+
+      {/* ── Llave de anfitrión ────────────────────────────────────────────
+          Es lo ÚNICO que permite quitar contenido de un evento (migración
+          0009). Hasta hoy no la entregaba ninguna pantalla: había que sacarla
+          con una consulta SQL, así que en un evento real TODOS los botones de
+          moderar —los de aquí y los de las apps— no hacían nada. */}
+      {evento.clave_anfitrion ? (
+        <Card className="mt-8 p-6">
+          <div className="flex items-start gap-4">
+            <span className="grid size-11 shrink-0 place-items-center rounded-[var(--radius)] bg-primary/10 text-primary">
+              <KeyRound className="size-5" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <h2 className="font-semibold">Llave de anfitrión</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Es lo único que permite <strong>quitar</strong> mensajes y fotos de este evento. Sin
+                ella los botones de moderar no hacen nada. No se la pases a los invitados: quien la
+                tenga puede borrar.
+              </p>
+
+              <div className="mt-4 rounded-[var(--radius)] bg-muted p-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  {moderacionActiva ? (
+                    <>
+                      <ShieldCheck className="size-4 shrink-0 text-green-600" />
+                      <span className="text-sm font-medium text-green-700 dark:text-green-400">
+                        Moderación activa en este navegador
+                      </span>
+                    </>
+                  ) : (
+                    <span className="text-sm font-medium">
+                      La moderación no está activa en este navegador
+                    </span>
+                  )}
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {moderacionActiva
+                    ? "Los botones de quitar de este panel ya funcionan para este evento."
+                    : "Actívala para poder quitar contenido desde este panel."}
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {moderacionActiva ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        olvidarClaveAnfitrion(codigo);
+                        setModeracionActiva(false);
+                      }}
+                    >
+                      Quitar la llave de este navegador
+                    </Button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        if (evento.clave_anfitrion)
+                          setModeracionActiva(recordarClaveAnfitrion(codigo, evento.clave_anfitrion));
+                      }}
+                    >
+                      <ShieldCheck className="size-4" /> Activar la moderación aquí
+                    </Button>
+                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => copiar(enlacesDeAnfitrion(), "anfitrion")}
+                  >
+                    {copiado === "anfitrion" ? (
+                      <>
+                        <Check className="size-4" /> ¡Copiado!
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="size-4" /> Copiar mis enlaces de anfitrión
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+
+              <p className="mt-3 text-xs text-muted-foreground">
+                Para moderar desde el teléfono, en el muro o el álbum, abre esas pantallas con{" "}
+                <strong>tus enlaces de anfitrión</strong> (los del botón de arriba). Cada app los
+                recuerda por separado, así que hay que abrirlo una vez en cada una.
+              </p>
+            </div>
+          </div>
+        </Card>
+      ) : null}
 
       {/* Pantallas del anfitrión */}
       <h2 className="mt-10 text-lg font-semibold">Pantallas del evento</h2>

@@ -66,6 +66,27 @@ function aSlug(texto: string): string {
     .slice(0, 40);
 }
 
+/**
+ * El azar del código del evento.
+ *
+ * ANTES eran 5 caracteres de `Math.random()`: 36⁵ ≈ 60 millones de
+ * combinaciones para una llave que **no caduca nunca** y que, ella sola, abre
+ * las fotos, el muro y la lista de invitados de una boda. Poco para lo que
+ * protege.
+ *
+ * Ahora son 12 caracteres de azar criptográfico: 32¹² combinaciones, unas
+ * 20.000 millones de veces más. El alfabeto deja fuera `l`, `o`, `0` y `1`
+ * porque el código se dicta por teléfono y se lee en un QR impreso.
+ *
+ * (32 divide a 256, así que el resto no favorece a ninguna letra.)
+ */
+function azarDelCodigo(largo = 12): string {
+  const abc = "abcdefghijkmnpqrstuvwxyz23456789";
+  const bytes = new Uint8Array(largo);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => abc[b % abc.length]).join("");
+}
+
 /** Base de una app (su demoUrl del catálogo, sin la barra final). */
 function baseDe(id: string): string {
   return (productos.find((p) => p.id === id)?.demoUrl ?? "").replace(/\/$/, "");
@@ -109,7 +130,7 @@ export default function GeneradorEvento() {
     if (!supabase || !identidad) return;
     setError("");
     setGuardando(true);
-    const azar = Math.random().toString(36).slice(2, 7);
+    const azar = azarDelCodigo();
     const slug = aSlug(nombre) || "evento";
     const nuevoCodigo = `${slug}-${azar}`;
     const { error: eIns } = await supabase.from("events").insert({

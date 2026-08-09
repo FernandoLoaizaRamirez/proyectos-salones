@@ -14,6 +14,11 @@ export { Logo } from "./components/logo";
 export { EmptyState } from "./components/empty-state";
 export { Confirmar } from "./components/confirmar";
 export type { ConfirmarProps } from "./components/confirmar";
+export {
+  PantallaError,
+  PantallaNoEncontrada,
+  PantallaErrorGrave,
+} from "./components/rescate";
 export { AvisoParticipacion } from "./components/aviso-participacion";
 export { BrandingScope } from "./components/branding-scope";
 export { brandingAVariables } from "./branding";

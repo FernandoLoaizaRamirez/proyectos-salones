@@ -11,7 +11,13 @@
 import * as React from "react";
 import { Camera, X, Send, Check, PenLine, Loader2, MessageSquare } from "lucide-react";
 import { Button, Card, cn } from "@salones/ui";
-import { obtenerSync, estaConectado, aTextoDeDatos, resolverMedios } from "@salones/sync";
+import {
+  obtenerSync,
+  estaConectado,
+  aTextoDeDatos,
+  resolverMedios,
+  mensajeDeSubida,
+} from "@salones/sync";
 import {
   COLECCION_MENSAJES,
   comprimirImagen,
@@ -138,11 +144,7 @@ export function MuroModulo({ evento, nombreEvento }: { evento: string; nombreEve
       await sync.guardar(evento, COLECCION_MENSAJES, msg);
       setEnviado(msg);
     } catch (err) {
-      setError(
-        (err as Error)?.message === "almacenamiento-lleno"
-          ? "El muro de este dispositivo está lleno (demasiadas fotos). Para muchos invitados a la vez se usa el servicio con almacenamiento central."
-          : "No pudimos guardar tu mensaje. Revisa tu conexión e inténtalo de nuevo.",
-      );
+      setError(mensajeDeSubida(err));
     } finally {
       setEnviando(false);
     }

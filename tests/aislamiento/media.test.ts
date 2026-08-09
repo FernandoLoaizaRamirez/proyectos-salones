@@ -165,3 +165,71 @@ suite("Candado del almacén de fotos (migración 0010)", () => {
     RED,
   );
 });
+
+/* ==========================================================================
+ * EL TOPE DE SUBIDAS (migración 0015)
+ * --------------------------------------------------------------------------
+ * `media-subir` no llevaba ninguna cuenta, y la llave pública viaja dentro del
+ * JavaScript de las apps: cualquiera podía pedirse pases del evento "demo" y con
+ * ellos permisos ILIMITADOS. Todos los eventos comparten el mismo almacén, así
+ * que llenarlo dejaba sin subir una sola foto a TODAS las bodas.
+ *
+ * Lo que se comprueba aquí es EL CANDADO, no el número: que el contador de la
+ * base NO se pueda tocar desde el navegador. Si se pudiera, cualquiera gastaría
+ * el cupo de una boda a mano, o se lo regalaría a sí mismo.
+ *
+ * El tope en sí no se prueba a propósito: alcanzarlo exigiría pedir cientos de
+ * permisos contra la demo pública, que es justo el abuso que intenta frenar.
+ * ========================================================================== */
+
+suite("Tope de subidas (migración 0015)", () => {
+  const url = (URL_ENV ?? "").replace(/\/$/, "");
+  const anon = ANON_ENV ?? "";
+
+  const llamarContador = () =>
+    fetch(`${url}/rest/v1/rpc/permitir_subida`, {
+      method: "POST",
+      headers: { apikey: anon, "Content-Type": "application/json" },
+      body: JSON.stringify({ p_evento: "demo", p_huella: "huella-de-prueba" }),
+    });
+
+  it(
+    "el contador NO se puede tocar con la llave pública",
+    async () => {
+      const res = await llamarContador();
+      // 404 = la migración aún no está aplicada, o está pero `anon` no la ve
+      // (PostgREST esconde lo que no puedes ejecutar). 401/403 = la ve y la
+      // rechaza. Cualquiera vale; lo que NO puede pasar es que conceda permiso.
+      expect([401, 403, 404]).toContain(res.status);
+      if (res.status === 200) {
+        expect(await res.json()).not.toBe(true);
+      }
+    },
+    RED,
+  );
+
+  it(
+    "pedir permiso con un pase válido sigue funcionando (el tope no rompe lo normal)",
+    async (ctx) => {
+      const pase = await fetch(`${url}/rest/v1/rpc/emitir_pase`, {
+        method: "POST",
+        headers: { apikey: anon, "Content-Type": "application/json" },
+        body: JSON.stringify({ p_codigo: "demo" }),
+      })
+        .then((r) => (r.ok ? r.json() : null))
+        .catch(() => null);
+      if (typeof pase !== "string" || !pase) return ctx.skip();
+
+      const res = await fetch(`${url}/functions/v1/media-subir`, {
+        method: "POST",
+        headers: { apikey: anon, "x-evento-pase": pase, "Content-Type": "application/json" },
+        body: JSON.stringify({ nombre: "prueba.jpg", tipo: "image/jpeg" }),
+      });
+      if (res.status === 404) return ctx.skip(); // función sin desplegar
+      // 200 = concedido. 429 = el tope ya está puesto y la demo llegó a él hoy;
+      // las dos respuestas son correctas, lo que no vale es un 500.
+      expect([200, 429]).toContain(res.status);
+    },
+    RED,
+  );
+});

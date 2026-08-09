@@ -560,11 +560,16 @@ function crearProveedorServidor(url: string, anon: string): ProveedorSync {
         },
         body: JSON.stringify({ nombre, tipo }),
       });
+      // 429 = se alcanzó el tope de subidas (migración 0015). NO es un fallo de
+      // red ni "la función no está desplegada": reintentar por el camino viejo
+      // sería gastar otra petición para nada y enseñar un error equivocado.
+      if (res.status === 429) throw new Error("tope-de-subidas");
       if (!res.ok) return null;
       const dato = (await res.json()) as Partial<PermisoSubida>;
       if (typeof dato.subirUrl !== "string" || typeof dato.urlPublica !== "string") return null;
       return { subirUrl: dato.subirUrl, urlPublica: dato.urlPublica };
-    } catch {
+    } catch (e) {
+      if (e instanceof Error && e.message === "tope-de-subidas") throw e;
       return null; // sin red o función sin desplegar
     }
   }
@@ -892,6 +897,26 @@ export async function resolverMedios(
     for (const original of porRuta.get(ruta) ?? []) salida[original] = url;
   }
   return salida;
+}
+
+/**
+ * Qué decirle al invitado cuando una subida falla.
+ *
+ * Distingue el TOPE (subió demasiadas seguidas: solo tiene que esperar, no ha
+ * hecho nada mal) de un fallo de red (reintentar) y del almacenamiento lleno del
+ * propio teléfono. Vive aquí para que las cinco pantallas que suben archivos
+ * digan lo mismo, y para que "espera un momento" no se confunda nunca con
+ * "no hay internet".
+ */
+export function mensajeDeSubida(e: unknown): string {
+  const msg = e instanceof Error ? e.message : "";
+  if (msg === "tope-de-subidas") {
+    return "Se subieron muchas fotos seguidas. Espera un par de minutos y vuelve a intentarlo.";
+  }
+  if (msg === "almacenamiento-lleno") {
+    return "Este dispositivo se quedó sin espacio. Libera un poco e inténtalo de nuevo.";
+  }
+  return "No pudimos subir el archivo. Revisa tu conexión e inténtalo de nuevo.";
 }
 
 /* ================================================================== */

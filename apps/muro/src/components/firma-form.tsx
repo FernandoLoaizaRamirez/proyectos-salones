@@ -3,7 +3,13 @@
 import * as React from "react";
 import { Camera, X, Send, Check, PenLine, MessageCircle, Loader2 } from "lucide-react";
 import { Button, Card, cn, AvisoParticipacion } from "@salones/ui";
-import { obtenerSync, estaConectado, eventoActual, aTextoDeDatos } from "@salones/sync";
+import {
+  obtenerSync,
+  estaConectado,
+  eventoActual,
+  aTextoDeDatos,
+  mensajeDeSubida,
+} from "@salones/sync";
 import {
   evento,
   comprimirImagen,
@@ -105,11 +111,7 @@ export function FirmaForm() {
       await sync.guardar(eventoId, COLECCION_MENSAJES, msg);
       setEnviado(msg);
     } catch (err) {
-      setError(
-        (err as Error)?.message === "almacenamiento-lleno"
-          ? "El muro de este dispositivo está lleno (demasiadas fotos). Para muchos invitados a la vez se usa el servicio con almacenamiento central."
-          : "No pudimos guardar tu mensaje. Revisa tu conexión e inténtalo de nuevo.",
-      );
+      setError(mensajeDeSubida(err));
     } finally {
       setEnviando(false);
     }

@@ -28,7 +28,13 @@ import {
   X,
 } from "lucide-react";
 import { Button, EmptyState, cn, Confirmar } from "@salones/ui";
-import { esAnfitrion, estaConectado, obtenerSync, resolverMedios } from "@salones/sync";
+import {
+  esAnfitrion,
+  estaConectado,
+  obtenerSync,
+  resolverMedios,
+  mensajeDeSubida,
+} from "@salones/sync";
 import {
   COLECCION_FOTOS,
   MAX_MB,
@@ -194,8 +200,8 @@ export function AlbumModulo({ evento, nombreEvento }: { evento: string; nombreEv
           const foto: Foto = { id: nuevoIdFoto(), nombre: a.name, url, tipo, fecha: Date.now() };
           await sync.guardar(evento, COLECCION_FOTOS, foto);
           anotarMias([foto.id]);
-        } catch {
-          setError("No pudimos subir un archivo. Revisa tu conexión e inténtalo de nuevo.");
+        } catch (e) {
+          setError(mensajeDeSubida(e));
         } finally {
           setSubiendo((n) => n - 1);
         }
@@ -355,7 +361,6 @@ export function AlbumModulo({ evento, nombreEvento }: { evento: string; nombreEv
               >
                 {esVideo(f.tipo) ? (
                   <div className="relative">
-                    {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
                     <video src={ver(f.url)} className="w-full object-cover" />
                     <div className="absolute inset-0 grid place-items-center bg-black/20">
                       <span className="grid size-11 place-items-center rounded-full bg-white/80 text-black">
@@ -450,7 +455,6 @@ export function AlbumModulo({ evento, nombreEvento }: { evento: string; nombreEv
           ) : null}
           <div className="max-h-[85vh] max-w-4xl" onClick={(e) => e.stopPropagation()}>
             {esVideo(actual.tipo) ? (
-              // eslint-disable-next-line jsx-a11y/media-has-caption
               <video
                 src={ver(actual.url)}
                 controls

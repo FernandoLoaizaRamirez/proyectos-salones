@@ -66,10 +66,31 @@ describe("Los tres cortes viven en las migraciones, no solo en producción", () 
     expect(sqlActivo(NOMBRE)).not.toMatch(/->>\s*'x-evento'/);
   });
 
-  it("es la última: si se añade una migración posterior, hay que revisar el orden", () => {
-    const sql = readdirSync(MIGRACIONES)
-      .filter((f) => f.endsWith(".sql"))
+  it("NINGUNA migración posterior vuelve a abrir lo que la 0014 cerró", () => {
+    // Lo que importa no es que la 0014 sea la última —irán llegando más—, sino
+    // que ninguna de las que vengan después deshaga un corte sin querer. Este
+    // caso es el que avisaría de eso.
+    const posteriores = readdirSync(MIGRACIONES)
+      .filter((f) => f.endsWith(".sql") && f > NOMBRE)
       .sort();
-    expect(sql[sql.length - 1]).toBe(NOMBRE);
+
+    for (const archivo of posteriores) {
+      const sql = sqlActivo(archivo);
+      expect(sql, `${archivo} vuelve a abrir la subida al almacén`).not.toMatch(
+        /create\s+policy\s+"subida publica media"/i,
+      );
+      expect(sql, `${archivo} vuelve a poner el almacén público`).not.toMatch(
+        /update\s+storage\.buckets\s+set\s+public\s*=\s*true/i,
+      );
+      // Si alguna vuelve a tocar el borrado de `items`, tiene que seguir siendo
+      // solo del anfitrión.
+      if (/create\s+policy\s+"borrado por evento"/i.test(sql)) {
+        const desde = sql.slice(sql.indexOf('create policy "borrado por evento"'));
+        const politica = desde.slice(0, desde.indexOf(";") + 1);
+        expect(politica, `${archivo} deja borrar sin ser anfitrión`).not.toMatch(
+          /evento_del_pase\(|'x-evento'/,
+        );
+      }
+    }
   });
 });

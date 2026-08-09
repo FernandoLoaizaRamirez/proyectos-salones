@@ -20,6 +20,7 @@ import {
   esAnfitrion,
   resolverMedios,
   descargarMedios,
+  mensajeDeSubida,
   type ResultadoDescarga,
 } from "@salones/sync";
 import {
@@ -120,8 +121,8 @@ export function Album() {
           tipo,
           fecha: Date.now(),
         });
-      } catch {
-        setErrorSubida("No pudimos subir un archivo. Revisa tu conexión e inténtalo de nuevo.");
+      } catch (e) {
+        setErrorSubida(mensajeDeSubida(e));
       } finally {
         setSubiendo((n) => n - 1);
       }
@@ -324,7 +325,6 @@ export function Album() {
               >
                 {f.tipo.startsWith("video/") ? (
                   <div className="relative">
-                    {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
                     <video src={ver(f.url)} className="w-full object-cover" />
                     <div className="absolute inset-0 grid place-items-center bg-black/20">
                       <span className="grid size-11 place-items-center rounded-full bg-white/80 text-black">
@@ -395,7 +395,6 @@ export function Album() {
           </button>
           <div className="max-h-[85vh] max-w-4xl" onClick={(e) => e.stopPropagation()}>
             {actual.tipo.startsWith("video/") ? (
-              // eslint-disable-next-line jsx-a11y/media-has-caption
               <video src={ver(actual.url)} controls autoPlay className="max-h-[85vh] w-auto rounded-lg" />
             ) : (
               // eslint-disable-next-line @next/next/no-img-element

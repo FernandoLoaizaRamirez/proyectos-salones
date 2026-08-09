@@ -75,18 +75,59 @@ async function rpc(nombre: string, cuerpo: Record<string, unknown>): Promise<unk
 
 /**
  * ¿De qué evento es este pase? Acepta el de invitado y el de anfitrión: los dos
- * pueden aportar contenido. Devuelve null si ninguno vale.
+ * pueden aportar contenido. Devuelve también QUÉ pase valió, para poder llevarle
+ * la cuenta sin volver a preguntar.
  */
-async function eventoDelPase(pase: string, paseAnfitrion: string): Promise<string | null> {
+async function eventoDelPase(
+  pase: string,
+  paseAnfitrion: string,
+): Promise<{ evento: string; usado: string } | null> {
   if (paseAnfitrion) {
     const e = await rpc("evento_del_pase_anfitrion", { p_pase: paseAnfitrion });
-    if (typeof e === "string" && e) return e;
+    if (typeof e === "string" && e) return { evento: e, usado: paseAnfitrion };
   }
   if (pase) {
     const e = await rpc("evento_del_pase", { p_pase: pase });
-    if (typeof e === "string" && e) return e;
+    if (typeof e === "string" && e) return { evento: e, usado: pase };
   }
   return null;
+}
+
+/**
+ * La huella del pase (sha-256). Se lleva la cuenta con esto y NUNCA con el pase
+ * en claro: si algún día alguien lee la tabla, no se lleva llaves de nadie.
+ */
+async function huellaDe(pase: string): Promise<string> {
+  const bytes = new TextEncoder().encode(pase);
+  const hash = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(hash), (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/**
+ * ¿Cabe una subida más? La cuenta la lleva la BASE (migración 0015), no esta
+ * función: hay varias instancias de ella y un contador en memoria no serviría.
+ *
+ * SI LA MIGRACIÓN TODAVÍA NO ESTÁ APLICADA la base responde 404 (la función no
+ * existe) y aquí se DEJA PASAR. Es el mismo patrón no-fatal que el pase firmado
+ * y las direcciones firmadas: así esta versión se puede desplegar ANTES de tocar
+ * la base sin dejar a nadie sin subir fotos en plena boda.
+ *
+ * Cualquier OTRO fallo sí corta: si la base está ahí pero no contesta bien, es
+ * mejor no firmar que firmar a ciegas.
+ */
+async function cabeUnaSubidaMas(evento: string, pase: string): Promise<boolean> {
+  const res = await fetch(`${URL_SUPABASE}/rest/v1/rpc/permitir_subida`, {
+    method: "POST",
+    headers: {
+      apikey: SERVICE_ROLE,
+      Authorization: `Bearer ${SERVICE_ROLE}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ p_evento: evento, p_huella: await huellaDe(pase) }),
+  });
+  if (res.status === 404) return true; // migración 0015 pendiente
+  if (!res.ok) return false;
+  return (await res.json()) === true;
 }
 
 /** Extensión razonable a partir del nombre o del tipo MIME (igual que @salones/sync). */
@@ -140,12 +181,32 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const evento = await eventoDelPase(
+    const quien = await eventoDelPase(
       req.headers.get("x-evento-pase") ?? "",
       req.headers.get("x-evento-anfitrion") ?? "",
     );
     // Sin pase válido no se firma nada. No se dice por qué falló.
-    if (!evento) return json({ error: "sin permiso para este evento" }, 403);
+    if (!quien) return json({ error: "sin permiso para este evento" }, 403);
+    const { evento, usado } = quien;
+
+    /* ---- El tope (migración 0015) -----------------------------------------
+     * Antes esto no llevaba ninguna cuenta, y como la llave pública viaja
+     * dentro del JavaScript de las apps, cualquiera podía pedirse pases del
+     * evento "demo" y con ellos permisos ILIMITADOS. Todos los eventos comparten
+     * el mismo almacén, así que llenarlo dejaba sin subir una sola foto a TODAS
+     * las bodas, incluida la que se estuviera celebrando esa noche.
+     *
+     * La cuenta la lleva la base (`permitir_subida`), no esta función: hay
+     * varias instancias de ella y un contador en memoria no serviría de nada. */
+    if (!(await cabeUnaSubidaMas(evento, usado))) {
+      return json(
+        {
+          error: "demasiadas subidas seguidas",
+          detalle: "Espera un momento antes de subir más archivos.",
+        },
+        429,
+      );
+    }
 
     // LA RUTA LA DECIDE EL SERVIDOR, a partir del evento que la base reconoció
     // en el pase. El cliente no puede escribir en la carpeta de otro evento.

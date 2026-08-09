@@ -4,15 +4,12 @@ name: CI
 # seguridad" automática del proyecto. Son DOS trabajos que corren EN PARALELO:
 #
 #   · verificar → las pruebas (`pnpm test`).
-#   · compilar  → los tipos y la compilación de las 14 apps (`pnpm typecheck`
-#                 + `pnpm build`). Sin esto, un PR podía romper la compilación
-#                 de todas las apps y salir en verde igualmente.
+#   · compilar  → el lint, los tipos y la compilación de las 14 apps
+#                 (`pnpm lint` + `pnpm typecheck` + `pnpm build`). Sin esto, un
+#                 PR podía romper la compilación de todas las apps y salir en
+#                 verde igualmente.
 #
 # Al ser trabajos separados, el tiempo total es el del MÁS LENTO, no la suma.
-#
-# Nota: el `lint` NO se incluye todavía porque las apps usan `next lint`, comando
-# que Next.js 16 eliminó (queda roto en todo el repo, deuda previa). Se volverá a
-# activar cuando se migren los scripts de lint a ESLint directo.
 on:
   push:
     branches: [main]
@@ -136,7 +133,19 @@ jobs:
       - name: Instalar dependencias
         run: pnpm install --frozen-lockfile
 
-      # Primero los tipos: tarda segundos y es donde más fallos salen, así el
+      # El lint va primero porque es el más barato de todos (turbo lo cachea
+      # igual que la compilación: si una app no cambió, ni la revisa).
+      #
+      # Cubre las 14 apps, los 5 paquetes y la raíz. Solo suspende con ERRORES;
+      # los avisos (`warning`) salen en el log pero no ponen el CI en rojo, para
+      # que un aviso de estilo no bloquee un arreglo urgente en plena boda.
+      #
+      # Estuvo apagado un tiempo: las apps usaban `next lint`, que Next 16
+      # eliminó. Desde que los scripts pasaron a ESLint directo vuelve a correr.
+      - name: Revisar el estilo del código
+        run: pnpm lint
+
+      # Luego los tipos: tarda segundos y es donde más fallos salen, así el
       # PR se entera rápido en vez de esperar toda la compilación.
       #
       # Cubre los 4 paquetes de packages/ (core, payments, sync, ui), que hasta

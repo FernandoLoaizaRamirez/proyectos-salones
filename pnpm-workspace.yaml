@@ -22,12 +22,24 @@ allowBuilds:
 #   · postcss → 8.4.31 permite XSS al no escapar "</style>" al escribir el CSS
 #               (aviso medio). Corregido en 8.5.10. Otra copia del árbol ya iba
 #               en 8.5.16; esto deja una sola versión, la sana.
+#               3 ago 2026: salieron DOS avisos más (lectura de archivos .map
+#               ajenos por un sourceMappingURL manipulado, GHSA-6g55-p6wh-862q
+#               y su arreglo incompleto GHSA-fxqj-rqcc-2cmp). El tope sube de
+#               8.5.10 a 8.5.23, la primera versión sana de las dos.
+#   · brace-expansion → lo arrastra eslint. Hay DOS ramas vivas en el árbol
+#               (la 1, que usa minimatch@3, y la 5) y cada una tiene su propio
+#               aviso ALTO: agotar la memoria expandiendo una plantilla enorme.
+#               Van por separado y con la versión EXACTA a propósito: con ">="
+#               pnpm sube a la más nueva que cumpla y le mete la rama 5 a quien
+#               pide la 1, que es un cambio de major y puede romper el lint.
 # Se fijan con ">=" para que un Next futuro que ya traiga versión sana no quede
 # frenado por este candado.
 overrides:
   typescript-eslint: 8.63.0
   sharp: ">=0.35.0"
-  postcss: ">=8.5.10"
+  postcss: ">=8.5.23"
+  "brace-expansion@1": "1.1.18"
+  "brace-expansion@5": "5.0.9"
 
 # Paquetes autorizados a correr su script de instalación (build). pnpm los bloquea
 # por defecto como medida de seguridad; aquí se permiten solo los de confianza:

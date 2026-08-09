@@ -61,8 +61,9 @@ describe("Aviso de privacidad", () => {
 
   it("identifica al SALÓN como responsable y al proveedor solo como encargado", () => {
     const doc = avisoPrivacidad(DATOS);
-    const primera = doc.secciones[0];
-    const texto = primera.parrafos.join(" ");
+    // Si algún día el aviso se quedara sin secciones, el texto sale vacío y las
+    // comprobaciones de abajo fallan solas (que es justo lo que queremos).
+    const texto = (doc.secciones[0]?.parrafos ?? []).join(" ");
 
     // El salón responde por los datos…
     expect(texto).toContain(`${DATOS.salon}, con domicilio en ${DATOS.domicilio}, es el responsable`);

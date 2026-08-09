@@ -62,7 +62,6 @@ export function Escaner({ onDetectar }: { onDetectar: (texto: string) => void })
   return (
     <div>
       <div className="relative mx-auto aspect-square w-full max-w-sm overflow-hidden rounded-[var(--radius)] border border-border bg-muted">
-        {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
         <video
           ref={videoRef}
           playsInline

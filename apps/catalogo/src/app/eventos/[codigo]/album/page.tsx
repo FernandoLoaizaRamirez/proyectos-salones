@@ -321,7 +321,6 @@ export default function AlbumDelEvento({ params }: { params: Promise<{ codigo: s
                 >
                   {esVideo(f.tipo) ? (
                     <div className="relative">
-                      {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
                       <video src={ver(f.url)} className="w-full object-cover" />
                       <div className="absolute inset-0 grid place-items-center bg-black/20">
                         <span className="grid size-11 place-items-center rounded-full bg-white/80 text-black">
@@ -450,7 +449,6 @@ export default function AlbumDelEvento({ params }: { params: Promise<{ codigo: s
           ) : null}
           <div className="max-h-[85vh] max-w-4xl" onClick={(e) => e.stopPropagation()}>
             {esVideo(actual.tipo) ? (
-              // eslint-disable-next-line jsx-a11y/media-has-caption
               <video
                 src={ver(actual.url)}
                 controls

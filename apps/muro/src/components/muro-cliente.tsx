@@ -13,7 +13,7 @@ import {
   QrCode,
   PenLine,
 } from "lucide-react";
-import { Button, Card, EmptyState, cn, Confirmar } from "@salones/ui";
+import { Button, Card, EmptyState, Confirmar } from "@salones/ui";
 import {
   obtenerSync,
   eventoActual,

@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Check, RefreshCw, PartyPopper } from "lucide-react";
-import { Button, Card, cn, guardarLocal } from "@salones/ui";
+import { Card, cn, guardarLocal } from "@salones/ui";
 import { bingoCasillas, BINGO_LADO, hayLineaBingo, bingoCompleto } from "@/lib/dinamicas";
 
 const K_BINGO = "dinamicas-bingo";

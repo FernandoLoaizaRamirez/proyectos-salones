@@ -3,7 +3,15 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint ."
+  },
   "exports": {
     ".": "./src/index.ts"
+  },
+  "devDependencies": {
+    "@salones/config": "workspace:*",
+    "eslint": "^9.39.5"
   }
 }

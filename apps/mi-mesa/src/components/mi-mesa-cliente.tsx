@@ -15,7 +15,7 @@ import {
   QrCode,
   Settings2,
 } from "lucide-react";
-import { Button, Card, cn, guardarLocal } from "@salones/ui";
+import { Button, Card, guardarLocal } from "@salones/ui";
 import { QR } from "@/components/qr";
 import {
   evento as eventoLocal,

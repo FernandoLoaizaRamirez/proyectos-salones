@@ -2,21 +2,30 @@
 
 import * as React from "react";
 import { Plus, Check, X, Trash2, Download, MessageCircle } from "lucide-react";
-import { Button, Card, cn, Confirmar, guardarLocal } from "@salones/ui";
+import { Button, Card, cn, Confirmar, leerLocal } from "@salones/ui";
+import { obtenerSync, eventoActual } from "@salones/sync";
 import {
   invitadosIniciales,
   evento,
   idDesdeQR,
   nuevoId,
   codificarPase,
+  COLECCION_PASES,
+  COLECCION_ACCESOS,
+  idDeAcceso,
+  type Acceso,
   type Invitado,
   type Tipo,
 } from "@/lib/evento";
 import { PassTicket } from "./pass-ticket";
 import { Escaner } from "./escaner";
 
-const LISTA = "pases-sr-lista";
-const INGRESOS = "pases-sr-ingresados";
+/**
+ * Las claves de cuando todo vivía en este aparato. Ya no se escriben: solo se
+ * leen una vez, para ofrecer subir al evento la lista que quedó guardada de
+ * antes — si no, los QR ya impresos dejarían de encontrar a su invitado.
+ */
+const LISTA_VIEJA = "pases-sr-lista";
 
 /** Hora legible (ej. "5:22 p. m.") de una marca de tiempo. Vacío si no es válida. */
 function horaDe(ts: unknown): string {
@@ -35,11 +44,33 @@ type Tab = "invitados" | "pases" | "checkin";
 const campo =
   "w-full rounded-[var(--radius)] border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/30";
 
+/**
+ * ¿Esto que viene del archivo tiene pinta de una lista de invitados?
+ *
+ * Antes se metía tal cual lo que trajera el JSON: un archivo equivocado
+ * sustituía la lista de la puerta por basura, el día del evento, sin deshacer.
+ *
+ * Es una función pura, así que vive fuera del componente: la usan tanto la
+ * importación como la carga inicial (que corre antes que el cuerpo).
+ */
+function esListaDeInvitados(data: unknown): data is Invitado[] {
+  return (
+    Array.isArray(data) &&
+    data.length > 0 &&
+    data.every(
+      (x) =>
+        x !== null &&
+        typeof x === "object" &&
+        typeof (x as Invitado).id === "string" &&
+        typeof (x as Invitado).nombre === "string",
+    )
+  );
+}
+
 export function PasesCliente() {
   const [tab, setTab] = React.useState<Tab>("invitados");
   const [invitados, setInvitados] = React.useState<Invitado[]>([]);
   const [ingresados, setIngresados] = React.useState<Record<string, number>>({});
-  const [cargado, setCargado] = React.useState(false);
 
   // Formulario de alta / edición
   const [form, setForm] = React.useState<{ nombre: string; mesa: string; personas: string; tipo: Tipo }>(
@@ -53,6 +84,9 @@ export function PasesCliente() {
   const [confirmarReinicio, setConfirmarReinicio] = React.useState(false);
   const [importPendiente, setImportPendiente] = React.useState<Invitado[] | null>(null);
   const [errorImportar, setErrorImportar] = React.useState("");
+  const [error, setError] = React.useState("");
+  /** La lista que quedó en este aparato de antes, esperando que la suban. */
+  const [listaVieja, setListaVieja] = React.useState<Invitado[] | null>(null);
 
   const invitadosRef = React.useRef(invitados);
   const ingresadosRef = React.useRef(ingresados);
@@ -60,26 +94,66 @@ export function PasesCliente() {
   const fileRef = React.useRef<HTMLInputElement>(null);
   const formRef = React.useRef<HTMLDivElement>(null);
 
-  // Carga inicial
+  /* ---- La lista y la puerta, en el evento (6 ago 2026) --------------------
+   * Antes esto eran dos llaves de localStorage SIN el código del evento. Se
+   * veía en la fiesta: dos bodas en la misma tablet se pisaban, si el teléfono
+   * de la puerta se quedaba sin batería se perdía quién había entrado, y dos
+   * personas escaneando en dos puertas veían listas distintas.
+   *
+   * Ahora son dos colecciones del evento, como el muro o el álbum. En modo
+   * local (la demo) @salones/sync sigue usando localStorage, pero ya separado
+   * por evento, así que dos bodas dejan de mezclarse aunque no haya servidor. */
   React.useEffect(() => {
-    try {
-      const raw = localStorage.getItem(LISTA);
-      setInvitados(raw ? JSON.parse(raw) : invitadosIniciales);
-      const ing = localStorage.getItem(INGRESOS);
-      if (ing) setIngresados(JSON.parse(ing));
-    } catch {
-      setInvitados(invitadosIniciales);
+    const eventoId = eventoActual();
+    const sync = obtenerSync();
+
+    const cancelarPases = sync.suscribir<Invitado>(eventoId, COLECCION_PASES, setInvitados);
+    const cancelarAccesos = sync.suscribir<Acceso>(eventoId, COLECCION_ACCESOS, (filas) => {
+      const mapa: Record<string, number> = {};
+      for (const a of filas) if (a.entro) mapa[a.invitadoId] = a.ts;
+      setIngresados(mapa);
+    });
+
+    if (sync.nombre === "local") {
+      // Solo en la demo: los ejemplos NUNCA viajan al servidor. Sus ids son
+      // fijos y la llave primaria de `items` es global, así que dos eventos
+      // sembrados chocarían — y cada boda real nacería con gente de mentira.
+      // Se siembran al revés para que se vean en el orden de siempre.
+      void sync.listar<Invitado>(eventoId, COLECCION_PASES).then((items) => {
+        if (items.length === 0) {
+          for (const i of [...invitadosIniciales].reverse()) {
+            void sync.guardar(eventoId, COLECCION_PASES, i);
+          }
+        }
+      });
+    } else {
+      // Con servidor: si este aparato guarda una lista de antes y el evento
+      // está vacío, se ofrece subirla. No se hace solo, porque esa lista no
+      // sabe de qué boda era y podría ser la de la semana pasada.
+      void sync.listar<Invitado>(eventoId, COLECCION_PASES).then((items) => {
+        if (items.length > 0) return;
+        try {
+          const crudo = leerLocal(LISTA_VIEJA);
+          const previa = crudo ? (JSON.parse(crudo) as unknown) : null;
+          if (esListaDeInvitados(previa)) setListaVieja(previa);
+        } catch {
+          /* si no se puede leer, no se ofrece nada */
+        }
+      });
     }
-    setCargado(true);
+
+    return () => {
+      cancelarPases();
+      cancelarAccesos();
+    };
   }, []);
+
   React.useEffect(() => {
     invitadosRef.current = invitados;
-    if (cargado) guardarLocal(LISTA, JSON.stringify(invitados));
-  }, [invitados, cargado]);
+  }, [invitados]);
   React.useEffect(() => {
     ingresadosRef.current = ingresados;
-    if (cargado) guardarLocal(INGRESOS, JSON.stringify(ingresados));
-  }, [ingresados, cargado]);
+  }, [ingresados]);
 
   const totalPersonas = invitados.reduce((s, i) => s + i.personas, 0);
   const nIngresados = invitados.filter((i) => ingresados[i.id]).length;
@@ -88,7 +162,7 @@ export function PasesCliente() {
     .reduce((s, i) => s + i.personas, 0);
 
   // --- Organizador: alta / edición / borrado ---
-  const guardar = (e: React.FormEvent) => {
+  const guardar = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.nombre.trim()) {
       setFormError("Escribe el nombre del invitado.");
@@ -97,17 +171,20 @@ export function PasesCliente() {
     setFormError("");
     const personas = Math.max(1, parseInt(form.personas, 10) || 1);
     const mesa = form.mesa.trim() || "—";
-    if (editId) {
-      setInvitados((l) =>
-        l.map((i) =>
-          i.id === editId ? { ...i, nombre: form.nombre.trim(), mesa, personas, tipo: form.tipo } : i,
-        ),
-      );
-    } else {
-      setInvitados((l) => [
-        { id: nuevoId(l), nombre: form.nombre.trim(), mesa, personas, tipo: form.tipo },
-        ...l,
-      ]);
+    const anterior = editId ? invitados.find((i) => i.id === editId) : null;
+    const inv: Invitado = {
+      id: anterior ? anterior.id : nuevoId(invitados),
+      nombre: form.nombre.trim(),
+      mesa,
+      personas,
+      tipo: form.tipo,
+    };
+    try {
+      await obtenerSync().guardar(eventoActual(), COLECCION_PASES, inv);
+      setError("");
+    } catch {
+      setFormError("No pudimos guardar. Revisa tu conexión e inténtalo de nuevo.");
+      return;
     }
     setForm({ nombre: "", mesa: "", personas: "2", tipo: "General" });
     setEditId(null);
@@ -125,13 +202,27 @@ export function PasesCliente() {
   };
   const [porQuitar, setPorQuitar] = React.useState<Invitado | null>(null);
 
-  const eliminar = (id: string) => {
-    setInvitados((l) => l.filter((i) => i.id !== id));
-    setIngresados((s) => {
-      const n = { ...s };
-      delete n[id];
-      return n;
-    });
+  /**
+   * Quitar un invitado de la lista.
+   *
+   * ⚠️ BORRAR EXIGE LA LLAVE DE ANFITRIÓN desde el corte de la 0009. La tablet
+   * de la puerta normalmente NO la tiene, así que esto puede fallar — y falla
+   * avisando, no en silencio. Se abre la app con el enlace de anfitrión (el que
+   * lleva `&a=`, se saca desde el panel del salón) para poder borrar.
+   */
+  const eliminar = async (id: string) => {
+    const sync = obtenerSync();
+    const eventoId = eventoActual();
+    try {
+      await sync.eliminar(eventoId, COLECCION_PASES, id);
+      // Y su registro de entrada, si lo tenía. Si no existe, no protesta.
+      await sync.eliminar(eventoId, COLECCION_ACCESOS, idDeAcceso(id));
+      setError("");
+    } catch {
+      setError(
+        "No pudimos quitar a ese invitado. Para borrar hace falta abrir la app con el enlace de anfitrión (el que lleva &a=), que sale del panel del salón.",
+      );
+    }
   };
 
   const exportar = () => {
@@ -145,23 +236,6 @@ export function PasesCliente() {
     a.remove();
     URL.revokeObjectURL(url);
   };
-  /**
-   * ¿Esto que viene del archivo tiene pinta de una lista de invitados?
-   *
-   * Antes se metía tal cual lo que trajera el JSON: un archivo equivocado
-   * sustituía la lista de la puerta por basura, el día del evento, sin deshacer.
-   */
-  const esListaDeInvitados = (data: unknown): data is Invitado[] =>
-    Array.isArray(data) &&
-    data.length > 0 &&
-    data.every(
-      (x) =>
-        x !== null &&
-        typeof x === "object" &&
-        typeof (x as Invitado).id === "string" &&
-        typeof (x as Invitado).nombre === "string",
-    );
-
   const importar = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
     if (!f) return;
@@ -187,9 +261,51 @@ export function PasesCliente() {
     e.target.value = "";
   };
 
-  const aplicarImportacion = () => {
-    if (importPendiente) setInvitados(importPendiente);
+  /**
+   * Mete la lista del archivo en el evento.
+   *
+   * Antes SUSTITUÍA la lista de un golpe. Ahora agrega y actualiza, pero no
+   * borra lo que ya había: con un almacén central serían N borrados sueltos,
+   * sin transacción y con la llave de anfitrión de por medio, y cortarse a la
+   * mitad dejaría la puerta con media lista vieja y media nueva. Para quitar a
+   * alguien está su botón de borrar.
+   */
+  const aplicarImportacion = async () => {
+    const lista = importPendiente;
     setImportPendiente(null);
+    if (!lista) return;
+    const sync = obtenerSync();
+    const eventoId = eventoActual();
+    let fallidos = 0;
+    for (const inv of lista) {
+      try {
+        await sync.guardar(eventoId, COLECCION_PASES, inv);
+      } catch {
+        fallidos++;
+      }
+    }
+    setError(
+      fallidos === 0
+        ? ""
+        : `Se importaron ${lista.length - fallidos} de ${lista.length}. Revisa tu conexión e inténtalo otra vez.`,
+    );
+  };
+
+  /** Sube al evento la lista que había quedado en este aparato. */
+  const subirListaVieja = async () => {
+    const lista = listaVieja;
+    setListaVieja(null);
+    if (!lista) return;
+    const sync = obtenerSync();
+    const eventoId = eventoActual();
+    for (const inv of [...lista].reverse()) {
+      try {
+        await sync.guardar(eventoId, COLECCION_PASES, inv);
+      } catch {
+        setError("No pudimos subir toda la lista. Revisa tu conexión e inténtalo otra vez.");
+        return;
+      }
+    }
   };
 
   const compartir = (inv: Invitado) => {
@@ -199,13 +315,43 @@ export function PasesCliente() {
   };
 
   // --- Check-in ---
-  const marcar = (id: string, val: boolean) =>
+
+  /**
+   * Apunta (o corrige) la entrada de alguien.
+   *
+   * Desmarcar NO borra la fila: la deja con `entro: false`. Borrar exigiría la
+   * llave de anfitrión, y corregir un check-in equivocado es cosa normal de la
+   * puerta, no moderación: no puede depender de una llave privada.
+   */
+  const apuntarEntrada = React.useCallback(async (id: string, entro: boolean, ts: number) => {
+    try {
+      await obtenerSync().guardar(eventoActual(), COLECCION_ACCESOS, {
+        id: idDeAcceso(id),
+        invitadoId: id,
+        entro,
+        ts,
+      } satisfies Acceso);
+      setError("");
+      return true;
+    } catch {
+      setError(
+        "No pudimos guardar el ingreso en el servidor. Lo ves en esta pantalla, pero la otra puerta NO lo va a ver.",
+      );
+      return false;
+    }
+  }, []);
+
+  const marcar = (id: string, val: boolean) => {
+    // Se pinta ya y se guarda después: en la puerta la respuesta tiene que ser
+    // instantánea. Si el guardado falla, el aviso lo dice.
     setIngresados((s) => {
       const n = { ...s };
       if (val) n[id] = Date.now();
       else delete n[id];
       return n;
     });
+    void apuntarEntrada(id, val, Date.now());
+  };
 
   const registrar = React.useCallback((inv: Invitado) => {
     const yaTs = ingresadosRef.current[inv.id];
@@ -218,7 +364,9 @@ export function PasesCliente() {
       });
     } else {
       const ts = Date.now();
+      // Igual que al marcar a mano: se pinta ya y se guarda después.
       setIngresados((s) => ({ ...s, [inv.id]: ts }));
+      void apuntarEntrada(inv.id, true, ts);
       setResultado({
         estado: "ok",
         titulo: inv.nombre,
@@ -226,7 +374,7 @@ export function PasesCliente() {
         hora: horaDe(ts),
       });
     }
-  }, []);
+  }, [apuntarEntrada]);
 
   const onDetectar = React.useCallback(
     (texto: string) => {
@@ -258,6 +406,33 @@ export function PasesCliente() {
 
   return (
     <div>
+      {error ? (
+        <p className="mb-4 rounded-[var(--radius)] bg-red-500/10 px-3 py-2 text-sm text-red-600 dark:text-red-400">
+          {error}
+        </p>
+      ) : null}
+
+      {listaVieja ? (
+        <Card className="mb-4 p-4">
+          <p className="text-sm">
+            Este dispositivo tiene guardada una lista de{" "}
+            <strong>{listaVieja.length} invitados</strong> de antes, y este evento está vacío.
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Súbela si es la de esta boda: así los pases que ya repartiste seguirán funcionando. Si
+            era de otro evento, descártala.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button size="sm" onClick={() => void subirListaVieja()}>
+              Subir esta lista al evento
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setListaVieja(null)}>
+              Descartar
+            </Button>
+          </div>
+        </Card>
+      ) : null}
+
       {/* Pestañas */}
       <div className="mb-8 inline-flex flex-wrap gap-1 rounded-full border border-border bg-card p-1">
         {(
@@ -294,7 +469,7 @@ export function PasesCliente() {
             <p className="mt-1 text-sm text-muted-foreground">
               Al guardar se crea su pase con QR automáticamente.
             </p>
-            <form onSubmit={guardar} className="mt-5 space-y-4">
+            <form onSubmit={(e) => void guardar(e)} className="mt-5 space-y-4">
               <div>
                 <label className="mb-1.5 block text-sm font-medium">Nombre</label>
                 <input
@@ -413,7 +588,7 @@ export function PasesCliente() {
                 </>
               }
               textoConfirmar="Sí, sustituir la lista"
-              onConfirmar={aplicarImportacion}
+              onConfirmar={() => void aplicarImportacion()}
               onCancelar={() => setImportPendiente(null)}
             />
 
@@ -565,8 +740,14 @@ export function PasesCliente() {
             }
             textoConfirmar="Sí, empezar de cero"
             onConfirmar={() => {
-              setIngresados({});
               setConfirmarReinicio(false);
+              const marcados = Object.keys(ingresadosRef.current);
+              setIngresados({});
+              // Se corrigen uno a uno (entro: false) en vez de borrar las filas:
+              // borrar exigiría la llave de anfitrión y esto es cosa de la puerta.
+              void (async () => {
+                for (const id of marcados) await apuntarEntrada(id, false, Date.now());
+              })();
             }}
             onCancelar={() => setConfirmarReinicio(false)}
           />
@@ -651,7 +832,7 @@ export function PasesCliente() {
         onConfirmar={() => {
           const inv = porQuitar;
           setPorQuitar(null);
-          if (inv) eliminar(inv.id);
+          if (inv) void eliminar(inv.id);
         }}
         onCancelar={() => setPorQuitar(null)}
       />

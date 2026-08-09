@@ -42,6 +42,11 @@ const APPS = [
   ["álbum", "https://album-fotos-gamma.vercel.app"],
   ["rsvp", "https://rsvp-umber-pi.vercel.app"],
   ["brindis", "https://proyectos-salones-brindis.vercel.app"],
+  // Pases con QR usa sync desde el 6 ago 2026 (la lista y el registro de la
+  // puerta). ⚠️ Se queda ATRASADA hasta que se le pongan sus dos variables de
+  // Supabase en Vercel: sin ellas la app arranca en modo local y funciona, pero
+  // la puerta vuelve a vivir en un solo aparato.
+  ["pases QR", "https://pases-qr.vercel.app"],
   // El portal y el catálogo muestran las fotos: les afecta el corte de la 0013.
   // El proyecto se llama `proyectos-salones-portal` (Vercel regeneró el nombre al
   // elegir la carpeta apps/portal; encaja con la convención de las otras apps).

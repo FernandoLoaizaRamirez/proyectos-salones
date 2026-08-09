@@ -37,9 +37,10 @@ export default function Page() {
 
       <footer className="border-t border-border">
         <div className="mx-auto max-w-5xl px-6 py-8 text-xs text-muted-foreground">
-          {evento.lugar} · Demo de {evento.organizador.nombre}. En esta demostración la lista y los
-          ingresos se guardan en este mismo dispositivo (para un evento real con varias entradas a
-          la vez se conecta a un sistema central).
+          {evento.lugar} · Demo de {evento.organizador.nombre}. Con el servicio conectado, la lista
+          y el registro de la puerta viven en el evento: dos entradas ven lo mismo y nada se pierde
+          si un teléfono se queda sin batería. En esta demostración se guardan en este dispositivo,
+          ya separados por evento.
         </div>
       </footer>
     </main>

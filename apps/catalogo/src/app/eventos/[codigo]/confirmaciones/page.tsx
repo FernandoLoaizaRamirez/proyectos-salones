@@ -26,11 +26,12 @@ import {
   Loader2,
   MessageCircle,
   Plus,
+  Download,
   SearchX,
   Share2,
   Trash2,
 } from "lucide-react";
-import { Button, Card, cn, Confirmar } from "@salones/ui";
+import { Button, Card, cn, Confirmar, aCSV, descargarCSV, type ColumnaCSV } from "@salones/ui";
 import { EstadoRSVP } from "@salones/core";
 import { obtenerSync } from "@salones/sync";
 import { obtenerSupabase } from "@/lib/supabase";
@@ -259,6 +260,54 @@ export default function Confirmaciones({ params }: { params: Promise<{ codigo: s
     { n: personas, l: "Personas confirmadas", c: "text-primary" },
   ];
 
+  /* ---- La lista para el banquetero ----------------------------------------
+   * Lo que hace falta el día del evento es el recuento de PERSONAS, no de
+   * invitaciones: por eso van las dos columnas y el total al final.
+   *
+   * Se incluyen también las confirmaciones SUELTAS (las que llegaron por el
+   * enlace general y no estaban en la lista). Dejarlas fuera sería entregar un
+   * conteo corto, que es justo el error que arruina un banquete. */
+  const filasCSV = [
+    ...invitados.map((i) => ({
+      nombre: i.nombre,
+      estado: estadoDe(i.id),
+      personas: estadoDe(i.id) === EstadoRSVP.Confirmado ? (estados.get(i.id)?.personas ?? 0) : 0,
+      cupos: i.cupos,
+      origen: "En la lista",
+    })),
+    ...sueltas.map((r) => ({
+      nombre: (typeof r.nombre === "string" && r.nombre) || "Sin nombre",
+      estado: r.estado as Estado,
+      personas:
+        r.estado === EstadoRSVP.Confirmado && typeof r.personas === "number" ? r.personas : 0,
+      cupos: 0,
+      origen: "Confirmó por el enlace general",
+    })),
+  ];
+
+  const ETIQUETA: Record<string, string> = {
+    [EstadoRSVP.Confirmado]: "Confirmado",
+    [EstadoRSVP.Rechazado]: "No asiste",
+    [EstadoRSVP.Pendiente]: "Pendiente",
+  };
+
+  const exportarCSV = () => {
+    const columnas: ColumnaCSV<(typeof filasCSV)[number]>[] = [
+      { titulo: "Invitado", valor: (f) => f.nombre },
+      { titulo: "Estado", valor: (f) => ETIQUETA[f.estado] ?? f.estado },
+      { titulo: "Personas confirmadas", valor: (f) => f.personas },
+      { titulo: "Cupos de la invitación", valor: (f) => (f.cupos > 0 ? f.cupos : "") },
+      { titulo: "Origen", valor: (f) => f.origen },
+    ];
+    const total = filasCSV.reduce((s, f) => s + f.personas, 0);
+    const csv = [
+      aCSV(filasCSV, columnas),
+      // Una última línea con el total: es el número que de verdad se consulta.
+      `TOTAL DE PERSONAS CONFIRMADAS;;${total};;`,
+    ].join("\r\n");
+    descargarCSV(`confirmaciones-${evento.codigo}`, csv);
+  };
+
   return (
     <main className="mx-auto max-w-4xl px-6 py-14">
       <Link
@@ -268,10 +317,22 @@ export default function Confirmaciones({ params }: { params: Promise<{ codigo: s
         <ArrowLeft className="size-4" /> {evento.nombre}
       </Link>
 
-      <h1 className="mt-4 text-3xl font-semibold tracking-tight">Confirmaciones</h1>
-      <p className="mt-2 text-muted-foreground">
-        Quién viene, quién falta y cuántos son. Las respuestas llegan solas.
-      </p>
+      <div className="mt-4 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-3xl font-semibold tracking-tight">Confirmaciones</h1>
+          <p className="mt-2 text-muted-foreground">
+            Quién viene, quién falta y cuántos son. Las respuestas llegan solas.
+          </p>
+        </div>
+        <Button
+          variant="outline"
+          onClick={exportarCSV}
+          disabled={filasCSV.length === 0}
+          title="Se abre en Excel o Google Sheets"
+        >
+          <Download className="size-4" /> Exportar la lista
+        </Button>
+      </div>
 
       <div className="mt-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
         {tiles.map((t) => (

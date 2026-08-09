@@ -25,3 +25,5 @@ export { brandingAVariables } from "./branding";
 export type { BrandingSalon } from "./branding";
 export { cn } from "./lib/cn";
 export { guardarLocal, leerLocal } from "./lib/almacen";
+export { aCSV, descargarCSV } from "./lib/csv";
+export type { ColumnaCSV } from "./lib/csv";

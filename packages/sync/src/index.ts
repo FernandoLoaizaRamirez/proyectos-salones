@@ -612,6 +612,21 @@ function crearProveedorServidor(url: string, anon: string): ProveedorSync {
     async listar(evento, coleccion) {
       return pedirTodo(evento, coleccion);
     },
+    /**
+     * ⚠️ ESTO ES UN "METE O ACTUALIZA", NO UN "METE".
+     *
+     * `resolution=merge-duplicates` significa que si el `id` ya existe, la fila
+     * se SOBRESCRIBE. Es lo que se quiere para votar una canción o mover a un
+     * invitado de mesa, pero es también por donde entraba el peor agujero que
+     * quedaba: mandando el id de la foto de otro se pisaba su recuerdo.
+     *
+     * Desde el candado de la 0016 hay colecciones donde un invitado ya no puede
+     * reescribir (fotos, mensajes, brindis, ranking) y columnas que nadie salvo
+     * el anfitrión puede cambiar. Cuando la base dice que no, dice 403 — y ese
+     * caso se distingue aquí para que no acabe pintado como "revisa tu
+     * conexión", que mandaría al salón a mirar el wifi teniendo delante un
+     * candado. Mismo trato que `borrado-sin-permiso` unas líneas más abajo.
+     */
     async guardar(evento, coleccion, item) {
       const { id, ...dato } = item;
       const res = await fetch(base, {
@@ -622,6 +637,10 @@ function crearProveedorServidor(url: string, anon: string): ProveedorSync {
         },
         body: JSON.stringify({ evento, coleccion, id, dato }),
       });
+      if (res.status === 403) {
+        reportar("escritura-sin-permiso", `${coleccion}: la base no dejó reescribir`, evento);
+        throw new Error("sin-permiso");
+      }
       if (!res.ok) throw new Error(`sync/guardar ${res.status}`);
     },
     /**
@@ -917,6 +936,22 @@ export function mensajeDeSubida(e: unknown): string {
     return "Este dispositivo se quedó sin espacio. Libera un poco e inténtalo de nuevo.";
   }
   return "No pudimos subir el archivo. Revisa tu conexión e inténtalo de nuevo.";
+}
+
+/**
+ * ¿Este fallo al guardar es un CANDADO y no una caída de red?
+ *
+ * Sirve para no mandar a nadie a mirar el wifi cuando lo que pasa es que hace
+ * falta el enlace de quien organiza. Lo lanza `guardar` cuando la base
+ * responde 403 (candado de la 0016) y `eliminar` cuando no hubo permiso.
+ */
+export function esSinPermiso(e: unknown): boolean {
+  return e instanceof Error && (e.message === "sin-permiso" || e.message === "sync/guardar 403");
+}
+
+/** Qué decirle a una persona cuando la base no dejó cambiar algo. */
+export function mensajeSinPermiso(): string {
+  return "Eso solo lo puede cambiar quien organiza el evento, desde su propio enlace.";
 }
 
 /* ================================================================== */

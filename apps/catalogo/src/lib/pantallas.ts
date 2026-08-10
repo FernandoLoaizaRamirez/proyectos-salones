@@ -98,6 +98,25 @@ export const PANTALLAS: PantallaAnfitrion[] = [
   },
 ];
 
+/**
+ * LAS APPS QUE SIGUEN FUERA DEL PANEL Y NECESITAN LA LLAVE DE ANFITRIÓN.
+ *
+ * No están en `PANTALLAS` porque `PANTALLAS` es el catálogo de funciones
+ * vendibles (cada una con su `clave` de entitlement) y estas dos todavía no
+ * tienen la suya. Pero sí necesitan el enlace `&a=`: son pantallas de
+ * ORGANIZADOR —el acomodo que se hace en la tablet y la puerta donde se
+ * escanea— y hoy trabajan con pase de INVITADO porque nadie se lo daba.
+ *
+ * Eso tiene consecuencia directa en la base: mientras sea así, sus cuatro
+ * colecciones (`mesas`, `acomodo`, `pases`, `accesos`) tienen que quedarse en
+ * la lista blanca de `items_reescribibles` (migración 0016), o el candado
+ * frenaría al salón sin frenar a nadie más.
+ */
+export const APPS_CON_LLAVE = [
+  { appId: "mesas", nombre: "Acomodo de mesas" },
+  { appId: "pases-qr", nombre: "Pases y puerta (QR)" },
+] as const;
+
 /** Dirección de la app de un producto del catálogo (sin la barra final). */
 export function baseDeApp(appId: string): string {
   return (productos.find((p) => p.id === appId)?.demoUrl ?? "").replace(/\/$/, "");

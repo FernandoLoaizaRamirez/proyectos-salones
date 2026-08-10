@@ -44,7 +44,14 @@ import {
   type EventoFila,
   type ResumenEvento,
 } from "@/lib/eventos";
-import { PANTALLAS, enlacePantalla, enlacePortal, esInterna } from "@/lib/pantallas";
+import {
+  PANTALLAS,
+  APPS_CON_LLAVE,
+  baseDeApp,
+  enlacePantalla,
+  enlacePortal,
+  esInterna,
+} from "@/lib/pantallas";
 
 /** Cada cuánto se vuelven a leer los contadores (ms). */
 const REFRESCO_MS = 20000;
@@ -106,15 +113,34 @@ export default function PanelEvento({ params }: { params: Promise<{ codigo: stri
   const enlacesDeAnfitrion = (): string => {
     const clave = evento?.clave_anfitrion;
     if (!clave) return "";
-    const externas = PANTALLAS.filter((p) => !esInterna(p))
-      .map((p) => ({ nombre: p.nombre, href: enlacePantalla(p, codigo) }))
-      .filter((x) => x.href);
+    /*
+     * ⚠️ ESTA TARJETA COPIABA UN TEXTO SIN NI UN ENLACE (arreglado el 9 ago).
+     *
+     * Filtraba `PANTALLAS.filter(p => !esInterna(p))`, o sea "las pantallas que
+     * todavía viven fuera del panel". Como las cinco terminaron de migrarse
+     * hacia dentro, esa lista quedó VACÍA y el botón copiaba el encabezado y
+     * las advertencias… y nada más. Se descubrió al ir a cerrar el agujero de
+     * sobrescribir: la moderación desde el teléfono llevaba sin funcionar
+     * desde que se migró la última pantalla, y no había forma de notarlo
+     * porque el botón seguía diciendo "¡Copiado!".
+     *
+     * Ahora la lista es de las apps que SIGUEN FUERA del panel y necesitan la
+     * llave para trabajar: el acomodo de mesas y la puerta. Son justo las dos
+     * que hoy escriben con pase de invitado, que es lo que obliga a dejar sus
+     * colecciones abiertas en el candado de la 0016.
+     */
+    const fuera = APPS_CON_LLAVE.map((a) => ({
+      nombre: a.nombre,
+      href: baseDeApp(a.appId),
+    })).filter((x) => x.href);
     return [
       `Enlaces de ANFITRIÓN · ${evento?.nombre ?? codigo}`,
       "",
       "⚠️ NO los compartas con los invitados: quien los abra puede borrar.",
       "",
-      ...externas.map((x) => `• ${x.nombre}\n${x.href}&a=${clave}`),
+      ...fuera.map((x) => `• ${x.nombre}\n${x.href}/?e=${encodeURIComponent(codigo)}&a=${clave}`),
+      "",
+      `Llave suelta (por si hace falta a mano): ${clave}`,
     ].join("\n");
   };
 

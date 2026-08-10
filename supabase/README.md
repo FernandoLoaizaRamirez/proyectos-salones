@@ -26,6 +26,9 @@ Se aplican **en orden**. Cada una es idempotente/aditiva (segura de correr):
 | `0013_media_privado.sql` | El almacén pasa a **privado**: las fotos se ven con dirección firmada que caduca. | Su corte va en la `0014`. |
 | `0014_cortes_aplicados.sql` | **Los tres cortes de seguridad**, ya sin comentar. Lo que convierte la base insegura en la segura. | **Ninguno en el proyecto en vivo** (ya se corrieron a mano el 24 jul 2026); es el cierre en uno nuevo. |
 
+| `0015_tope_subidas.sql` | Tope de subidas por pase y por evento, para que nadie llene el almacen compartido. | Aditiva. **Pendiente de correr.** |
+| `0016_candado_sobrescritura.sql` | **El candado de SOBRESCRIBIR**: un invitado ya no puede vaciar, esconder ni renombrar lo que subio otro. | Cambia el comportamiento en cuanto se corre. **Pendiente de correr.** |
+
 > ⚠️ **La `0014` no es opcional.** Sin ella, un proyecto reconstruido desde
 > este repositorio nace con los tres agujeros abiertos: cualquier invitado
 > puede borrar la boda entera, cualquiera puede subir al álbum de cualquier
@@ -44,7 +47,7 @@ Se aplican **en orden**. Cada una es idempotente/aditiva (segura de correr):
 1. Entra a [supabase.com](https://supabase.com) → proyecto `suite-salones`.
 2. Menú **SQL Editor** → **New query**.
 3. Pega el contenido de cada archivo **en orden** (0001 → 0002 → 0003 → 0005 →
-   0006 → 0007 → 0008 → 0009 → 0010 → 0011 → 0012 → 0013 → 0014) y dale **Run**.
+   0006 → 0007 → 0008 → 0009 → 0010 → 0011 → 0012 → 0013 → 0014 → 0015 → 0016) y dale **Run**.
    ⚠️ Antes de la `0014`, despliega las Edge Functions.
 4. En el proyecto que ya está en vivo, la `0001` ya está aplicada (no hace daño
    volver a correrla: es idempotente). Lo nuevo de esta etapa es la `0002` y la `0003`.

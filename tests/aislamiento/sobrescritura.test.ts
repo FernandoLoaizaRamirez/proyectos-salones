@@ -221,4 +221,46 @@ suite("Candado de sobrescritura (migración 0016)", () => {
     },
     RED,
   );
+
+  it(
+    "al dar de alta NO se puede elegir la fecha (taparía el muro entero)",
+    async () => {
+      /*
+       * El servidor sirve `order=creado.desc` y la suscripción se queda con las
+       * 500 más recientes. Quien pueda ponerse su propia fecha puede clavar su
+       * mensaje arriba del muro proyectado y, con unas cuantas filas fechadas
+       * en el futuro, EMPUJAR FUERA de la ventana todo lo que subió la gente:
+       * un apagón del muro y del álbum sin borrar ni una fila.
+       *
+       * Se manda una fecha absurda y se comprueba que la base la ignoró. Vale
+       * tanto si la fila se acaba de crear como si ya existía de otra corrida
+       * (en los dos casos su fecha es la de verdad, nunca 2099).
+       */
+      if (!exigirCandado()) return;
+      const ID_FECHA = "ZZ-FECHA-0016";
+      await fetch(`${rest}/items`, {
+        method: "POST",
+        headers: { ...H, Prefer: "return=minimal" },
+        body: JSON.stringify({
+          evento: EVENTO,
+          coleccion: COL,
+          id: ID_FECHA,
+          creado: "2099-01-01T00:00:00Z",
+          dato: { nota: "alta con fecha falsa (prueba del candado 0016)" },
+        }),
+      });
+      const filas = (await (
+        await fetch(
+          `${rest}/items?evento=eq.${EVENTO}&coleccion=eq.${COL}&id=eq.${ID_FECHA}&select=creado`,
+          { headers: H },
+        )
+      ).json()) as { creado: string }[];
+      expect(filas).toHaveLength(1);
+      expect(
+        new Date(filas[0]!.creado).getUTCFullYear(),
+        "la base se tragó la fecha inventada",
+      ).toBeLessThan(2099);
+    },
+    RED,
+  );
 });

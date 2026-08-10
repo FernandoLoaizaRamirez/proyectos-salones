@@ -50,12 +50,24 @@ describe("El candado de sobrescritura vive en las migraciones (0016)", () => {
     expect(readdirSync(MIGRACIONES)).toContain(NOMBRE);
   });
 
-  it("engancha un disparador ANTES de actualizar `items`", () => {
+  it("engancha un disparador ANTES de dar de alta y de actualizar `items`", () => {
     // Sin el disparador, la tabla y la función no hacen absolutamente nada.
     // Es el único paso que cambia el comportamiento y va el último del archivo.
+    // Tiene que cubrir el ALTA además del update: si solo cubriera el update,
+    // la fecha volvería a elegirla quien manda la petición (ver el caso de
+    // abajo) y se podría tapar el muro entero sin borrar nada.
     expect(sqlActivo(NOMBRE)).toMatch(
-      /create\s+trigger\s+trg_items_candado_sobrescritura[\s\S]{0,120}before\s+update\s+on\s+items/i,
+      /create\s+trigger\s+trg_items_candado_sobrescritura[\s\S]{0,120}before\s+insert\s+or\s+update\s+on\s+items/i,
     );
+  });
+
+  it("al dar de alta, la fecha la pone la base y no quien escribe", () => {
+    // El servidor sirve `order=creado.desc` y la suscripción se queda con las
+    // 500 más recientes: con fechas en el futuro se empuja fuera de la ventana
+    // todo lo que subió la gente. Un apagón del muro sin borrar una sola fila.
+    const sql = sqlActivo(NOMBRE);
+    expect(sql).toMatch(/tg_op\s*=\s*'INSERT'/i);
+    expect(sql, "no fija `creado` en el alta").toMatch(/new\.creado\s*:=\s*now\(\)/i);
   });
 
   it("congela la identidad de la fila (id, coleccion, creado…)", () => {
@@ -82,6 +94,24 @@ describe("El candado de sobrescritura vive en las migraciones (0016)", () => {
       /evento_del_pase_anfitrion/,
     );
     expect(sql, "una Edge Function chocaría contra el candado").toMatch(/service_role/);
+  });
+
+  it("NO pregunta por `current_user` para saber quién llama", () => {
+    /*
+     * La trampa que casi cuela, y que dejaría el candado puesto pero inútil:
+     * dentro de una función `security definer`, `current_user` es el DUEÑO de
+     * la función (postgres), no quien manda la petición. Un
+     * `if current_user in ('service_role', 'postgres', …) then return new`
+     * daría cierto SIEMPRE y no frenaría a nadie — y desde fuera se vería
+     * exactamente igual que un candado funcionando.
+     *
+     * El rol de quien llama es el que anota PostgREST en `request.jwt.claims`.
+     */
+    const sql = sqlActivo(NOMBRE);
+    expect(sql, "usa current_user: con security definer eso es el dueño, no quien llama").not.toMatch(
+      /current_user/i,
+    );
+    expect(sql).toMatch(/request\.jwt\.claims[\s\S]{0,60}'role'/);
   });
 
   it("la lista blanca es EXACTAMENTE de seis, las conocidas", () => {

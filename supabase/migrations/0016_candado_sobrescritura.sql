@@ -36,9 +36,16 @@
 --
 -- LO QUE HACE ESTA MIGRACION:
 --
---   Un solo disparador BEFORE UPDATE sobre `items`, con dos reglas, y una tabla
---   con la lista de excepciones. Al ANFITRION no le afecta (el modera, y para
---   eso tiene su llave); a la llave de servicio y al Editor SQL tampoco.
+--   Un solo disparador sobre `items`, con tres reglas, y una tabla con la lista
+--   de excepciones. Al ANFITRION no le afecta (el modera, y para eso tiene su
+--   llave); a la llave de servicio y al Editor SQL tampoco.
+--
+--     Regla 0 · AL DAR DE ALTA, LA FECHA LA PONE LA BASE. El servidor sirve
+--               ordenado por `creado` y la suscripcion se queda con las 500 mas
+--               recientes: quien elija su propia fecha puede clavar su mensaje
+--               arriba del muro proyectado, y con unas cuantas filas fechadas en
+--               el futuro EMPUJAR FUERA todo lo que subio la gente. Un apagon
+--               del muro sin borrar nada.
 --
 --     Regla 1 · LA IDENTIDAD NO SE TOCA. Un invitado no puede cambiar `id`,
 --               `evento`, `coleccion`, `module`, `creado` ni `tenant_id` de una
@@ -127,6 +134,8 @@ as $$
 declare
   v_cabeceras text;
   v_anfitrion text;
+  v_evento    text;
+  v_rol       text;
 begin
   -- --- Quien SI puede hacer lo que quiera -----------------------------------
 
@@ -141,19 +150,72 @@ begin
   --      `items` —`evento-cierre` borra filas y toca la tabla `events`—, pero
   --      se deja exento para que manana una funcion nueva no choque contra
   --      esto sin que nadie entienda por que.
-  if current_user in ('service_role', 'postgres', 'supabase_admin') then
+  --
+  --      ⚠️ AQUI HAY UNA TRAMPA QUE CASI CUELA. Lo natural seria preguntar por
+  --      `current_user`, y estaria MAL: dentro de una funcion `security
+  --      definer`, `current_user` es el DUENO de la funcion (postgres), no
+  --      quien llama. La comprobacion habria dado cierto SIEMPRE y el candado
+  --      no habria frenado a nadie — pareciendo puesto. Se pregunta por el rol
+  --      que anota PostgREST en la peticion, que si es el de quien llama.
+  --
+  --      Y si ese dato faltara, `v_rol` queda vacio y el candado SE APLICA:
+  --      ante la duda, cerrado.
+  v_rol := coalesce(current_setting('request.jwt.claims', true)::json->>'role', '');
+  if v_rol = 'service_role' then
+    return new;
+  end if;
+
+  --      Y un segundo cinturon, por si algun dia Supabase deja de anotar ese
+  --      rol como hoy: sin pase de INVITADO tampoco se aplica el candado. Es
+  --      seguro y no abre nada, porque una peticion sin pase valido NO LLEGA
+  --      AQUI: las politicas de la 0009 exigen uno de los dos pases, asi que o
+  --      no cuadra ninguna fila (y el disparador ni se dispara) o viene con la
+  --      llave de servicio, que se salta las politicas. Las Edge Functions no
+  --      mandan `x-evento-pase`, asi que quedan exentas por los dos caminos.
+  if coalesce(v_cabeceras::json->>'x-evento-pase', '') = '' then
     return new;
   end if;
 
   -- (iii) El ANFITRION del evento. Es quien modera: quitar un mensaje subido de
   --       tono o corregir un nombre es su trabajo. Se comprueba contra el
-  --       evento de la fila VIEJA: con la llave de una boda no se toca otra.
+  --       evento de la fila que se toca: con la llave de una boda no se toca otra.
+  --       (En un alta no hay fila vieja, asi que se mira la nueva.)
+  if tg_op = 'INSERT' then
+    v_evento := new.evento;
+  else
+    v_evento := old.evento;
+  end if;
+
   v_anfitrion := evento_del_pase_anfitrion(v_cabeceras::json->>'x-evento-anfitrion');
-  if v_anfitrion is not null and v_anfitrion = old.evento then
+  if v_anfitrion is not null and v_anfitrion = v_evento then
     return new;
   end if;
 
   -- --- De aqui abajo, es un INVITADO ----------------------------------------
+
+  -- REGLA 0 · AL DAR DE ALTA, LA FECHA LA PONE LA BASE.
+  --
+  -- Parece un detalle y no lo es. El servidor sirve las filas ordenadas por
+  -- `creado` (packages/sync/src/index.ts:588, `order=creado.desc`) y la
+  -- suscripcion se queda con las 500 MAS RECIENTES. O sea que quien pueda
+  -- elegir su propia fecha puede:
+  --   · clavar su mensaje en lo alto del muro proyectado, para siempre, y
+  --   · con unas cuantas filas fechadas en el futuro, EMPUJAR FUERA DE LA
+  --     VENTANA todo lo que subio la gente: un apagon del muro y del album
+  --     sin borrar ni una fila.
+  -- Dar de alta sigue abierto (es la gracia del muro), pero la fecha no se
+  -- negocia. Ninguna app manda `creado` al escribir —se comprobo una por una—,
+  -- asi que para el trafico legitimo esto no cambia absolutamente nada.
+  --
+  -- `module` se deja en nulo a proposito: asi lo rellena a partir de la
+  -- coleccion el disparador de la 0003, que corre justo despues que este
+  -- (Postgres los dispara por orden alfabetico, y "candado" va antes que
+  -- "completar"). Es la unica forma de que no lo elija quien manda la peticion.
+  if tg_op = 'INSERT' then
+    new.creado := now();
+    new.module := null;
+    return new;
+  end if;
 
   -- REGLA 1 · La identidad de la fila no se toca.
   --
@@ -195,7 +257,7 @@ end $$;
 -- ----------------------------------------------------------------------------
 drop trigger if exists trg_items_candado_sobrescritura on items;
 create trigger trg_items_candado_sobrescritura
-  before update on items
+  before insert or update on items
   for each row execute function items_candado_sobrescritura();
 
 

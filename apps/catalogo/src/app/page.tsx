@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { ThemeToggle, buttonVariants } from "@salones/ui";
 import { MessageCircle, Sparkles } from "lucide-react";
 import { vendedor } from "@/lib/catalogo";
@@ -86,7 +87,26 @@ export default function Page() {
               <MessageCircle className="size-4" /> Escríbeme
             </a>
           </div>
+          {/*
+           * Las tres páginas legales existían desde julio y NINGUNA pantalla
+           * enlazaba a ellas: publicadas y, en la práctica, invisibles. Aquí van
+           * enlaces internos (no la dirección absoluta de `NEXT_PUBLIC_LEGAL_URL`)
+           * porque estas páginas viven en esta misma app.
+           */}
           <p className="mt-6 text-xs">
+            <Link href="/legal/privacidad" className="underline underline-offset-2 hover:text-foreground">
+              Aviso de privacidad
+            </Link>
+            {" · "}
+            <Link href="/legal/imagen" className="underline underline-offset-2 hover:text-foreground">
+              Uso de tu imagen
+            </Link>
+            {" · "}
+            <Link href="/legal/terminos" className="underline underline-offset-2 hover:text-foreground">
+              Términos del servicio
+            </Link>
+          </p>
+          <p className="mt-3 text-xs">
             Precios de referencia en pesos mexicanos (MXN). La cotización final depende de las apps
             elegidas, el modelo y las necesidades de tu evento. Sitio de demostración.
           </p>

@@ -88,6 +88,59 @@ describe("Aviso de privacidad", () => {
     expect(texto).toContain("no usamos reconocimiento facial");
     expect(texto).toContain("no los vendemos");
   });
+
+  /**
+   * LOS CUATRO SITIOS DONDE EL AVISO MENTÍA (corregidos el 10 ago 2026).
+   *
+   * La regla que manda aquí es que **un aviso que miente es peor que no tener
+   * ninguno**: promete derechos que no se pueden ejercer y, cuando alguien lo
+   * compara con la realidad, tumba la credibilidad de todo el documento —
+   * incluida la parte que sí era cierta. Cada caso de abajo es un hecho del
+   * código, comprobado, que el texto contradecía o se callaba.
+   */
+  describe("dice la verdad sobre lo que de verdad pasa", () => {
+    it("nombra a Shotstack, que se descarga los videos de los invitados", () => {
+      // apps/brindis/src/app/api/recuerdo/route.ts:25 manda las direcciones de
+      // los videos a api.shotstack.io, que se los baja a sus servidores para
+      // montar el video de recuerdo. Son caras y voces, y salen de México.
+      // El aviso decía "usamos DOS proveedores… fuera de eso NO transferimos".
+      const texto = textoDe(avisoPrivacidad(DATOS));
+      expect(texto).toContain("Shotstack");
+      expect(texto).not.toMatch(/usamos dos proveedores/i);
+    });
+
+    it("nombra a WhatsApp, por donde salen nombres y mensajes", () => {
+      // Hay 22 enlaces `wa.me` repartidos por las apps: al pulsarlos, el
+      // contenido (un pase, un mensaje firmado, una lista) pasa por Meta.
+      const texto = textoDe(avisoPrivacidad(DATOS));
+      expect(texto).toContain("WhatsApp");
+    });
+
+    it("no promete que el contenido caduque solo, porque no caduca", () => {
+      // No existe ninguna limpieza automática: el contenido se borra cuando el
+      // salón cierra el evento, y punto. Decir "un periodo razonable" sonaba a
+      // que algo se encarga solo, y no hay nada que se encargue.
+      const texto = textoDe(avisoPrivacidad(DATOS));
+      expect(texto).not.toMatch(/periodo razonable/i);
+      expect(texto).toMatch(/se borra cuando/i);
+    });
+
+    it("avisa del dato que se manda solo cuando falla una subida", () => {
+      // packages/sync/src/index.ts manda `navigator.userAgent` sin que la
+      // persona toque nada, mientras ve un mensaje de error. El aviso decía
+      // "SOLO lo que tú entregas voluntariamente".
+      const texto = textoDe(avisoPrivacidad(DATOS)).toLowerCase();
+      expect(texto).toContain("modelo de tu teléfono");
+    });
+
+    it("dice que el enlace circula y que cualquiera puede descargarse las fotos", () => {
+      // Es lo que más sorprende a la gente: "los demás invitados" no es una
+      // lista cerrada, es quien tenga el enlace. Y una copia descargada ya no
+      // la puede retirar nadie.
+      const texto = textoDe(avisoPrivacidad(DATOS)).toLowerCase();
+      expect(texto).toContain("descargarse las fotos");
+    });
+  });
 });
 
 describe("Términos y condiciones", () => {
@@ -127,6 +180,16 @@ describe("Consentimiento de imagen", () => {
     const texto = textoDe(consentimientoImagen(DATOS)).toLowerCase();
     expect(texto).toContain("no se usan con fines publicitarios");
     expect(texto).toContain("autorización expresa y por separado");
+  });
+
+  it("no promete un botón de retirar que el invitado no tiene", () => {
+    // Quitar contenido exige la llave de anfitrión (corte de la 0009), así que
+    // la petición se hace a los organizadores. Decir solo "la retiraremos", sin
+    // más, dejaba a la gente buscando un botón que no existe.
+    const texto = textoDe(consentimientoImagen(DATOS)).toLowerCase();
+    expect(texto).toContain("no hay un botón");
+    // Y una copia ya descargada no la retira nadie: hay que decirlo.
+    expect(texto).toContain("no lo puede deshacer nadie");
   });
 
   it("advierte del caso de los menores de edad", () => {

@@ -6,7 +6,7 @@
  */
 import * as React from "react";
 import { ArrowRight, Check, RefreshCw, Trophy, X } from "lucide-react";
-import { Button, Card, cn } from "@salones/ui";
+import { Button, Card, cn, AvisoParticipacion } from "@salones/ui";
 import { TRIVIA_PREGUNTAS, porPuntaje } from "./lib";
 import { useRanking } from "./use-ranking";
 
@@ -75,6 +75,12 @@ export function Trivia({ evento }: { evento: string }) {
           <Button type="submit" className="w-full" disabled={!nombre.trim()}>
             Empezar
           </Button>
+          {/*
+           * Era el ÚNICO de los cinco módulos del portal sin aviso, y sí pide un
+           * dato: el nombre es obligatorio para jugar y acaba escrito en el
+           * marcador que se proyecta en el salón, a la vista de todos.
+           */}
+          <AvisoParticipacion accion="jugar" className="text-center" />
         </form>
       </Card>
     );

@@ -20,6 +20,7 @@ export {
   PantallaErrorGrave,
 } from "./components/rescate";
 export { AvisoParticipacion } from "./components/aviso-participacion";
+export { PieLegal } from "./components/pie-legal";
 export { BrandingScope } from "./components/branding-scope";
 export { brandingAVariables } from "./branding";
 export type { BrandingSalon } from "./branding";

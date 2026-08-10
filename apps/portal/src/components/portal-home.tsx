@@ -9,7 +9,7 @@
  * (p. ej. el muro) abren DENTRO; los que aún no, hacen de puente a su app actual.
  */
 import Link from "next/link";
-import { BrandingScope, type BrandingSalon } from "@salones/ui";
+import { BrandingScope, PieLegal, type BrandingSalon } from "@salones/ui";
 import { tieneFuncion } from "@salones/core";
 import { ArrowUpRight, PartyPopper, SearchX } from "lucide-react";
 import { MODULOS, enlaceModulo, esInterno } from "@/lib/modulos";
@@ -104,6 +104,14 @@ export function PortalHome({ config }: { config: ConfigEvento }) {
             evento mostrará solo las que tenga contratadas.
           </p>
         ) : null}
+
+        {/*
+         * La portada del portal es la pantalla por la que pasa TODO invitado, y
+         * hasta ahora era la única puerta que no llevaba a ninguna parte: el
+         * aviso pegado al botón solo lo ve quien va a subir algo, y quien no
+         * sube nada también sale en las fotos de los demás.
+         */}
+        <PieLegal />
       </main>
     </BrandingScope>
   );

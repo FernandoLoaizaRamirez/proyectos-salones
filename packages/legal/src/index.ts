@@ -49,6 +49,23 @@ export type Documento = {
   secciones: Seccion[];
 };
 
+/**
+ * La marca de "esto todavía hay que rellenarlo".
+ *
+ * ⚠️ NUNCA debe llegar a los ojos de un invitado. Es una nota para quien
+ * mantiene el sistema, y durante un tiempo se publicó tal cual: el aviso de
+ * privacidad EN PRODUCCIÓN decía «con domicilio en PENDIENTE» y «puedes
+ * escribir a PENDIENTE» (5 veces en esa página, 9 entre los tres documentos).
+ * A quien lo leía le decía dos cosas a la vez: que no hay a quién reclamar, y
+ * que el producto está a medias.
+ */
+export const SIN_RELLENAR = "PENDIENTE";
+
+/** ¿Este dato lo tenemos de verdad? */
+export function falta(valor: string | undefined): boolean {
+  return !valor || valor.trim() === "" || valor === SIN_RELLENAR;
+}
+
 /** Aviso que acompaña a todos los documentos mientras no los revise un abogado. */
 export const AVISO_BORRADOR =
   "Borrador de trabajo. Describe con honestidad cómo funciona el servicio, " +
@@ -79,9 +96,13 @@ export function avisoPrivacidad(d: DatosLegales): Documento {
       {
         titulo: "1. Quién es responsable de tus datos",
         parrafos: [
-          `${d.salon}, con domicilio en ${d.domicilio}, es el responsable del tratamiento de los datos personales que se recogen durante sus eventos.`,
+          falta(d.domicilio)
+            ? `${d.salon} es el responsable del tratamiento de los datos personales que se recogen durante sus eventos. Su domicilio se añadirá a este aviso en cuanto el salón lo facilite; mientras tanto, puedes pedirlo en la recepción del salón.`
+            : `${d.salon}, con domicilio en ${d.domicilio}, es el responsable del tratamiento de los datos personales que se recogen durante sus eventos.`,
           `${d.proveedor} presta el servicio técnico (las aplicaciones y el almacenamiento) en calidad de encargado: trata los datos únicamente por cuenta de ${d.salon} y siguiendo sus instrucciones, y no los usa para fines propios.`,
-          `Para cualquier asunto relacionado con tus datos puedes escribir a ${d.contacto}.`,
+          falta(d.contacto)
+            ? `Para cualquier asunto relacionado con tus datos, habla con el personal de ${d.salon} o con quienes organizan el evento: ellos lo trasladan. ${d.salon} todavía no ha publicado un correo de contacto para este fin.`
+            : `Para cualquier asunto relacionado con tus datos puedes escribir a ${d.contacto}.`,
         ],
       },
       {
@@ -93,6 +114,8 @@ export function avisoPrivacidad(d: DatosLegales): Documento {
           "• Las fotos y videos que decides subir al álbum del evento, y los videos de felicitación que grabas.",
           "• Tu confirmación de asistencia y el número de personas que te acompañan.",
           "• Las canciones que pides y los votos que das.",
+          "Hay dos cosas que no tecleas tú y conviene que sepas. Si el salón usa pases con código QR, al entrar queda registrada la hora a la que pasaste por la puerta, junto al nombre que figura en tu pase; y si te asignan mesa, queda anotado en qué mesa te sientas. Esa información la introduce quien organiza, no tú.",
+          "Y una más, técnica: si a tu teléfono le falla una subida, se envía un aviso de error que incluye el modelo de tu teléfono y de tu navegador, para poder arreglarlo. No lleva tu nombre ni nada de lo que hayas escrito.",
           "No pedimos ni guardamos datos de contacto (teléfono, correo, dirección) de los invitados, ni datos bancarios, ni datos que la ley considera sensibles. No usamos reconocimiento facial ni ninguna técnica que identifique a las personas de las fotografías de forma automática.",
         ],
       },
@@ -103,23 +126,28 @@ export function avisoPrivacidad(d: DatosLegales): Documento {
           "• Mostrar tu aportación en las pantallas y dispositivos del propio evento.",
           `• Reunir el contenido del evento y entregárselo a ${d.salon} y a los anfitriones.`,
           "• Organizar la lista de asistentes, el acomodo de mesas y la música.",
+          "• Controlar el acceso en la puerta, cuando el evento usa pases con código QR: sirve para saber quién ha llegado y evitar que entre quien no está invitado.",
           "No usamos tus datos para publicidad, no los vendemos, y no elaboramos perfiles con ellos.",
         ],
       },
       {
         titulo: "4. Cuánto tiempo los guardamos",
         parrafos: [
-          "El contenido de un evento se conserva mientras el evento está abierto y durante un periodo razonable después, para que los anfitriones puedan descargarlo.",
-          `Al cerrar el evento, ${d.salon} puede pedir la entrega de todo el material y su borrado. A partir de ese momento el contenido se elimina de nuestros sistemas.`,
+          `El contenido de un evento se conserva mientras el evento sigue abierto. No se borra solo al cabo de un tiempo: se borra cuando ${d.salon} cierra el evento, y es ${d.salon} quien decide cuándo. Si te importa que no siga ahí, pídeselo.`,
+          `Al cerrar el evento se entrega todo el material a ${d.salon} y a los anfitriones, y se elimina de nuestros sistemas: tanto los archivos como los registros.`,
+          "Si pides que se retire una foto o un mensaje concreto durante el evento, deja de verse en el momento en todas las pantallas. El archivo en sí se termina de eliminar cuando se cierra el evento, en el borrado general.",
         ],
       },
       {
         titulo: "5. Con quién se comparten",
         parrafos: [
           `Tu aportación es visible para los demás invitados del mismo evento y para ${d.salon}. Cada evento está aislado: el contenido de un evento no se mezcla ni se muestra en otro.`,
-          "Para poder prestar el servicio usamos dos proveedores de infraestructura, que actúan también como encargados y no usan los datos para fines propios:",
-          "• Supabase, que aloja la base de datos y el almacenamiento de archivos. Sus servidores están ubicados en Canadá, por lo que existe una transferencia internacional de datos.",
+          "Conviene ser claro sobre qué significa «los demás invitados»: cualquiera que tenga el enlace del evento entra, y ese enlace circula por WhatsApp y se reenvía. Quien entra puede además descargarse las fotos y los videos a su propio teléfono. A partir de ahí esas copias ya no están en nuestras manos ni en las del salón.",
+          "Para poder prestar el servicio nos apoyamos en estas empresas, que actúan también como encargadas y no usan los datos para fines propios:",
+          "• Supabase, que aloja la base de datos y el almacenamiento de archivos. Sus servidores están en Canadá, así que hay una transferencia internacional de datos.",
           "• Vercel, que aloja las aplicaciones.",
+          "• Shotstack, que monta el video de recuerdo cuando el evento usa la función de brindis. Para montarlo descarga los videos que grabaron los invitados —con su imagen y su voz— a sus propios servidores, que están fuera de México.",
+          "Además, varias pantallas ofrecen un botón para compartir por WhatsApp (una invitación, un pase, un mensaje). Si lo usas, ese contenido pasa por WhatsApp, que es de Meta, y se rige por sus propias condiciones. Es siempre tu decisión pulsarlo.",
           "Fuera de lo anterior, no transferimos tus datos a terceros salvo que la ley nos lo exija.",
         ],
       },
@@ -127,7 +155,9 @@ export function avisoPrivacidad(d: DatosLegales): Documento {
         titulo: "6. Tus derechos (ARCO) y cómo ejercerlos",
         parrafos: [
           "Tienes derecho a Acceder a tus datos, a Rectificarlos si son inexactos, a Cancelarlos cuando consideres que no son necesarios, y a Oponerte a que se usen para un fin concreto. También puedes revocar tu consentimiento en cualquier momento.",
-          `Para ejercerlos, escribe a ${d.contacto} indicando tu nombre, de qué evento se trata y qué deseas. Te responderemos en los plazos que marca la ley.`,
+          falta(d.contacto)
+            ? `Para ejercerlos, díselo al personal de ${d.salon} indicando tu nombre, de qué evento se trata y qué deseas. Te responderemos en los plazos que marca la ley.`
+            : `Para ejercerlos, escribe a ${d.contacto} indicando tu nombre, de qué evento se trata y qué deseas. Te responderemos en los plazos que marca la ley.`,
           "Si quieres que se retire una aportación concreta (un mensaje, una foto, un video), basta con que lo pidas: no necesitas justificar el motivo.",
         ],
       },
@@ -135,7 +165,9 @@ export function avisoPrivacidad(d: DatosLegales): Documento {
         titulo: "7. Cómo limitar el uso de tus datos",
         parrafos: [
           "La forma más directa de limitar el uso de tus datos es no aportar contenido: participar en el álbum, en el muro o en la playlist es siempre voluntario, y quien no participa no aparece.",
-          `Si ya aportaste algo y prefieres que no se muestre, pídelo a ${d.contacto} o dirígete directamente a los anfitriones del evento.`,
+          falta(d.contacto)
+            ? `Si ya aportaste algo y prefieres que no se muestre, dirígete a los anfitriones del evento o al personal de ${d.salon}: se retira en el momento.`
+            : `Si ya aportaste algo y prefieres que no se muestre, pídelo a ${d.contacto} o dirígete directamente a los anfitriones del evento.`,
         ],
       },
       {
@@ -233,7 +265,9 @@ export function terminosYCondiciones(d: DatosLegales): Documento {
         titulo: "9. Ley aplicable",
         parrafos: [
           "Estos términos se rigen por la legislación mexicana. Cualquier controversia se someterá a los tribunales competentes del domicilio del proveedor, salvo que se pacte otra cosa por escrito.",
-          `Última actualización: ${d.actualizado}. Contacto: ${d.contacto}.`,
+          falta(d.contacto)
+            ? `Última actualización: ${d.actualizado}. Contacto: el personal de ${d.salon}.`
+            : `Última actualización: ${d.actualizado}. Contacto: ${d.contacto}.`,
         ],
       },
     ],
@@ -264,6 +298,7 @@ export function consentimientoImagen(d: DatosLegales): Documento {
         parrafos: [
           `Únicamente para los fines del propio evento: mostrarlos en las pantallas del evento, reunirlos en un álbum común y entregárselos a ${d.salon} y a los anfitriones como recuerdo.`,
           "No se usan con fines publicitarios ni comerciales, no se venden y no se publican en redes sociales por parte del proveedor.",
+          "Si el evento incluye la función de brindis, los videos que graban los invitados se montan en un solo video de recuerdo. Ese montaje lo hace una empresa llamada Shotstack, que para armarlo descarga los videos —con tu imagen y tu voz— a sus servidores, que están fuera de México. Se usan solo para eso.",
         ],
       },
       {
@@ -277,7 +312,11 @@ export function consentimientoImagen(d: DatosLegales): Documento {
         titulo: "4. Si no quieres aparecer",
         parrafos: [
           "Tienes derecho a oponerte. Puedes pedir que se retire cualquier foto o video en el que aparezcas, sin dar explicaciones.",
-          `Díselo a los anfitriones durante el evento, o escribe a ${d.contacto}. La retiraremos.`,
+          falta(d.contacto)
+            ? `Díselo a los anfitriones durante el evento, o al personal de ${d.salon}. La retiraremos.`
+            : `Díselo a los anfitriones durante el evento, o escribe a ${d.contacto}. La retiraremos.`,
+          "Quien puede retirarla es quien organiza el evento, no cualquiera: es la misma llave que impide que un invitado borre los recuerdos de otro. Por eso la petición se hace a los anfitriones o al salón, y no hay un botón para hacerlo por tu cuenta.",
+          "Dos cosas honestas sobre el alcance de ese «se retira». Deja de verse en el momento en todas las pantallas, y el archivo se termina de eliminar cuando se cierra el evento. Pero si alguien ya se descargó esa foto a su teléfono, esa copia ya no está en manos del salón ni en las nuestras: eso no lo puede deshacer nadie.",
         ],
       },
       {

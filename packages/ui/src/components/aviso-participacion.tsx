@@ -18,11 +18,24 @@ import { cn } from "../lib/cn";
  */
 export function AvisoParticipacion({
   accion = "participar",
+  imagen = false,
   urlLegal,
   className,
 }: {
   /** Qué está a punto de hacer la persona: "subir tus fotos", "firmar", … */
   accion?: string;
+  /**
+   * ¿En esta acción entrega una FOTO, un VIDEO o su VOZ?
+   *
+   * Solo entonces se nombra el uso de imagen. Antes se nombraba siempre, y eso
+   * hacía que al pedir una canción o al confirmar asistencia el aviso dijera
+   * "aceptas … el uso de tu imagen": pedir permiso para algo que no está
+   * pasando. Un aviso que dice de MÁS estropea la confianza igual que uno que
+   * dice de menos, y encima invita a no leer ninguno.
+   *
+   * Por defecto va en `false`: no reclamar nada que no se haga.
+   */
+  imagen?: boolean;
   /** Dónde viven los documentos. Por defecto, los del catálogo. */
   urlLegal?: string;
   className?: string;
@@ -42,17 +55,23 @@ export function AvisoParticipacion({
         className="underline underline-offset-2 hover:text-foreground"
       >
         aviso de privacidad
-      </a>{" "}
-      y el{" "}
-      <a
-        href={`${base}/imagen`}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="underline underline-offset-2 hover:text-foreground"
-      >
-        uso de tu imagen
-      </a>{" "}
-      para este evento. Puedes pedir que se retire lo que subas, cuando quieras.
+      </a>
+      {imagen ? (
+        <>
+          {" "}
+          y el{" "}
+          <a
+            href={`${base}/imagen`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline underline-offset-2 hover:text-foreground"
+          >
+            uso de tu imagen
+          </a>
+        </>
+      ) : null}{" "}
+      para este evento. Puedes pedir que se retire lo que {imagen ? "subas" : "envíes"}, cuando
+      quieras.
     </p>
   );
 }

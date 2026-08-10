@@ -10,7 +10,7 @@
  */
 import * as React from "react";
 import { Camera, X, Send, Check, PenLine, Loader2, MessageSquare } from "lucide-react";
-import { Button, Card, cn } from "@salones/ui";
+import { Button, Card, cn, AvisoParticipacion } from "@salones/ui";
 import {
   obtenerSync,
   estaConectado,
@@ -260,6 +260,9 @@ export function MuroModulo({ evento, nombreEvento }: { evento: string; nombreEve
             </div>
 
             {error ? <p className="text-sm text-red-600 dark:text-red-400">{error}</p> : null}
+
+            {/* Lo que se escribe aquí se PROYECTA en el salón, con su nombre. */}
+            <AvisoParticipacion accion="dejar tu mensaje" imagen className="text-center" />
 
             <Button type="submit" className="w-full" disabled={procesandoFoto || enviando}>
               {enviando ? (

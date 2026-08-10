@@ -251,7 +251,7 @@ export function Album() {
             className="hidden"
             onChange={(e) => agregar(e.target.files)}
           />
-          <AvisoParticipacion accion="subir tus fotos" className="max-w-md text-center" />
+          <AvisoParticipacion accion="subir tus fotos" imagen className="max-w-md text-center" />
         </div>
       </div>
 

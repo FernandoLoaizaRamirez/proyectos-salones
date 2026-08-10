@@ -14,7 +14,7 @@
  */
 import * as React from "react";
 import { Plus, ThumbsUp, Check, Music, ExternalLink, Loader2 } from "lucide-react";
-import { Button, Card, cn, guardarLocal } from "@salones/ui";
+import { Button, Card, cn, guardarLocal, AvisoParticipacion } from "@salones/ui";
 import { obtenerSync } from "@salones/sync";
 import {
   COLECCION_CANCIONES,
@@ -180,6 +180,8 @@ export function PlaylistModulo({
             maxLength={40}
           />
           {error ? <p className="text-sm text-red-600 dark:text-red-400">{error}</p> : null}
+          <AvisoParticipacion accion="pedir tu canción" className="text-center" />
+
           <Button type="submit" className="w-full" disabled={enviando}>
             {enviando ? (
               <>

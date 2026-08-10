@@ -615,7 +615,7 @@ export function BrindisCliente() {
               ? `Al enviarlo, tu brindis se guarda junto con los de todos para que ${evento.nombre} los vea en un solo lugar.`
               : `Tu brindis se quedó en este teléfono. Compártelo para que llegue a ${evento.nombre}.`}
           </p>
-          <AvisoParticipacion accion="enviar tu brindis" className="mt-2 text-center" />
+          <AvisoParticipacion accion="enviar tu brindis" imagen className="mt-2 text-center" />
         </div>
       ) : null}
 

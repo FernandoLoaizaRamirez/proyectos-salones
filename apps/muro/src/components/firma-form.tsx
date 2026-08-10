@@ -264,7 +264,7 @@ export function FirmaForm() {
           )}
         </Button>
 
-        <AvisoParticipacion accion="dejar tu mensaje" />
+        <AvisoParticipacion accion="dejar tu mensaje" imagen />
       </form>
     </Card>
   );

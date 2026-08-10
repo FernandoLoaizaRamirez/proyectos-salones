@@ -13,7 +13,7 @@
  */
 import * as React from "react";
 import { CalendarCheck, Check, Loader2, PartyPopper, Pencil, X } from "lucide-react";
-import { Button, Card, cn } from "@salones/ui";
+import { Button, Card, cn, AvisoParticipacion } from "@salones/ui";
 import { obtenerSync } from "@salones/sync";
 import {
   COLECCION_RESPUESTAS,
@@ -252,6 +252,9 @@ export function RsvpModulo({ evento, nombreEvento }: { evento: string; nombreEve
         {error ? <p className="text-sm text-red-600 dark:text-red-400">{error}</p> : null}
 
         <div className="flex gap-2">
+          {/* Confirmar dice con quién vive y cuántos son: también es un dato suyo. */}
+          <AvisoParticipacion accion="confirmar tu asistencia" className="text-center" />
+
           <Button type="submit" className="flex-1" disabled={guardando}>
             {guardando ? (
               <>

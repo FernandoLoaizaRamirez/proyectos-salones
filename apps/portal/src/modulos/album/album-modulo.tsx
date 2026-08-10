@@ -27,7 +27,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { Button, EmptyState, cn, Confirmar } from "@salones/ui";
+import { Button, EmptyState, cn, Confirmar, AvisoParticipacion } from "@salones/ui";
 import {
   esAnfitrion,
   estaConectado,
@@ -311,6 +311,13 @@ export function AlbumModulo({ evento, nombreEvento }: { evento: string; nombreEv
             )}
           </Button>
           {error ? <p className="text-sm text-red-600 dark:text-red-400">{error}</p> : null}
+          {/*
+            Va PEGADO al botón, no en un pie de página: para que valga, la
+            persona tiene que poder enterarse justo cuando entrega la foto.
+            La app suelta `album-fotos` ya lo hacía; el portal —que es el
+            enlace que de verdad se reparte por WhatsApp— no lo tenía.
+          */}
+          <AvisoParticipacion accion="subir tus fotos" imagen className="max-w-md text-center" />
           <input
             ref={inputRef}
             type="file"

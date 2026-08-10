@@ -25,6 +25,11 @@ import { Button, Card } from "@salones/ui";
 import { obtenerSupabase } from "@/lib/supabase";
 import { leerIdentidad, type Identidad } from "@/lib/sesion";
 import { TarjetaPersonalizacion } from "./tarjeta-personalizacion";
+import { camposPendientes } from "@/lib/legal";
+import { AvisoPendiente } from "../legal/aviso-pendiente";
+
+/** Qué datos legales del salón siguen sin rellenar. Vacío = listo. */
+const pendientesLegales = camposPendientes();
 
 /** Nombre bonito del rol para mostrar (los roles internos son owner/admin/staff). */
 function etiquetaRol(rol: Identidad["rol"]): string {
@@ -169,6 +174,23 @@ export default function Panel() {
           </Button>
         </Link>
       </Card>
+
+      {/*
+       * EL AVISO DE LO QUE FALTA RELLENAR, en su sitio.
+       *
+       * Al sacarlo de las páginas públicas (que es lo correcto: allí publicaba
+       * una ruta del proyecto y jerga de programador), se quedó sin ningún sitio
+       * donde verse. O sea que la variante `interno` de `AvisoPendiente` existía
+       * pero no la pintaba nadie, y el recordatorio de qué falta se perdía.
+       *
+       * Aquí sí: el panel está detrás del acceso del personal, así que este es
+       * el único público al que ese detalle le sirve para algo.
+       */}
+      {pendientesLegales.length > 0 ? (
+        <div className="mt-4">
+          <AvisoPendiente campos={pendientesLegales} interno />
+        </div>
+      ) : null}
 
       <TarjetaPersonalizacion />
     </main>

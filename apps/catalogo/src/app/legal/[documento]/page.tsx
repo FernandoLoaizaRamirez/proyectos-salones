@@ -7,7 +7,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { documento, DOCUMENTOS } from "@salones/legal";
+import { documento, DOCUMENTOS, falta } from "@salones/legal";
 import { datosLegales, camposPendientes } from "@/lib/legal";
 import { AvisoPendiente } from "../aviso-pendiente";
 
@@ -59,9 +59,16 @@ export default async function DocumentoLegal({
         ))}
       </div>
 
+      {/*
+        El pie repetía el correo a pelo, así que publicaba «escribe a PENDIENTE»
+        aunque el cuerpo del documento ya lo esquivara. Un sitio de menos donde
+        se pueda escapar la marca interna.
+      */}
       <p className="mt-12 border-t border-border pt-6 text-xs text-muted-foreground">
-        Última actualización: {doc.actualizado}. Para cualquier duda sobre tus datos, escribe a{" "}
-        {datosLegales.contacto}.
+        Última actualización: {doc.actualizado}.{" "}
+        {falta(datosLegales.contacto)
+          ? `Para cualquier duda sobre tus datos, habla con el personal de ${datosLegales.salon}.`
+          : `Para cualquier duda sobre tus datos, escribe a ${datosLegales.contacto}.`}
       </p>
     </main>
   );

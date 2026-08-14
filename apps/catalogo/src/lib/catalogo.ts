@@ -40,17 +40,22 @@ export type Modelo = (typeof AppMode)[keyof typeof AppMode];
 export const modelos = [
   {
     clave: AppMode.Managed,
+    // El gestionado se cobra POR EVENTO (no por mes): el salón me contrata para
+    // que yo monte y opere la app en esa boda. Por eso sale más barato que la
+    // renta, que da la app el mes entero para los eventos que quieran.
     nombre: "Servicio gestionado",
     corto: "Gestionado",
-    periodo: "/mes",
-    resumen: "Yo lo monto, lo opero y te doy soporte. Tú solo lo usas y lo disfrutas.",
+    periodo: "/evento",
+    resumen:
+      "Se cobra por evento: yo lo monto, lo opero y te doy soporte esa noche. Tú solo lo usas y lo disfrutas.",
   },
   {
     clave: AppMode.Rental,
     nombre: "Renta mensual",
     corto: "Renta",
     periodo: "/mes",
-    resumen: "Te presto la app y la manejas tú. Sin compromisos: cancelas cuando quieras.",
+    resumen:
+      "La app es tuya todo el mes, para los eventos que quieras, y la manejas tú. Sin compromisos: cancelas cuando quieras.",
   },
   {
     clave: AppMode.Owned,
@@ -84,7 +89,12 @@ export type Producto = {
 
 /**
  * Tus apps. Precios en pesos mexicanos (MXN), de referencia y editables.
- * "MANAGED" y "RENTAL" son mensuales; "OWNED" es pago único.
+ * "MANAGED" es por evento, "RENTAL" es mensual y "OWNED" es pago único.
+ *
+ * REGLA DE PRECIOS: RENTAL siempre va POR ENCIMA de MANAGED (~20%, redondeado a
+ * $50). No es un error: el gestionado es una sola noche con tu trabajo incluido,
+ * mientras que la renta les deja la app el mes entero para todos los eventos que
+ * quieran. Si algún día cambias un precio, respeta ese orden.
  */
 export const productos: Producto[] = [
   {
@@ -97,11 +107,15 @@ export const productos: Producto[] = [
     disponible: true,
     destacado: true,
     demoUrl: "https://salones-teal.vercel.app",
-    precios: { MANAGED: 1500, RENTAL: 900, OWNED: 18000 },
-    // El sitio se ofrece en los 3 modelos: renta o gestionado (mensual) y compra
-    // (pago único, hecho a la medida de la marca del salón). Al ofrecerse en los
-    // 3, los paquetes que lo incluyen (Esencial y Todo Incluido) aparecen con
-    // precio en todas las vistas, no solo en Compra.
+    // El sitio SOLO SE VENDE: es una página hecha a la medida de la marca del
+    // salón, no algo que se preste por evento ni por mes. Los dos precios
+    // mensuales quedan aquí porque el tipo los pide, pero no se muestran nunca.
+    precios: { MANAGED: 1500, RENTAL: 1800, OWNED: 12000 },
+    modelos: [AppMode.Owned],
+    // Consecuencia buscada: los paquetes que incluyen el sitio (Esencial y Todo
+    // Incluido) solo tienen precio en Compra. En Gestionado y Renta su tarjeta
+    // sigue apareciendo, pero con el aviso "Solo en Compra completa" y un botón
+    // que lleva a esa pestaña.
   },
   {
     id: "album-fotos",
@@ -112,7 +126,7 @@ export const productos: Producto[] = [
     acento: "from-fuchsia-500 to-purple-600",
     disponible: true,
     demoUrl: "https://album-fotos-gamma.vercel.app",
-    precios: { MANAGED: 800, RENTAL: 500, OWNED: 9000 },
+    precios: { MANAGED: 800, RENTAL: 950, OWNED: 9000 },
     notaGestionado:
       "Con el Servicio gestionado —así corre esta demo— cada foto sube sola al álbum común del evento: todos las ven y descargan en un mismo lugar. En Renta/Compra, cada quien guarda las suyas en su teléfono.",
   },
@@ -125,7 +139,7 @@ export const productos: Producto[] = [
     acento: "from-amber-500 to-orange-600",
     disponible: true,
     demoUrl: "https://invitaciones-weld.vercel.app",
-    precios: { MANAGED: 600, RENTAL: 350, OWNED: 6500 },
+    precios: { MANAGED: 600, RENTAL: 700, OWNED: 6500 },
   },
   {
     id: "rsvp",
@@ -136,7 +150,7 @@ export const productos: Producto[] = [
     acento: "from-teal-500 to-emerald-600",
     disponible: true,
     demoUrl: "https://rsvp-umber-pi.vercel.app",
-    precios: { MANAGED: 500, RENTAL: 300, OWNED: 5500 },
+    precios: { MANAGED: 500, RENTAL: 600, OWNED: 5500 },
     notaGestionado:
       "Con el Servicio gestionado —así corre esta demo— el tablero se actualiza solo con la confirmación de cada invitado, desde su propio teléfono. En Renta/Compra, cada respuesta te llega por WhatsApp.",
   },
@@ -149,7 +163,7 @@ export const productos: Producto[] = [
     acento: "from-sky-500 to-blue-600",
     disponible: true,
     demoUrl: "https://pases-qr.vercel.app",
-    precios: { MANAGED: 700, RENTAL: 400, OWNED: 7500 },
+    precios: { MANAGED: 700, RENTAL: 850, OWNED: 7500 },
   },
   {
     id: "mesas",
@@ -160,7 +174,7 @@ export const productos: Producto[] = [
     acento: "from-violet-500 to-indigo-600",
     disponible: true,
     demoUrl: "https://proyectos-salones-mesas.vercel.app",
-    precios: { MANAGED: 600, RENTAL: 350, OWNED: 6000 },
+    precios: { MANAGED: 600, RENTAL: 700, OWNED: 6000 },
   },
   {
     id: "muro",
@@ -171,7 +185,7 @@ export const productos: Producto[] = [
     acento: "from-rose-500 to-fuchsia-600",
     disponible: true,
     demoUrl: "https://proyectos-salones-muro.vercel.app",
-    precios: { MANAGED: 550, RENTAL: 350, OWNED: 5500 },
+    precios: { MANAGED: 550, RENTAL: 650, OWNED: 5500 },
     notaGestionado:
       "Con el Servicio gestionado —así corre esta demo— los mensajes aparecen solos en la pared desde el teléfono de cada invitado. En Renta/Compra funciona en una tablet en la fiesta o por WhatsApp.",
   },
@@ -184,7 +198,7 @@ export const productos: Producto[] = [
     acento: "from-cyan-500 to-blue-600",
     disponible: true,
     demoUrl: "https://proyectos-salones-playlist.vercel.app",
-    precios: { MANAGED: 600, RENTAL: 350, OWNED: 6000 },
+    precios: { MANAGED: 600, RENTAL: 700, OWNED: 6000 },
     notaGestionado:
       "Con el Servicio gestionado —así corre esta demo— las peticiones y los votos llegan al DJ desde el teléfono de cada invitado. En Renta/Compra funciona en una tablet-kiosco en la fiesta.",
   },
@@ -197,7 +211,7 @@ export const productos: Producto[] = [
     acento: "from-purple-500 to-pink-600",
     disponible: true,
     demoUrl: "https://proyectos-salones-photobooth.vercel.app",
-    precios: { MANAGED: 700, RENTAL: 450, OWNED: 7000 },
+    precios: { MANAGED: 700, RENTAL: 850, OWNED: 7000 },
     // Photobooth funciona 100% hoy: cada invitado se toma su foto, elige el marco
     // y la descarga/comparte desde su teléfono. No necesita sistema central, así
     // que NO lleva nota de "servicio gestionado".
@@ -211,7 +225,7 @@ export const productos: Producto[] = [
     acento: "from-emerald-500 to-green-600",
     disponible: true,
     demoUrl: "https://proyectos-salones-mi-mesa.vercel.app",
-    precios: { MANAGED: 500, RENTAL: 300, OWNED: 5000 },
+    precios: { MANAGED: 500, RENTAL: 600, OWNED: 5000 },
   },
   {
     id: "dinamicas",
@@ -222,7 +236,7 @@ export const productos: Producto[] = [
     acento: "from-yellow-500 to-orange-600",
     disponible: true,
     demoUrl: "https://proyectos-salones-dinamicas.vercel.app",
-    precios: { MANAGED: 600, RENTAL: 350, OWNED: 6000 },
+    precios: { MANAGED: 600, RENTAL: 700, OWNED: 6000 },
     notaGestionado:
       "Con el Servicio gestionado —así corre esta demo— el ranking de la trivia junta en vivo a todos los invitados. El bingo y el rompehielos funcionan en cada teléfono, sin necesidad de nada más.",
   },
@@ -235,7 +249,7 @@ export const productos: Producto[] = [
     acento: "from-red-500 to-rose-600",
     disponible: true,
     demoUrl: "https://proyectos-salones-brindis.vercel.app",
-    precios: { MANAGED: 700, RENTAL: 450, OWNED: 7000 },
+    precios: { MANAGED: 700, RENTAL: 850, OWNED: 7000 },
     notaGestionado:
       "Con el Servicio gestionado —así corre esta demo— cada video sube solo a la galería del anfitrión, que además puede crear un video recuerdo que fusiona los brindis de todos en uno. En Renta/Compra, cada video te llega por WhatsApp.",
   },

@@ -46,6 +46,15 @@ const COL = "zz-pruebas-candado";
 const ID = "ZZ-CANDADO-0016";
 const EVENTO = "demo";
 
+/**
+ * Con que estados dice la base "de aqui no pasas".
+ *
+ * El candado usa el codigo 42501 de Postgres ("privilegios insuficientes") y es
+ * PostgREST quien elige el numero de HTTP: 403 en unas versiones, 401 en otras.
+ * El numero es un detalle suyo, no un contrato: se aceptan los dos.
+ */
+const FRENADO = [401, 403];
+
 suite("Candado de sobrescritura (migración 0016)", () => {
   const url = (URL_ENV ?? "").replace(/\/$/, "");
   const anon = ANON_ENV ?? "";
@@ -109,7 +118,13 @@ suite("Candado de sobrescritura (migración 0016)", () => {
     // ¿Está puesto el candado? Se prueba con lo más inocuo: cambiar `module`.
     // Si pasa, la migración no está corrida y no tiene sentido seguir.
     const sonda = await atacar(fila, { module: "sonda-candado" });
-    candadoPuesto = sonda.estado === 403;
+    // ⚠️ 401 **o** 403. El candado levanta un error de Postgres con el codigo
+    // 42501, y PostgREST lo traduce a uno u otro segun su version: cuando se
+    // escribio la 0016 daba 403 y el 14 ago 2026 daba 401. Mirar solo el 403
+    // hacia que esta suite se declarara "no aplicada" y se saltara TODOS sus
+    // casos —en verde— con el candado puesto y funcionando. Es justo el fallo
+    // que estas pruebas existen para no tener.
+    candadoPuesto = FRENADO.includes(sonda.estado);
     if (!candadoPuesto) {
       // Deshacer la sonda para no dejar la fila tocada.
       await atacar(fila, { module: COL });
@@ -131,7 +146,7 @@ suite("Candado de sobrescritura (migración 0016)", () => {
     async () => {
       if (!exigirCandado()) return;
       const r = await atacar(fila, { dato: {} });
-      expect(r.estado).toBe(403);
+      expect(FRENADO).toContain(r.estado);
       expect(r.filas).toBe(0);
     },
     RED,
@@ -143,7 +158,7 @@ suite("Candado de sobrescritura (migración 0016)", () => {
       // El peor de todos: rodea el candado de borrar de la 0009 sin romperlo.
       if (!exigirCandado()) return;
       const r = await atacar(fila, { coleccion: "una-coleccion-inventada" });
-      expect(r.estado).toBe(403);
+      expect(FRENADO).toContain(r.estado);
     },
     RED,
   );
@@ -153,7 +168,7 @@ suite("Candado de sobrescritura (migración 0016)", () => {
     async () => {
       if (!exigirCandado()) return;
       const r = await atacar(fila, { id: "ZZ-SECUESTRADO" });
-      expect(r.estado).toBe(403);
+      expect(FRENADO).toContain(r.estado);
     },
     RED,
   );
@@ -163,7 +178,7 @@ suite("Candado de sobrescritura (migración 0016)", () => {
     async () => {
       if (!exigirCandado()) return;
       const r = await atacar(fila, { creado: "2000-01-01T00:00:00Z" });
-      expect(r.estado).toBe(403);
+      expect(FRENADO).toContain(r.estado);
     },
     RED,
   );
@@ -174,7 +189,7 @@ suite("Candado de sobrescritura (migración 0016)", () => {
       // Sin nombrar ni un id: es como se vaciaría un álbum de verdad.
       if (!exigirCandado()) return;
       const r = await atacar(`${rest}/items?evento=eq.${EVENTO}&coleccion=eq.${COL}`, { dato: {} });
-      expect(r.estado).toBe(403);
+      expect(FRENADO).toContain(r.estado);
       expect(r.filas).toBe(0);
     },
     RED,

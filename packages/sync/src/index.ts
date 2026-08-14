@@ -717,11 +717,11 @@ function crearProveedorServidor(url: string, anon: string): ProveedorSync {
      * quedaba: mandando el id de la foto de otro se pisaba su recuerdo.
      *
      * Desde el candado de la 0016 hay colecciones donde un invitado ya no puede
-     * reescribir (fotos, mensajes, brindis, ranking) y columnas que nadie salvo
-     * el anfitrión puede cambiar. Cuando la base dice que no, dice 403 — y ese
-     * caso se distingue aquí para que no acabe pintado como "revisa tu
-     * conexión", que mandaría al salón a mirar el wifi teniendo delante un
-     * candado. Mismo trato que `borrado-sin-permiso` unas líneas más abajo.
+     * reescribir (fotos, mensajes, brindis, ranking, invitacion) y columnas que
+     * nadie salvo el anfitrión puede cambiar. Ese caso se distingue aquí para
+     * que no acabe pintado como "revisa tu conexión", que mandaría al salón a
+     * mirar el wifi teniendo delante un candado. Mismo trato que
+     * `borrado-sin-permiso` unas líneas más abajo.
      */
     async guardar(evento, coleccion, item) {
       const { id, ...dato } = item;
@@ -733,11 +733,29 @@ function crearProveedorServidor(url: string, anon: string): ProveedorSync {
         },
         body: JSON.stringify({ evento, coleccion, id, dato }),
       });
-      if (res.status === 403) {
-        reportar("escritura-sin-permiso", `${coleccion}: la base no dejó reescribir`, evento);
-        throw new Error("sin-permiso");
+      if (!res.ok) {
+        /* ---- CÓMO SE RECONOCE EL CANDADO (arreglado el 14 ago 2026) --------
+         * Esto miraba `res.status === 403`, y estaba MAL. El candado levanta un
+         * error de Postgres con el código 42501 ("privilegios insuficientes");
+         * PostgREST lo traducía a 403 cuando se escribió la 0016 y **hoy lo
+         * traduce a 401** —comprobado en producción el mismo día de encender el
+         * candado—. O sea que el número de HTTP es un detalle de otra gente que
+         * puede cambiar sin avisar, y aquí se estaba usando como si fuera un
+         * contrato. Con el 401, el panel de invitaciones habría enseñado un
+         * error genérico en vez de "eso solo lo cambia quien organiza".
+         *
+         * Ahora se mira el CÓDIGO DE POSTGRES, que es el que no cambia. Hay que
+         * distinguirlo de un 401 de verdad —una llave mal puesta o caducada—,
+         * que responde `{"message":"Invalid API key"}` y no trae ningún `code`:
+         * si se confundieran, un salón con la llave rota se pondría a buscar
+         * permisos en vez de arreglar su configuración. */
+        const detalle = await res.text().catch(() => "");
+        if (detalle.includes("42501")) {
+          reportar("escritura-sin-permiso", `${coleccion}: la base no dejó reescribir`, evento);
+          throw new Error("sin-permiso");
+        }
+        throw new Error(`sync/guardar ${res.status}`);
       }
-      if (!res.ok) throw new Error(`sync/guardar ${res.status}`);
     },
     /**
      * ⚠️ BORRAR "BIEN" NO SIGNIFICA HABER BORRADO (arreglado el 6 ago 2026).
@@ -1140,10 +1158,21 @@ export function mensajeDeSubida(e: unknown): string {
  *
  * Sirve para no mandar a nadie a mirar el wifi cuando lo que pasa es que hace
  * falta el enlace de quien organiza. Lo lanza `guardar` cuando la base
- * responde 403 (candado de la 0016) y `eliminar` cuando no hubo permiso.
+ * rechaza por el candado de la 0016 y `eliminar` cuando no hubo permiso.
+ *
+ * ⚠️ No mires el número de HTTP para esto. PostgREST traduce el candado a 403 o
+ * a 401 según su versión (el 14 ago 2026 pasó de uno a otro sin avisar); quien
+ * decide de verdad es el código de Postgres, y de eso ya se encarga `guardar`.
+ * Los dos textos con número que quedan abajo son por compatibilidad con
+ * versiones viejas del paquete, no el camino bueno.
  */
 export function esSinPermiso(e: unknown): boolean {
-  return e instanceof Error && (e.message === "sin-permiso" || e.message === "sync/guardar 403");
+  if (!(e instanceof Error)) return false;
+  return (
+    e.message === "sin-permiso" ||
+    e.message === "sync/guardar 403" ||
+    e.message === "sync/guardar 401"
+  );
 }
 
 /** Qué decirle a una persona cuando la base no dejó cambiar algo. */

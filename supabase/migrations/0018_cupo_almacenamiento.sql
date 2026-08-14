@@ -25,8 +25,8 @@
 -- POR QUE NO HAY DISPARADOR SOBRE storage.objects:
 --   Seria mas rapido llevar un contador al vuelo, pero un fallo dentro de ese
 --   disparador tumbaria TODAS las subidas del proyecto, no solo la cuenta. Sumar
---   al vuelo no puede romper nada. Si algun dia pesa, se cachea; para eso se deja
---   el indice de abajo.
+--   al vuelo no puede romper nada. (Y de todas formas no se podria: esa tabla es
+--   de Supabase y el proyecto no es su dueno — ver el aviso de mas abajo.)
 --
 -- POR QUE ESTOS NUMEROS:
 --   · 3 GB sin video   — una foto comprimida pesa ~250 KB, asi que son ~12.000
@@ -55,10 +55,18 @@ create table if not exists evento_cupo (
 -- Cerrada a cal y canto: solo la tocan las funciones de abajo y el service-role.
 alter table evento_cupo enable row level security;
 
--- Para que sumar el peso de UN evento no recorra el almacen entero. Hoy sobra
--- (hay 15 archivos), pero con varias bodas dentro deja de sobrar.
-create index if not exists objects_media_por_evento
-  on storage.objects (bucket_id, (split_part(name, '/', 1)));
+-- ⚠️ AQUI IBA UN INDICE Y NO SE PUEDE (comprobado contra produccion, 14 ago 2026).
+--
+--   create index ... on storage.objects (bucket_id, (split_part(name,'/',1)))
+--
+-- Supabase responde `42501: must be owner of table objects`: `storage.objects`
+-- es suya, no del proyecto. Buena noticia: la migracion entera se deshizo sola
+-- (`db query` la corre en una transaccion), asi que no dejo nada a medias.
+--
+-- Sin ese indice, sumar el peso de un evento se apoya en el indice que Supabase
+-- ya tiene sobre (bucket_id, name), que al menos acota al bucket "media". Para
+-- el tamano de este proyecto sobra de largo. Si algun dia pesa, la salida NO es
+-- pelearse con los permisos: es cachear el total por evento en una tabla propia.
 
 
 -- ----------------------------------------------------------------------------
@@ -234,7 +242,6 @@ grant execute on function cupo_bytes_del_evento(text) to service_role;
 --   drop function if exists cupo_bytes_del_evento(text);
 --   drop function if exists uso_bytes_del_evento(text);
 --   drop table    if exists evento_cupo;
---   drop index    if exists storage.objects_media_por_evento;
 --
 --   ...y quitar la comprobacion de `supabase/functions/media-subir/index.ts`.
 -- ============================================================================

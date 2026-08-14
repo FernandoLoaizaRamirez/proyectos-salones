@@ -254,6 +254,22 @@ export function olvidarClaveAnfitrion(evento: string): void {
 /* ================================================================== */
 
 /**
+ * Los "no" DELIBERADOS del servidor al pedir permiso de subida.
+ *
+ * Todos comparten una regla: hay que RE-LANZARLOS, nunca convertirlos en `null`.
+ * Devolver null significa "tira por el camino viejo" (la subida directa), y ese
+ * camino no comprueba ninguna de estas cosas — colaría por detrás justo lo que
+ * se acaba de negar por delante. Se listan juntos para que al añadir el próximo
+ * candado no se olvide la mitad.
+ */
+const CORTES_DEL_SERVIDOR = new Set([
+  "tope-de-subidas", // 429 · migración 0015
+  "video-no-incluido", // 402 · migración 0017
+  "archivo-muy-grande", // 413 · migración 0018
+  "evento-sin-espacio", // 507 · migración 0018
+]);
+
+/**
  * Habla con la API REST de Supabase (PostgREST) y refresca cada pocos segundos
  * (sondeo). Es sencillo, sin dependencias, y de sobra para un muro o una lista
  * de canciones. Más adelante se puede subir a "tiempo real" por websocket.
@@ -541,6 +557,7 @@ function crearProveedorServidor(url: string, anon: string): ProveedorSync {
     evento: string,
     nombre: string,
     tipo: string,
+    bytes: number,
   ): Promise<PermisoSubida | null> {
     try {
       const [pase, paseAnfitrion] = await Promise.all([
@@ -558,7 +575,11 @@ function crearProveedorServidor(url: string, anon: string): ProveedorSync {
           ...(paseAnfitrion ? { "x-evento-anfitrion": paseAnfitrion } : {}),
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ nombre, tipo }),
+        // El tamaño viaja para que el servidor pueda decir "no cabe" ANTES de
+        // que el teléfono suba el archivo entero por la red de una boda
+        // (migración 0018). No es la cuenta buena —esa la saca el servidor del
+        // almacén—, solo lo que falta por sumar.
+        body: JSON.stringify({ nombre, tipo, bytes }),
       });
       // 429 = se alcanzó el tope de subidas (migración 0015). NO es un fallo de
       // red ni "la función no está desplegada": reintentar por el camino viejo
@@ -570,14 +591,18 @@ function crearProveedorServidor(url: string, anon: string): ProveedorSync {
       // viejo no pregunta por el paquete. Sería colar por la puerta de atrás
       // justo lo que se acaba de negar por la de delante.
       if (res.status === 402) throw new Error("video-no-incluido");
+      // 413 = el archivo pasa del tope por archivo; 507 = el evento se quedó sin
+      // espacio (migración 0018). Los dos LANZAN por la misma razón que el 402:
+      // el "camino viejo" no comprueba nada, así que devolver null colaría por
+      // detrás justo lo que se acaba de negar.
+      if (res.status === 413) throw new Error("archivo-muy-grande");
+      if (res.status === 507) throw new Error("evento-sin-espacio");
       if (!res.ok) return null;
       const dato = (await res.json()) as Partial<PermisoSubida>;
       if (typeof dato.subirUrl !== "string" || typeof dato.urlPublica !== "string") return null;
       return { subirUrl: dato.subirUrl, urlPublica: dato.urlPublica };
     } catch (e) {
-      if (e instanceof Error && (e.message === "tope-de-subidas" || e.message === "video-no-incluido")) {
-        throw e;
-      }
+      if (e instanceof Error && CORTES_DEL_SERVIDOR.has(e.message)) throw e;
       return null; // sin red o función sin desplegar
     }
   }
@@ -622,6 +647,27 @@ function crearProveedorServidor(url: string, anon: string): ProveedorSync {
       if (si) funciones.set(memoria, consulta);
     });
     return consulta;
+  };
+
+  /* ---- El contador de espacio (migración 0018) -----------------------------
+   * A diferencia de las funciones contratadas, esto CAMBIA durante la fiesta:
+   * cada foto que sube alguien lo mueve. Por eso no se cachea. */
+  preguntarEspacio = async (evento) => {
+    try {
+      const res = await fetch(`${raiz}/rest/v1/rpc/espacio_del_evento`, {
+        method: "POST",
+        headers: { ...auth, "Content-Type": "application/json" },
+        body: JSON.stringify({ p_codigo: evento }),
+      });
+      // 404 = migración 0018 sin aplicar. No se inventa un número: quien llama
+      // recibe null y no enseña contador.
+      if (!res.ok) return null;
+      const dato = (await res.json()) as { usado?: unknown; cupo?: unknown };
+      if (typeof dato?.usado !== "number" || typeof dato?.cupo !== "number") return null;
+      return { usado: dato.usado, cupo: dato.cupo };
+    } catch {
+      return null;
+    }
   };
 
   const filtro = (evento: string, coleccion: string) =>
@@ -809,7 +855,7 @@ function crearProveedorServidor(url: string, anon: string): ProveedorSync {
       // Camino NUEVO: se pide permiso a la Edge Function `media-subir`, que
       // verifica el pase y decide ELLA la carpeta (ver migración 0010). Así el
       // navegador no puede escribir en la burbuja de otro evento.
-      const permiso = await pedirPermisoSubida(evento, nombre, mime);
+      const permiso = await pedirPermisoSubida(evento, nombre, mime, blob.size);
       if (permiso) {
         const res = await fetch(permiso.subirUrl, {
           method: "PUT",
@@ -946,6 +992,59 @@ export async function eventoTieneFuncion(evento: string, clave: string): Promise
 }
 
 /* ================================================================== */
+/* Cuánto pesa: tope por archivo y espacio del evento (migración 0018) */
+/* ================================================================== */
+
+/**
+ * Tope por ARCHIVO, en megas.
+ *
+ * No es un número elegido aquí: es el `file_size_limit` del bucket, puesto en la
+ * migración 0001. Vive en este paquete para que las cinco pantallas que suben
+ * archivos digan el MISMO número. Antes no era así —el portal avisaba a los
+ * 50 MB— y el resultado era el peor posible: el invitado elegía un video de
+ * 40 MB, la app lo daba por bueno, se pasaba dos minutos subiéndolo por la red
+ * de la boda y el almacén lo rechazaba al final.
+ */
+export const MB_POR_ARCHIVO = 25;
+export const BYTES_POR_ARCHIVO = MB_POR_ARCHIVO * 1024 * 1024;
+
+/** ¿Este archivo pasa del tope? (las fotos se comprimen antes; los videos no). */
+export function pesaDemasiado(archivo: { size: number }): boolean {
+  return archivo.size > BYTES_POR_ARCHIVO;
+}
+
+/** Cuánto lleva usado un evento y cuánto le toca, en bytes. */
+export type EspacioEvento = { usado: number; cupo: number };
+
+/**
+ * Lo pone `crearProveedorServidor`. En modo local no hay almacén que medir.
+ */
+let preguntarEspacio: ((evento: string) => Promise<EspacioEvento | null>) | null = null;
+
+/**
+ * Cuánto espacio lleva gastado este evento. Para ENSEÑÁRSELO a quien organiza,
+ * que es quien puede hacer algo al respecto; el candado que impide pasarse está
+ * en el servidor (`media-subir`), no aquí.
+ *
+ * Devuelve `null` si no se puede saber (modo local, sin red, o la migración 0018
+ * todavía sin aplicar). Quien llama debe entonces **no enseñar nada**: un
+ * contador en blanco confunde menos que uno inventado.
+ */
+export async function espacioDelEvento(evento: string): Promise<EspacioEvento | null> {
+  obtenerSync(); // asegura que el proveedor esté construido
+  if (!preguntarEspacio) return null;
+  return preguntarEspacio(evento);
+}
+
+/** "1.3 GB", "480 MB", "912 kB" — para enseñarle un tamaño a una persona. */
+export function textoDeTamano(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes < 0) return "—";
+  if (bytes >= 1024 ** 3) return `${(bytes / 1024 ** 3).toFixed(1)} GB`;
+  if (bytes >= 1024 ** 2) return `${Math.round(bytes / 1024 ** 2)} MB`;
+  return `${Math.round(bytes / 1024)} kB`;
+}
+
+/* ================================================================== */
 /* Fotos y videos: de referencia guardada a dirección que caduca       */
 /* ================================================================== */
 
@@ -1018,6 +1117,14 @@ export function mensajeDeSubida(e: unknown): string {
     // Se le habla al INVITADO, que no contrató nada y no tiene culpa de nada: se
     // le dice qué sí puede hacer, no que a alguien le falta pagar.
     return "En este evento solo se pueden subir fotos. Tus fotos sí se suben con normalidad.";
+  }
+  if (msg === "archivo-muy-grande") {
+    return `Ese archivo pesa demasiado (el tope es de ${MB_POR_ARCHIVO} MB). Prueba con uno más corto o más ligero.`;
+  }
+  if (msg === "evento-sin-espacio") {
+    // No se le pide al invitado que arregle nada: no puede. Se le dice a quién
+    // avisar, que es lo único que está en su mano.
+    return "El álbum de este evento se quedó sin espacio. Avisa a quien lo organiza.";
   }
   if (msg === "tope-de-subidas") {
     return "Se subieron muchas fotos seguidas. Espera un par de minutos y vuelve a intentarlo.";

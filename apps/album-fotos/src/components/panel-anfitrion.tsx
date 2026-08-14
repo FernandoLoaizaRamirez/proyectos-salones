@@ -30,17 +30,83 @@
  */
 
 import * as React from "react";
-import { Check, Copy, Eye, EyeOff, KeyRound, LogOut, ShieldAlert, Users } from "lucide-react";
+import {
+  Check,
+  Copy,
+  Eye,
+  EyeOff,
+  HardDrive,
+  KeyRound,
+  LogOut,
+  ShieldAlert,
+  Users,
+} from "lucide-react";
 import { Button, cn } from "@salones/ui";
 import {
   claveAnfitrion,
+  espacioDelEvento,
   estaConectado,
   esAnfitrion,
   eventoActual,
   olvidarClaveAnfitrion,
   sufijoAnfitrion,
   sufijoEvento,
+  textoDeTamano,
+  type EspacioEvento,
 } from "@salones/sync";
+
+/**
+ * Cuánto espacio lleva usado el álbum.
+ *
+ * Solo lo ve quien organiza, que es el único que puede hacer algo si se llena
+ * (pedir más espacio). A un invitado no le sirve de nada y le mete una
+ * preocupación que no es suya.
+ *
+ * Si no se puede saber (modo local, sin red, o la migración 0018 todavía sin
+ * aplicar) **no se dibuja nada**: un contador en blanco confunde menos que uno
+ * inventado, y uno inventado en la pantalla de una boda es peor todavía.
+ */
+function Contador({ espacio }: { espacio: EspacioEvento }) {
+  const porcentaje = espacio.cupo > 0 ? Math.min(100, (espacio.usado / espacio.cupo) * 100) : 0;
+  // Se avisa ANTES de que sea un problema: al 90% ya no da tiempo a reaccionar
+  // en mitad de una fiesta.
+  const apretado = porcentaje >= 75;
+
+  return (
+    <div className="mt-4 rounded-[var(--radius)] border border-border bg-background p-4">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h4 className="flex items-center gap-2 text-sm font-semibold">
+          <HardDrive className="size-4 text-primary" /> Espacio del álbum
+        </h4>
+        <p className="text-sm text-muted-foreground">
+          <span className="font-medium text-foreground">{textoDeTamano(espacio.usado)}</span> de{" "}
+          {textoDeTamano(espacio.cupo)}
+        </p>
+      </div>
+
+      <div
+        className="mt-3 h-2 w-full overflow-hidden rounded-full bg-muted"
+        role="progressbar"
+        aria-valuenow={Math.round(porcentaje)}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label="Espacio usado del álbum"
+      >
+        <div
+          className={cn("h-full rounded-full transition-all", apretado ? "bg-amber-500" : "bg-primary")}
+          style={{ width: `${Math.max(porcentaje, 1)}%` }}
+        />
+      </div>
+
+      {apretado ? (
+        <p className="mt-2 text-sm text-amber-700 dark:text-amber-500">
+          Queda poco espacio. Cuando se llene, los invitados dejarán de poder subir: pide más antes
+          del evento.
+        </p>
+      ) : null}
+    </div>
+  );
+}
 
 /** Una fila "esto es un enlace, cópialo": etiqueta, dirección y botón. */
 function FilaEnlace({
@@ -139,6 +205,8 @@ export function PanelAnfitrion() {
   // que coincidir con la del servidor o React se queja. Y si algo fallara, lo
   // que se esconde es el panel —nunca al revés—.
   const [quien, setQuien] = React.useState<Quien | null>(null);
+  /** `null` mientras no se sepa, y también si no se puede saber. */
+  const [espacio, setEspacio] = React.useState<EspacioEvento | null>(null);
 
   React.useEffect(() => {
     const evento = eventoActual();
@@ -148,6 +216,14 @@ export function PanelAnfitrion() {
       urlInvitado: `${window.location.origin}/${sufijoEvento()}`,
       urlPrivada: `${window.location.origin}/${sufijoAnfitrion(evento)}`,
     });
+
+    let vivo = true;
+    void espacioDelEvento(evento).then((e) => {
+      if (vivo) setEspacio(e);
+    });
+    return () => {
+      vivo = false;
+    };
   }, []);
 
   /**
@@ -224,6 +300,8 @@ export function PanelAnfitrion() {
               url={urlPrivada}
             />
           </div>
+
+          {espacio ? <Contador espacio={espacio} /> : null}
 
           <p className="mt-4 text-xs text-muted-foreground">
             Si abriste tu enlace en una pantalla prestada —la del salón, la del DJ, un proyector—

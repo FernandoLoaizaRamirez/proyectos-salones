@@ -133,7 +133,13 @@ describe("El cliente no cuela el video por la puerta de atrás", () => {
     // El catch de `pedirPermisoSubida` convierte cualquier fallo en `null` (que
     // significa "tira por el camino viejo"). Si no se re-lanza aquí, el throw de
     // arriba no sirve de nada.
-    expect(sync).toMatch(/e\.message\s*===\s*"video-no-incluido"[\s\S]{0,80}throw\s+e/);
+    //
+    // Desde la 0018 los cortes viven en una lista (`CORTES_DEL_SERVIDOR`) en vez
+    // de en un `if` encadenado, justo para que al añadir el siguiente no se
+    // olvide esta mitad. La lista completa se comprueba en
+    // `cupo-almacenamiento.test.ts`; aquí basta con que el video esté dentro.
+    expect(sync).toMatch(/CORTES_DEL_SERVIDOR\.has\(e\.message\)\)\s*throw\s+e/);
+    expect(sync).toMatch(/CORTES_DEL_SERVIDOR\s*=\s*new\s+Set\(\[[\s\S]{0,200}"video-no-incluido"/);
   });
 
   it("al invitado se le dice qué SÍ puede hacer, sin hablarle de dinero", () => {

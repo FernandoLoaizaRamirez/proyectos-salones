@@ -44,6 +44,17 @@ const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
 const BUCKET = "media";
 
+/**
+ * Tope por ARCHIVO. No es un numero inventado aqui: es exactamente el
+ * `file_size_limit` del bucket (migracion 0001). Se repite en este lado para
+ * poder decir que pasa ANTES de que el telefono suba 25 MB por una red de boda
+ * y se encuentre con un error seco del almacen al terminar.
+ *
+ * Quien lo hace valer de verdad sigue siendo el bucket: aqui solo llega el
+ * tamano DECLARADO, y eso lo elige quien manda la peticion.
+ */
+const TOPE_ARCHIVO = 25 * 1024 * 1024;
+
 const CORS: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -164,6 +175,39 @@ async function tienePaqueteDeVideo(evento: string): Promise<boolean> {
   return (await res.json()) === true;
 }
 
+/**
+ * ¿Le queda espacio a este evento? (migración 0018)
+ *
+ * El video ya se cobra desde la 0017, pero cobrar sin medir deja el costo
+ * abierto: el almacenamiento se paga mientras el archivo exista. Y el almacén es
+ * UNO para todas las bodas, así que llenarlo deja sin subir una foto a la que se
+ * esté celebrando esa noche.
+ *
+ * La cuenta la lleva la base sumando los BYTES REALES de `storage.objects`, no
+ * los que declare el navegador: si se fiara de lo declarado, bastaría con decir
+ * "1 byte" para saltarse el cupo. Lo declarado solo se suma para saber si el
+ * archivo que viene AHORA todavía cabe.
+ *
+ * Mismo trato no-fatal que el resto: si la migración 0018 no está aplicada, la
+ * base responde 404 y se deja pasar, para poder desplegar esto antes de tocar la
+ * base. Cualquier otro fallo niega: es mejor no firmar que llenar el almacén a
+ * ciegas.
+ */
+async function cabeEnElEvento(evento: string, bytes: number): Promise<boolean> {
+  const res = await fetch(`${URL_SUPABASE}/rest/v1/rpc/cabe_en_el_evento`, {
+    method: "POST",
+    headers: {
+      apikey: SERVICE_ROLE,
+      Authorization: `Bearer ${SERVICE_ROLE}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ p_codigo: evento, p_bytes: bytes }),
+  });
+  if (res.status === 404) return true; // migración 0018 pendiente
+  if (!res.ok) return false;
+  return (await res.json()) === true;
+}
+
 /** Extensión razonable a partir del nombre o del tipo MIME (igual que @salones/sync). */
 function extensionDe(nombre: string, tipo: string): string {
   const porNombre = /\.([a-z0-9]{1,5})$/i.exec(nombre)?.[1];
@@ -199,7 +243,7 @@ Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return json({ error: "método no permitido" }, 405);
   if (!URL_SUPABASE || !SERVICE_ROLE) return json({ error: "función sin configurar" }, 500);
 
-  let cuerpo: { nombre?: unknown; tipo?: unknown };
+  let cuerpo: { nombre?: unknown; tipo?: unknown; bytes?: unknown };
   try {
     cuerpo = await req.json();
   } catch {
@@ -208,10 +252,34 @@ Deno.serve(async (req: Request) => {
 
   const nombre = typeof cuerpo.nombre === "string" ? cuerpo.nombre : "";
   const tipo = typeof cuerpo.tipo === "string" ? cuerpo.tipo : "";
+  /**
+   * Tamaño DECLARADO por el navegador. Es opcional a propósito: las versiones
+   * de las apps que ya están en la calle no lo mandan, y quedarse sin subir
+   * fotos por eso sería mucho peor que contar de menos durante un despliegue.
+   * Cuando falta se cuenta como 0, y el cupo sigue valiendo igual porque lo ya
+   * subido se mide del almacén, no de aquí.
+   */
+  const bytes =
+    typeof cuerpo.bytes === "number" && Number.isFinite(cuerpo.bytes) && cuerpo.bytes > 0
+      ? Math.floor(cuerpo.bytes)
+      : 0;
 
   // Mismo candado que el bucket: solo fotos y videos.
   if (!tipo.startsWith("image/") && !tipo.startsWith("video/")) {
     return json({ error: "solo se admiten fotos y videos" }, 400);
+  }
+
+  // Tope por archivo, el mismo del bucket. Se avisa AQUÍ para no hacerle subir
+  // 25 MB por la red de una boda antes de decirle que no cabía.
+  if (bytes > TOPE_ARCHIVO) {
+    return json(
+      {
+        error: "archivo demasiado grande",
+        detalle: `El tope por archivo es de ${Math.round(TOPE_ARCHIVO / (1024 * 1024))} MB.`,
+        topeBytes: TOPE_ARCHIVO,
+      },
+      413,
+    );
   }
 
   try {
@@ -236,6 +304,19 @@ Deno.serve(async (req: Request) => {
           detalle: "Este evento tiene el álbum de fotos. El video se contrata aparte.",
         },
         402, // "hace falta pagar": no es un fallo del invitado ni un permiso roto
+      );
+    }
+
+    /* ---- El cupo de espacio (migración 0018) -------------------------------
+     * También antes del tope por hora, por lo mismo: lo que se va a negar no
+     * gasta cupo de subidas. */
+    if (!(await cabeEnElEvento(evento, bytes))) {
+      return json(
+        {
+          error: "sin espacio en el evento",
+          detalle: "Este evento alcanzó su límite de almacenamiento.",
+        },
+        507, // "no queda sitio": no es culpa de quien sube ni un fallo de red
       );
     }
 

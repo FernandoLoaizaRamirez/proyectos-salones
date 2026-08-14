@@ -12,6 +12,8 @@
  * módulo se puede extraer a `@salones/module-album`.
  */
 
+import { MB_POR_ARCHIVO, pesaDemasiado as pesaDemasiadoSync } from "@salones/sync";
+
 /** Colección compartida en el lugar central (la misma que usa `apps/album-fotos`). */
 export const COLECCION_FOTOS = "fotos";
 
@@ -31,8 +33,15 @@ export type Foto = {
  * Tope por archivo. Las fotos se comprimen antes de subir, pero los videos
  * viajan tal cual: un video largo desde el teléfono tardaría una eternidad y el
  * almacenamiento lo rechazaría igual. Mejor avisar antes de empezar.
+ *
+ * ⚠️ ANTES ERA 50 Y ESTABA MAL (arreglado el 14 ago 2026). El bucket corta a los
+ * 25 MB desde la migración 0001, así que este aviso dejaba pasar archivos que el
+ * almacén iba a rechazar: el invitado elegía un video de 40 MB, la app lo daba
+ * por bueno, se pasaba dos minutos subiéndolo por la red de la boda y recibía un
+ * error al final. Ahora el número sale de `@salones/sync`, que es donde vive el
+ * del bucket, para que las cinco pantallas que suben digan lo mismo.
  */
-export const MAX_MB = 50;
+export const MAX_MB = MB_POR_ARCHIVO;
 
 /** Genera un id corto para una foto nueva. */
 export function nuevoIdFoto(): string {
@@ -51,7 +60,7 @@ export function esArchivoDeAlbum(tipo: string): boolean {
 
 /** ¿El archivo pasa del tope? (los videos no se comprimen). */
 export function pesaDemasiado(file: File): boolean {
-  return file.size > MAX_MB * 1024 * 1024;
+  return pesaDemasiadoSync(file);
 }
 
 /** Ordena de más reciente a más antigua. */

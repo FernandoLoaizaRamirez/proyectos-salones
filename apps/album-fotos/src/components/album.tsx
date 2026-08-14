@@ -21,6 +21,8 @@ import {
   resolverMedios,
   descargarMedios,
   mensajeDeSubida,
+  pesaDemasiado,
+  MB_POR_ARCHIVO,
   type ResultadoDescarga,
 } from "@salones/sync";
 import {
@@ -105,12 +107,23 @@ export function Album() {
         !conVideo && elegidos.some((a) => a.type.startsWith("video/"))
           ? "En este evento solo se pueden subir fotos, no videos."
           : "";
-      setErrorSubida(avisoVideo);
-      if (validos.length === 0) return;
+
+      // Tope por archivo. Se comprueba ANTES de empezar: dejar que el teléfono
+      // suba 40 MB por la red de una boda para que el almacén lo rechace al
+      // final es la peor forma posible de decir que no. Las fotos se comprimen
+      // más abajo, así que en la práctica esto solo frena videos.
+      const aptos = validos.filter((a) => !a.type.startsWith("video/") || !pesaDemasiado(a));
+      const avisoPeso =
+        aptos.length === validos.length
+          ? ""
+          : `Algún video pesa más de ${MB_POR_ARCHIVO} MB y no se subió. Prueba con uno más corto.`;
+
+      setErrorSubida([avisoVideo, avisoPeso].filter(Boolean).join(" "));
+      if (aptos.length === 0) return;
 
       // Modo local (demo de un solo dispositivo): igual que siempre.
       if (!estaConectado()) {
-        const nuevos: Archivo[] = validos.map((a) => {
+        const nuevos: Archivo[] = aptos.map((a) => {
           contador.current += 1;
           return {
             id: `f-${contador.current}`,
@@ -127,8 +140,8 @@ export function Album() {
       // anota en la colección; el álbum de todos se actualiza solo.
       const sync = obtenerSync();
       const eventoId = eventoActual();
-      setSubiendo((n) => n + validos.length);
-      for (const a of validos) {
+      setSubiendo((n) => n + aptos.length);
+      for (const a of aptos) {
         try {
           const blob = a.type.startsWith("image/") ? await comprimirImagen(a) : a;
           const tipo = blob.type || a.type;

@@ -14,6 +14,12 @@ tirar. Tarda dos minutos y no toca nada de nadie.
 |---|---|
 | `00-banco.sql` | Recrea lo justo de la base real (`items`, su disparador de la 0003 y un doble de `evento_del_pase_anfitrion`) para que una migración pueda correr sola. |
 | `01-candado-0016.sql` | Las 18 comprobaciones del candado de sobrescritura: qué frena a un invitado, qué le sigue dejando hacer, y que ni el anfitrión ni las Edge Functions se ven afectados. |
+| `02-banco-plano-de-control.sql` | La otra mitad de la base: planes, funciones vendibles, eventos y un doble de `storage.objects`. Hace falta para la `0017` y la `0018`. |
+| `03-cupo-0018.sql` | Las 13 comprobaciones del cupo de almacenamiento: que la cuenta salga de los bytes reales, que corte justo en el tope, que el cupo a medida mande, y que al borrar una foto el espacio se libere solo. |
+
+> Esto no es teoría: la primera corrida de `03-cupo-0018.sql` cazó que un evento
+> **inexistente** se llevaba 3 GB de cupo en vez de 0 —o sea, fallaba abierto—.
+> Se arregló antes de que el SQL tocara producción.
 
 ## Cómo se corre
 

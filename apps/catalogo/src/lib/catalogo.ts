@@ -291,7 +291,10 @@ export const paquetes: Paquete[] = [
     descripcion:
       "Todo para manejar a tus invitados de principio a fin: invitación, confirmación y acceso con QR.",
     incluye: ["invitaciones", "rsvp", "pases-qr"],
-    descuento: 0.2,
+    // 30%: tiene que empatar al Esencial. Con 20% este combo de TRES apps
+    // descontaba menos que el de dos, y quien comparara veía que llevarse más
+    // le convenía menos.
+    descuento: 0.3,
     acento: "from-sky-500 to-emerald-600",
   },
   {

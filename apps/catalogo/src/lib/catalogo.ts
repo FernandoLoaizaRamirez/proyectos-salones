@@ -280,7 +280,9 @@ export const paquetes: Paquete[] = [
     nombre: "Paquete Esencial",
     descripcion: "Tu presencia digital lista: la página del salón y el álbum de fotos del evento.",
     incluye: ["sitio-salon", "album-fotos"],
-    descuento: 0.15,
+    // 30% (no 15%): con 15% se iba a $17,850 y no se sentía combo. Con 30% baja
+    // a $14,700, del otro lado de la barrera de los 15 mil.
+    descuento: 0.3,
     acento: "from-rose-500 to-fuchsia-600",
   },
   {

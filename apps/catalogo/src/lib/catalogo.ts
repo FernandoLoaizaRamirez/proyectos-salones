@@ -310,7 +310,10 @@ export const paquetes: Paquete[] = [
       "dinamicas",
       "brindis",
     ],
-    descuento: 0.25,
+    // 40% (no 25%): con 25% el combo se iba a $62,250 y ese número asustaba de
+    // entrada. Con 40% baja a $49,800, que rompe la barrera de los 50 mil sin
+    // tener que abaratar las apps sueltas.
+    descuento: 0.4,
     acento: "from-primary to-purple-600",
     destacado: true,
   },

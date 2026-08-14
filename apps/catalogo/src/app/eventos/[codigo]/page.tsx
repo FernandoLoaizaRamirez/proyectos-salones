@@ -22,6 +22,7 @@ import {
   Copy,
   ExternalLink,
   Loader2,
+  Mail,
   MessageCircle,
   KeyRound,
   RefreshCw,
@@ -260,6 +261,29 @@ export default function PanelEvento({ params }: { params: Promise<{ codigo: stri
                 app desde el generador de eventos.
               </p>
             )}
+          </div>
+        </div>
+      </Card>
+
+      {/* ── Invitación digital ────────────────────────────────────────────
+          Va ANTES que la llave y las pantallas del evento porque es lo primero
+          que ocurre en el calendario: la invitación se manda meses antes, y el
+          salón entra aquí a llenarla y a corregirla mucho antes de que exista
+          nada que moderar. */}
+      <Card className="mt-8 p-6">
+        <div className="flex items-start gap-4">
+          <span className="grid size-11 shrink-0 place-items-center rounded-[var(--radius)] bg-primary/10 text-primary">
+            <Mail className="size-5" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <h2 className="font-semibold">Invitación digital</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Los datos del evento, el mapa, el itinerario y la confirmación, en un enlace para
+              mandar por WhatsApp. Se puede corregir cuando sea: el enlace no cambia.
+            </p>
+            <Link href={`/eventos/${encodeURIComponent(codigo)}/invitacion`} className="mt-4 inline-block">
+              <Button size="sm">Editar la invitación</Button>
+            </Link>
           </div>
         </div>
       </Card>

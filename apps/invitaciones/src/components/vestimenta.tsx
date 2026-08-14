@@ -1,19 +1,28 @@
-import { invitacion } from "@/lib/invitacion";
-import { Reveal } from "./reveal";
+import type { Invitacion } from "@salones/core";
 
-export function Vestimenta() {
+export function Vestimenta({ inv }: { inv: Invitacion }) {
+  const colores = inv.vestimentaColores.filter(Boolean);
+  if (!inv.vestimenta && !inv.vestimentaNota && !colores.length) return null;
   return (
-    <section className="border-y border-border bg-background">
-      <div className="mx-auto grid max-w-4xl gap-10 px-6 py-24 md:grid-cols-2 md:py-28">
-        <Reveal className="text-center md:text-left">
-          <p className="eyebrow">Código de vestimenta</p>
-          <p className="mt-3 font-display text-3xl italic">{invitacion.vestimenta}</p>
-          <p className="mt-2 text-sm text-muted-foreground">{invitacion.vestimentaNota}</p>
-        </Reveal>
-        <Reveal delay={100} className="text-center md:text-left">
-          <p className="eyebrow">Mesa de regalos</p>
-          <p className="mt-3 leading-relaxed text-muted-foreground">{invitacion.regalos}</p>
-        </Reveal>
+    <section id="vestimenta" className="compacta">
+      <div className="env centro">
+        <p className="eyebrow rev">Código de vestimenta</p>
+        <h2 className="titulo rev">Etiqueta</h2>
+        {inv.vestimenta ? (
+          <p id="vestTema" className="rev d1">
+            {inv.vestimenta}
+          </p>
+        ) : null}
+        {inv.vestimentaNota ? (
+          <p className="texto rev d1">{inv.vestimentaNota}</p>
+        ) : null}
+        {colores.length ? (
+          <div className="paleta rev d2">
+            {colores.map((c) => (
+              <i key={c} style={{ background: c }} title={c} />
+            ))}
+          </div>
+        ) : null}
       </div>
     </section>
   );

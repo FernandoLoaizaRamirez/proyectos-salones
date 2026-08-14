@@ -116,3 +116,9 @@ export type Evento = z.infer<typeof EventoSchema>;
 
 export * from "./tenencia";
 export * from "./entitlements";
+
+/* ------------------------------------------------------------------ */
+/* Contenido editable de un evento                                    */
+/* ------------------------------------------------------------------ */
+
+export * from "./invitacion";

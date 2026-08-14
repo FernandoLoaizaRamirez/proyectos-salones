@@ -1,35 +1,52 @@
-import { invitacion } from "@/lib/invitacion";
-import { Reveal } from "./reveal";
+import type { Invitacion } from "@salones/core";
+import { Rincon } from "./botanica";
 
-export function Itinerario() {
-  const items = invitacion.itinerario;
+/**
+ * La línea de tiempo con medallones.
+ *
+ * Cada momento puede traer su propia foto. Si no la trae, se toma una de las
+ * FOTOS DE REPUESTO por orden, y si tampoco hay, la de la portada: el diseño
+ * cuenta con un círculo con foto a la izquierda de cada renglón, y una fila de
+ * círculos vacíos se ve peor que repetir una foto bonita.
+ */
+export function Itinerario({ inv }: { inv: Invitacion }) {
+  const momentos = inv.itinerario.filter((m) => m.titulo || m.hora);
+  if (!momentos.length) return null;
+
+  const repuesto = inv.fotos.filter(Boolean);
+  let usadas = 0;
+  const fotoDe = (propia: string): string => {
+    if (propia) return propia;
+    if (repuesto.length) return repuesto[usadas++ % repuesto.length] ?? "";
+    return inv.fotoPortada;
+  };
+
   return (
-    <section className="bg-cream">
-      <div className="mx-auto max-w-2xl px-6 py-24 md:py-28">
-        <Reveal className="text-center">
-          <p className="eyebrow flex items-center justify-center gap-3">
-            <span className="h-px w-8 bg-gold" />
-            Itinerario
-            <span className="h-px w-8 bg-gold" />
-          </p>
-          <h2 className="mt-4 font-display text-4xl md:text-5xl">El plan de la noche</h2>
-        </Reveal>
-        <div className="mt-14">
-          {items.map((it, i) => (
-            <Reveal key={i} delay={i * 70}>
-              <div className="flex items-stretch gap-5">
-                <div className="flex flex-col items-center">
-                  <span className="mt-1.5 size-3 shrink-0 rounded-full bg-gold" />
-                  {i < items.length - 1 ? <span className="w-px flex-1 bg-border" /> : null}
-                </div>
-                <div className="flex flex-1 items-baseline justify-between gap-4 pb-8">
-                  <span className="font-display text-xl">{it.titulo}</span>
-                  <span className="shrink-0 text-sm text-muted-foreground">{it.hora}</span>
-                </div>
-              </div>
-            </Reveal>
-          ))}
+    <section id="itinerario">
+      <Rincon donde="si" />
+      <div className="env">
+        <div className="centro">
+          <p className="eyebrow rev">Momento a momento</p>
+          <h2 className="titulo rev">Itinerario</h2>
         </div>
+        <ol className="linea">
+          {momentos.map((m, i) => {
+            const foto = fotoDe(m.foto);
+            return (
+              <li className="rev" key={`${m.titulo}-${i}`}>
+                <span className="medallon">
+                  {foto ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={foto} alt="" loading="lazy" />
+                  ) : null}
+                </span>
+                {m.hora ? <p className="hora">{m.hora}</p> : null}
+                {m.titulo ? <h3>{m.titulo}</h3> : null}
+                {m.detalle ? <p>{m.detalle}</p> : null}
+              </li>
+            );
+          })}
+        </ol>
       </div>
     </section>
   );

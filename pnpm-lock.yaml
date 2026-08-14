@@ -253,6 +253,12 @@ importers:
 
   apps/invitaciones:
     dependencies:
+      '@salones/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@salones/sync':
+        specifier: workspace:*
+        version: link:../../packages/sync
       lucide-react:
         specifier: ^1.25.0
         version: 1.25.0(react@19.2.8)

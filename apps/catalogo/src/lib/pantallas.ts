@@ -140,6 +140,20 @@ export function enlacePantalla(p: PantallaAnfitrion, codigo: string): string {
 }
 
 /**
+ * Dirección de la INVITACIÓN de un evento (el enlace que se manda por WhatsApp
+ * a cada invitado). Es la app `invitaciones` con el código puesto: la misma
+ * app que corre la demo del catálogo, que sin código enseña la de muestra.
+ *
+ * Ojo: la invitación NO es el portal. El portal reúne lo del día del evento
+ * (muro, álbum, playlist…) y se comparte una vez; la invitación se manda antes,
+ * se puede vender sola y no da por hecho ningún otro producto.
+ */
+export function enlaceInvitacion(codigo: string): string {
+  const base = baseDeApp("invitaciones");
+  return base ? `${base}/?e=${encodeURIComponent(codigo)}` : "";
+}
+
+/**
  * Dirección del PORTAL DEL INVITADO (el enlace que se comparte con la gente).
  * Se configura con `NEXT_PUBLIC_PORTAL_URL`; sin ella devolvemos "" y la interfaz
  * lo dice claro en vez de inventar una dirección equivocada.

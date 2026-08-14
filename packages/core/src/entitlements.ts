@@ -25,6 +25,19 @@ export const FEATURES_CONOCIDAS = {
   Rsvp: "rsvp",
   Dinamicas: "dinamicas",
   Album: "album",
+  /**
+   * PAQUETE DE VIDEO — que los invitados puedan subir video, no solo fotos.
+   *
+   * Se vende aparte por una razón de costo, no de capricho: una foto se comprime
+   * a ~250 KB antes de subir, y un video sube tal cual hasta los 25 MB que
+   * admite el almacén. **Un solo video pesa como cien fotos.** Todos los eventos
+   * comparten el mismo cajón, así que una boda con video puede gastar el
+   * almacenamiento de quince bodas de solo fotos.
+   *
+   * APAGADA POR DEFECTO. Si no consta que este evento la tiene, no la tiene: en
+   * una función que cuesta dinero, la duda se resuelve en contra de regalarla.
+   */
+  Video: "video",
   /** La sincronización en la nube: distingue el plan "gestionado" del local. */
   SyncColectivo: "sync-colectivo",
   /** Tiempo real por websockets (a futuro, premium). */

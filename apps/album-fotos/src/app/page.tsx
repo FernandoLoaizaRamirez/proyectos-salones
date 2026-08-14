@@ -1,6 +1,7 @@
 import { Logo, ThemeToggle } from "@salones/ui";
 import { Album } from "@/components/album";
 import { Compartir } from "@/components/compartir";
+import { PanelAnfitrion } from "@/components/panel-anfitrion";
 import { evento } from "@/lib/album-data";
 
 export default function Page() {
@@ -20,12 +21,18 @@ export default function Page() {
             Los recuerdos de {evento.nombre}, en un solo lugar
           </h1>
           <p className="mt-2 max-w-2xl text-muted-foreground">
-            Cada invitado sube sus fotos y videos escaneando un código, y todos los disfrutan y
-            descargan juntos. Sin apps ni complicaciones.
+            {/* "recuerdos" y no "fotos y videos": esta portada se pinta en el
+                servidor, antes de saber si el evento tiene el paquete de video,
+                y prometer videos que luego no se pueden subir sería peor que
+                no nombrarlos. */}
+            Cada invitado sube sus recuerdos escaneando un código, y todos los disfrutan y descargan
+            juntos. Sin apps ni complicaciones.
           </p>
         </div>
 
-        <div className="mb-8">
+        {/* Solo aparece para quien organiza; para un invitado no se dibuja nada. */}
+        <div className="mb-8 space-y-4">
+          <PanelAnfitrion />
           <Compartir />
         </div>
 

@@ -53,7 +53,14 @@ export default async function Page({
         <p className="mt-2 mb-8 text-muted-foreground">{config.nombre}</p>
 
         {habilitado ? (
-          <AlbumModulo evento={codigo} nombreEvento={config.nombre} />
+          // El paquete de VIDEO se vende aparte del álbum (migración 0017): un
+          // video pesa como cien fotos. Se resuelve aquí, en el servidor, con los
+          // mismos entitlements que deciden si el módulo entero se pinta.
+          <AlbumModulo
+            evento={codigo}
+            nombreEvento={config.nombre}
+            conVideo={tieneFuncion(config.entitlements, F.Video)}
+          />
         ) : (
           <Card className="flex items-start gap-4 p-6">
             <Lock className="size-6 shrink-0 text-muted-foreground" />

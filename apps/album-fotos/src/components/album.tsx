@@ -29,6 +29,7 @@ import {
   COLECCION_FOTOS,
   type Archivo,
 } from "@/lib/album-data";
+import { useTieneVideo } from "@/lib/video";
 
 export function Album() {
   // Con el servicio gestionado, el álbum llega del servidor (y arranca vacío
@@ -51,6 +52,8 @@ export function Album() {
   // Solo el anfitrión puede quitar fotos del álbum común. Arranca en false: si
   // algo fallara, se esconde el botón en vez de enseñárselo a un invitado.
   const [anfitrion, setAnfitrion] = React.useState(false);
+  /** ¿Se contrató el paquete de video? Si no, aquí solo se suben fotos. */
+  const conVideo = useTieneVideo();
   // Dirección guardada → dirección con la que se muestra (firmada y con fecha
   // de caducidad). Lo que no esté aquí se muestra tal cual.
   const [vistas, setVistas] = React.useState<Record<string, string>>({});
@@ -86,48 +89,66 @@ export function Album() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clavesArchivos]);
 
-  const agregar = React.useCallback(async (lista: FileList | null) => {
-    if (!lista) return;
-    const validos = Array.from(lista).filter(
-      (a) => a.type.startsWith("image/") || a.type.startsWith("video/"),
-    );
-    if (validos.length === 0) return;
+  const agregar = React.useCallback(
+    async (lista: FileList | null) => {
+      if (!lista) return;
+      const elegidos = Array.from(lista);
+      const validos = elegidos.filter(
+        (a) => a.type.startsWith("image/") || (conVideo && a.type.startsWith("video/")),
+      );
 
-    // Modo local (demo de un solo dispositivo): igual que siempre.
-    if (!estaConectado()) {
-      const nuevos: Archivo[] = validos.map((a) => {
-        contador.current += 1;
-        return { id: `f-${contador.current}`, nombre: a.name, url: URL.createObjectURL(a), tipo: a.type };
-      });
-      setArchivos((prev) => [...nuevos, ...prev]);
-      return;
-    }
+      // ARRASTRAR UN ARCHIVO SE SALTA EL `accept` DEL SELECTOR: quitar "video/*"
+      // de ahí esconde la opción, pero no impide soltar un video encima. Por eso
+      // se filtra también aquí. Y se DICE: descartarlo en silencio deja al
+      // invitado esperando una subida que nunca empezó.
+      const avisoVideo =
+        !conVideo && elegidos.some((a) => a.type.startsWith("video/"))
+          ? "En este evento solo se pueden subir fotos, no videos."
+          : "";
+      setErrorSubida(avisoVideo);
+      if (validos.length === 0) return;
 
-    // Modo servidor: cada foto sube (comprimida) al almacenamiento central y se
-    // anota en la colección; el álbum de todos se actualiza solo.
-    const sync = obtenerSync();
-    const eventoId = eventoActual();
-    setErrorSubida("");
-    setSubiendo((n) => n + validos.length);
-    for (const a of validos) {
-      try {
-        const blob = a.type.startsWith("image/") ? await comprimirImagen(a) : a;
-        const tipo = blob.type || a.type;
-        const url = await sync.subirArchivo(eventoId, a.name, blob, tipo);
-        await sync.guardar(eventoId, COLECCION_FOTOS, {
-          id: "F-" + Math.random().toString(36).slice(2, 10).toUpperCase(),
-          nombre: a.name,
-          url,
-          tipo,
-          fecha: Date.now(),
+      // Modo local (demo de un solo dispositivo): igual que siempre.
+      if (!estaConectado()) {
+        const nuevos: Archivo[] = validos.map((a) => {
+          contador.current += 1;
+          return {
+            id: `f-${contador.current}`,
+            nombre: a.name,
+            url: URL.createObjectURL(a),
+            tipo: a.type,
+          };
         });
-      } catch (e) {
-        setErrorSubida(mensajeDeSubida(e));
-      } finally {
-        setSubiendo((n) => n - 1);
+        setArchivos((prev) => [...nuevos, ...prev]);
+        return;
       }
-    }
-  }, []);
+
+      // Modo servidor: cada foto sube (comprimida) al almacenamiento central y se
+      // anota en la colección; el álbum de todos se actualiza solo.
+      const sync = obtenerSync();
+      const eventoId = eventoActual();
+      setSubiendo((n) => n + validos.length);
+      for (const a of validos) {
+        try {
+          const blob = a.type.startsWith("image/") ? await comprimirImagen(a) : a;
+          const tipo = blob.type || a.type;
+          const url = await sync.subirArchivo(eventoId, a.name, blob, tipo);
+          await sync.guardar(eventoId, COLECCION_FOTOS, {
+            id: "F-" + Math.random().toString(36).slice(2, 10).toUpperCase(),
+            nombre: a.name,
+            url,
+            tipo,
+            fecha: Date.now(),
+          });
+        } catch (e) {
+          setErrorSubida(mensajeDeSubida(e));
+        } finally {
+          setSubiendo((n) => n - 1);
+        }
+      }
+    },
+    [conVideo],
+  );
 
   /* ---- Moderación (arreglado el 6 ago 2026) -----------------------------
    * Quitar un recuerdo es irreversible. Tenía tres defectos: no preguntaba, el
@@ -225,9 +246,11 @@ export function Album() {
             <ImagePlus className="size-6" />
           </div>
           <div className="space-y-1">
-            <p className="font-medium">Sube tus fotos y videos</p>
+            <p className="font-medium">{conVideo ? "Sube tus fotos y videos" : "Sube tus fotos"}</p>
             <p className="text-sm text-muted-foreground">
-              Arrastra los archivos aquí o toca el botón para elegirlos.
+              {conVideo
+                ? "Arrastra los archivos aquí o toca el botón para elegirlos."
+                : "Arrastra tus fotos aquí o toca el botón para elegirlas."}
             </p>
           </div>
           <Button onClick={() => inputRef.current?.click()} disabled={subiendo > 0}>
@@ -237,7 +260,7 @@ export function Album() {
               </>
             ) : (
               <>
-                <Camera className="size-4" /> Elegir archivos
+                <Camera className="size-4" /> {conVideo ? "Elegir archivos" : "Elegir fotos"}
               </>
             )}
           </Button>
@@ -246,7 +269,10 @@ export function Album() {
           <input
             ref={inputRef}
             type="file"
-            accept="image/*,video/*"
+            // Sin paquete de video, el selector del teléfono ni siquiera ofrece
+            // la galería de videos. Es el "esconder" que pidió el negocio; el
+            // "impedir" lo hace el servidor y el filtro de `agregar`.
+            accept={conVideo ? "image/*,video/*" : "image/*"}
             multiple
             className="hidden"
             onChange={(e) => agregar(e.target.files)}

@@ -130,6 +130,40 @@ async function cabeUnaSubidaMas(evento: string, pase: string): Promise<boolean> 
   return (await res.json()) === true;
 }
 
+/**
+ * ¿Tiene este evento contratado el PAQUETE DE VIDEO? (migración 0017)
+ *
+ * ESTE ES EL CANDADO DE VERDAD. Los dos álbumes esconden el botón de subir video
+ * cuando el evento no lo tiene, pero esconder un botón no es cerrar una puerta:
+ * quien manipule la petición la manda igual. Como es una función que se COBRA,
+ * la respuesta tiene que darla el servidor.
+ *
+ * La pregunta se la hace a `evento_tiene_funcion`, la MISMA función de la base
+ * que consulta el navegador para dibujarse. Así el candado y la interfaz no
+ * pueden desalinearse: no hay dos motores comerciales, hay uno.
+ *
+ * SI LA MIGRACIÓN 0017 TODAVÍA NO ESTÁ APLICADA la base responde 404 y aquí se
+ * DEJA PASAR, igual que hacen el pase firmado y el tope de subidas. Es lo que
+ * permite desplegar esto ANTES de tocar la base sin cortarle el video a nadie a
+ * media boda; en cuanto la migración corra, el candado empieza a valer. Cualquier
+ * OTRO fallo sí niega: con la base delante, no se regala una función de pago
+ * porque una consulta salga mal.
+ */
+async function tienePaqueteDeVideo(evento: string): Promise<boolean> {
+  const res = await fetch(`${URL_SUPABASE}/rest/v1/rpc/evento_tiene_funcion`, {
+    method: "POST",
+    headers: {
+      apikey: SERVICE_ROLE,
+      Authorization: `Bearer ${SERVICE_ROLE}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ p_codigo: evento, p_clave: "video" }),
+  });
+  if (res.status === 404) return true; // migración 0017 pendiente
+  if (!res.ok) return false;
+  return (await res.json()) === true;
+}
+
 /** Extensión razonable a partir del nombre o del tipo MIME (igual que @salones/sync). */
 function extensionDe(nombre: string, tipo: string): string {
   const porNombre = /\.([a-z0-9]{1,5})$/i.exec(nombre)?.[1];
@@ -188,6 +222,22 @@ Deno.serve(async (req: Request) => {
     // Sin pase válido no se firma nada. No se dice por qué falló.
     if (!quien) return json({ error: "sin permiso para este evento" }, 403);
     const { evento, usado } = quien;
+
+    /* ---- El paquete de video (migración 0017) ------------------------------
+     * Va ANTES del tope a propósito: una subida que se va a negar no debe
+     * gastarle cupo al evento. */
+    /* ---- El paquete de video (migración 0017) ------------------------------
+     * Va ANTES del tope a propósito: una subida que se va a negar no debe
+     * gastarle cupo al evento. */
+    if (tipo.startsWith("video/") && !(await tienePaqueteDeVideo(evento))) {
+      return json(
+        {
+          error: "video no incluido",
+          detalle: "Este evento tiene el álbum de fotos. El video se contrata aparte.",
+        },
+        402, // "hace falta pagar": no es un fallo del invitado ni un permiso roto
+      );
+    }
 
     /* ---- El tope (migración 0015) -----------------------------------------
      * Antes esto no llevaba ninguna cuenta, y como la llave pública viaja

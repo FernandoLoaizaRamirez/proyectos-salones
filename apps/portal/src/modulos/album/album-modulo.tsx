@@ -49,7 +49,25 @@ import {
   type Foto,
 } from "./lib";
 
-export function AlbumModulo({ evento, nombreEvento }: { evento: string; nombreEvento: string }) {
+export function AlbumModulo({
+  evento,
+  nombreEvento,
+  conVideo,
+}: {
+  evento: string;
+  nombreEvento: string;
+  /**
+   * ¿Este evento contrató el PAQUETE DE VIDEO? (migración 0017)
+   *
+   * Llega resuelto desde el servidor (la página lo saca de los entitlements del
+   * evento), así que aquí no hace falta preguntar nada ni esperar a nadie: la
+   * primera pintada ya sabe si el video va o no va.
+   *
+   * ⚠️ Solo decide qué se DIBUJA. El candado está en `media-subir`, que niega la
+   * subida de un video aunque alguien manipule esta pantalla.
+   */
+  conVideo: boolean;
+}) {
   const [fotos, setFotos] = React.useState<Foto[]>([]);
   /** Ids subidos desde ESTE dispositivo. En la demo LOCAL, lo que puede quitar. */
   const [mias, setMias] = React.useState<string[]>([]);
@@ -162,16 +180,26 @@ export function AlbumModulo({ evento, nombreEvento }: { evento: string; nombreEv
   const agregar = React.useCallback(
     async (lista: FileList | null) => {
       if (!lista || lista.length === 0) return;
-      const validos = Array.from(lista).filter((a) => esArchivoDeAlbum(a.type));
+      // Sin paquete de video, el video se cae aquí además de estar escondido del
+      // selector: arrastrar un archivo se salta el `accept`, así que quitarlo de
+      // ahí esconde la opción pero no cierra la puerta.
+      const validos = Array.from(lista).filter(
+        (a) => esArchivoDeAlbum(a.type) && (conVideo || !esVideo(a.type)),
+      );
       if (validos.length === 0) {
-        setError("Elige fotos o videos.");
+        setError(
+          conVideo
+            ? "Elige fotos o videos."
+            : "En este evento solo se pueden subir fotos, no videos.",
+        );
         return;
       }
       const aptos = validos.filter((a) => !pesaDemasiado(a));
       setError(
         aptos.length === validos.length
           ? ""
-          : `Algún archivo pesa más de ${MAX_MB} MB y no se subió. Prueba con un video más corto.`,
+          : `Algún archivo pesa más de ${MAX_MB} MB y no se subió. ` +
+              (conVideo ? "Prueba con un video más corto." : "Prueba con una foto más ligera."),
       );
       if (aptos.length === 0) return;
 
@@ -207,7 +235,7 @@ export function AlbumModulo({ evento, nombreEvento }: { evento: string; nombreEv
         }
       }
     },
-    [evento, anotarMias],
+    [evento, anotarMias, conVideo],
   );
 
   /* ---- Moderación (arreglado el 6 ago 2026) -----------------------------
@@ -294,7 +322,7 @@ export function AlbumModulo({ evento, nombreEvento }: { evento: string; nombreEv
             <ImagePlus className="size-6" />
           </div>
           <div className="space-y-1">
-            <p className="font-medium">Sube tus fotos y videos</p>
+            <p className="font-medium">{conVideo ? "Sube tus fotos y videos" : "Sube tus fotos"}</p>
             <p className="text-sm text-muted-foreground">
               Tus recuerdos de {nombreEvento}, junto a los de todos los invitados.
             </p>
@@ -306,7 +334,7 @@ export function AlbumModulo({ evento, nombreEvento }: { evento: string; nombreEv
               </>
             ) : (
               <>
-                <Camera className="size-4" /> Elegir archivos
+                <Camera className="size-4" /> {conVideo ? "Elegir archivos" : "Elegir fotos"}
               </>
             )}
           </Button>
@@ -321,7 +349,7 @@ export function AlbumModulo({ evento, nombreEvento }: { evento: string; nombreEv
           <input
             ref={inputRef}
             type="file"
-            accept="image/*,video/*"
+            accept={conVideo ? "image/*,video/*" : "image/*"}
             multiple
             className="hidden"
             onChange={(e) => {

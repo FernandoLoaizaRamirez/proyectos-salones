@@ -564,15 +564,65 @@ function crearProveedorServidor(url: string, anon: string): ProveedorSync {
       // red ni "la función no está desplegada": reintentar por el camino viejo
       // sería gastar otra petición para nada y enseñar un error equivocado.
       if (res.status === 429) throw new Error("tope-de-subidas");
+      // 402 = este evento no tiene contratado el paquete de video (migración
+      // 0017). Tiene que LANZAR, y no devolver null, por la misma razón que el
+      // tope: devolver null manda la subida por el camino viejo, y el camino
+      // viejo no pregunta por el paquete. Sería colar por la puerta de atrás
+      // justo lo que se acaba de negar por la de delante.
+      if (res.status === 402) throw new Error("video-no-incluido");
       if (!res.ok) return null;
       const dato = (await res.json()) as Partial<PermisoSubida>;
       if (typeof dato.subirUrl !== "string" || typeof dato.urlPublica !== "string") return null;
       return { subirUrl: dato.subirUrl, urlPublica: dato.urlPublica };
     } catch (e) {
-      if (e instanceof Error && e.message === "tope-de-subidas") throw e;
+      if (e instanceof Error && (e.message === "tope-de-subidas" || e.message === "video-no-incluido")) {
+        throw e;
+      }
       return null; // sin red o función sin desplegar
     }
   }
+
+  /* ---- ¿Qué tiene contratado este evento? (migración 0017) ------------------
+   * Lo usan los álbumes para esconder lo que no se ha pagado. **No es el
+   * candado**: el candado está en `media-subir`, que niega la subida aunque se
+   * manipule la pantalla. Esto solo decide qué se dibuja.
+   *
+   * Se pregunta a la MISMA función de la base que consulta el servidor, así que
+   * interfaz y candado no pueden discrepar. Se cachea porque una pantalla puede
+   * preguntarlo en cada repintado y la respuesta no cambia durante una fiesta. */
+  const funciones = new Map<string, Promise<boolean>>();
+
+  preguntarFuncion = (evento, clave) => {
+    const memoria = `${evento}::${clave}`;
+    const guardada = funciones.get(memoria);
+    if (guardada) return guardada;
+
+    const consulta = (async () => {
+      try {
+        const res = await fetch(`${raiz}/rest/v1/rpc/evento_tiene_funcion`, {
+          method: "POST",
+          headers: { ...auth, "Content-Type": "application/json" },
+          body: JSON.stringify({ p_codigo: evento, p_clave: clave }),
+        });
+        // 404 = la migración 0017 todavía no está aplicada. Se responde que SÍ
+        // para que la pantalla siga como hasta ahora mientras dura el despliegue;
+        // quien de verdad decide es `media-subir`, y ahí el trato es el mismo.
+        if (res.status === 404) return true;
+        if (!res.ok) return false;
+        return (await res.json()) === true;
+      } catch {
+        // Sin red: se esconde. Enseñar un botón que el servidor va a rechazar es
+        // peor que no enseñarlo, porque el invitado graba el video y lo pierde.
+        return false;
+      }
+    })();
+
+    // Un fallo de red no se queda cacheado: la próxima pantalla vuelve a probar.
+    consulta.then((si) => {
+      if (si) funciones.set(memoria, consulta);
+    });
+    return consulta;
+  };
 
   const filtro = (evento: string, coleccion: string) =>
     `evento=eq.${encodeURIComponent(evento)}&coleccion=eq.${encodeURIComponent(coleccion)}`;
@@ -815,6 +865,12 @@ let firmarMedios: ((evento: string, rutas: string[]) => Promise<Record<string, s
   null;
 
 /**
+ * Lo pone `crearProveedorServidor` al construirse. En modo local no hay servidor
+ * al que preguntar qué se contrató (ver `eventoTieneFuncion`).
+ */
+let preguntarFuncion: ((evento: string, clave: string) => Promise<boolean>) | null = null;
+
+/**
  * Devuelve el proveedor de sincronización activo: SERVIDOR si están puestas las
  * variables de entorno de Supabase, o LOCAL en caso contrario.
  */
@@ -858,6 +914,35 @@ export function eventoActual(porDefecto = "demo"): string {
 export function sufijoEvento(): string {
   const e = eventoActual();
   return e === "demo" ? "" : `?e=${e}`;
+}
+
+/* ================================================================== */
+/* Qué se contrató para este evento                                    */
+/* ================================================================== */
+
+/**
+ * ¿Tiene este evento contratada una función de pago (p. ej. `"video"`)?
+ *
+ * Sirve para DIBUJAR la interfaz: esconder lo que no se ha pagado. **No es el
+ * candado**, igual que `esAnfitrion` tampoco lo era. El candado está en el
+ * servidor: `media-subir` niega la subida de un video aunque alguien manipule la
+ * pantalla (migración 0017). Aquí solo se decide qué se enseña.
+ *
+ * Pregunta a la MISMA función de la base que consulta el servidor, así que la
+ * interfaz y el candado no pueden acabar diciendo cosas distintas.
+ *
+ * Responde `false` cuando no hay servidor central (modo local: la demo y los
+ * planes Renta / Compra), que es lo correcto: esas funciones se venden con el
+ * servicio gestionado. Y ante la duda —sin red, evento desconocido— también
+ * `false`: enseñar un botón que el servidor va a rechazar es peor que no
+ * enseñarlo, porque el invitado graba el video y lo pierde.
+ *
+ * Usa las claves de `FEATURES_CONOCIDAS` de `@salones/core`.
+ */
+export async function eventoTieneFuncion(evento: string, clave: string): Promise<boolean> {
+  obtenerSync(); // asegura que el proveedor esté construido
+  if (!preguntarFuncion) return false;
+  return preguntarFuncion(evento, clave);
 }
 
 /* ================================================================== */
@@ -929,6 +1014,11 @@ export async function resolverMedios(
  */
 export function mensajeDeSubida(e: unknown): string {
   const msg = e instanceof Error ? e.message : "";
+  if (msg === "video-no-incluido") {
+    // Se le habla al INVITADO, que no contrató nada y no tiene culpa de nada: se
+    // le dice qué sí puede hacer, no que a alguien le falta pagar.
+    return "En este evento solo se pueden subir fotos. Tus fotos sí se suben con normalidad.";
+  }
   if (msg === "tope-de-subidas") {
     return "Se subieron muchas fotos seguidas. Espera un par de minutos y vuelve a intentarlo.";
   }

@@ -5,11 +5,13 @@ import { QRCodeSVG } from "qrcode.react";
 import { Check, Copy, QrCode } from "lucide-react";
 import { Button } from "@salones/ui";
 import { sufijoEvento } from "@salones/sync";
+import { useTieneVideo } from "@/lib/video";
 
 /** Tarjeta para compartir el álbum: los invitados escanean el QR para unirse. */
 export function Compartir() {
   const [url, setUrl] = React.useState("");
   const [copiado, setCopiado] = React.useState(false);
+  const conVideo = useTieneVideo();
 
   React.useEffect(() => {
     // El enlace del álbum lleva el código del evento actual (?e=...).
@@ -40,8 +42,8 @@ export function Compartir() {
           <QrCode className="size-4 text-primary" /> Comparte el álbum
         </h3>
         <p className="mt-1 max-w-sm text-sm text-muted-foreground">
-          Los invitados escanean este código para abrir el álbum en su teléfono y subir sus fotos y
-          videos al instante.
+          Los invitados escanean este código para abrir el álbum en su teléfono y subir{" "}
+          {conVideo ? "sus fotos y videos" : "sus fotos"} al instante.
         </p>
         <Button variant="outline" size="sm" className="mt-4" onClick={copiar}>
           {copiado ? (

@@ -263,6 +263,11 @@ export const productos: Producto[] = [
  * Paquetes: combinaciones de apps a un precio más económico que
  * contratarlas por separado. El precio se calcula solo a partir de los
  * precios individuales y el descuento, así siempre queda consistente.
+ *
+ * REGLA DE LA ESCALERA: un paquete con MÁS apps nunca puede descontar menos
+ * que uno con menos apps, o el catálogo acaba diciendo "llevarte más te
+ * conviene menos". Hoy: Esencial 30% (2 apps), Invitados 30% (3), Todo
+ * Incluido 40% (12).
  */
 export type Paquete = {
   id: string;

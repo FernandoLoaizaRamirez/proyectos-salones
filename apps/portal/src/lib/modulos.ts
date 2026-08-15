@@ -1,17 +1,29 @@
 /**
  * CONTRATO DE MÓDULOS del portal del evento.
  *
- * Cada experiencia del invitado (muro, playlist, RSVP, dinámicas, álbum) se
- * describe con un MANIFEST: su clave de función (la misma de `features`/
- * entitlements), cómo se muestra y a dónde lleva. El portal monta la navegación a
- * partir de estos manifests, filtrando por las funciones habilitadas del evento.
+ * Cada experiencia del invitado se describe con un MANIFEST: su clave de
+ * función (la misma de `features`/entitlements), cómo se muestra y a dónde
+ * lleva. El portal monta la navegación a partir de estos manifests, filtrando
+ * por las funciones habilitadas del evento.
  *
- * Estrategia strangler-fig: por ahora cada módulo es un PUENTE a la app que ya lo
- * sirve hoy (con `?e=<codigo>`). Migrar el código de cada módulo DENTRO del portal
- * (empezando por el muro) es el siguiente incremento; el contrato no cambia.
+ * Estrategia strangler-fig: los módulos con `rutaInterna` ya viven DENTRO del
+ * portal; los demás son un PUENTE a la app que los sirve hoy (con `?e=`).
+ * El orden de la lista es el de la HISTORIA del invitado: primero lo de antes
+ * de la fiesta (la invitación, confirmar, encontrar su mesa) y luego lo de la
+ * fiesta misma (fotos, mensajes, música, juegos, photobooth, brindis).
  */
 import type { ComponentType } from "react";
-import { BookHeart, ListMusic, CalendarCheck, Gamepad2, Camera } from "lucide-react";
+import {
+  Aperture,
+  Armchair,
+  BookHeart,
+  CalendarCheck,
+  Camera,
+  Gamepad2,
+  ListMusic,
+  Mail,
+  Wine,
+} from "lucide-react";
 import { FEATURES_CONOCIDAS as F } from "@salones/core";
 
 export type ModuloManifest = {
@@ -39,6 +51,50 @@ export type ModuloManifest = {
 /** Los módulos del invitado, con la MISMA clave que sus funciones vendibles. */
 export const MODULOS: ModuloManifest[] = [
   {
+    clave: F.Invitacion,
+    nombre: "Invitación",
+    descripcion: "La invitación del evento, siempre a la mano.",
+    icono: Mail,
+    acento: "from-amber-500 to-orange-600",
+    // PUENTE: la invitación es una pieza de diseño con vida propia (portada,
+    // música, itinerario); se abre en su app y lee el evento con `?e=`.
+    urlBase: "https://invitaciones-weld.vercel.app",
+    rutaInvitado: "/",
+  },
+  {
+    clave: F.Rsvp,
+    nombre: "Confirmar asistencia",
+    descripcion: "Dinos si vienes y cuántos serán.",
+    icono: CalendarCheck,
+    acento: "from-teal-500 to-emerald-600",
+    urlBase: "https://rsvp-umber-pi.vercel.app",
+    rutaInvitado: "/",
+    // MIGRADO: ya vive dentro del portal.
+    rutaInterna: "/rsvp",
+  },
+  {
+    clave: F.Mesas,
+    nombre: "Mi mesa",
+    descripcion: "Encuentra tu mesa y con quién la compartes.",
+    icono: Armchair,
+    acento: "from-violet-500 to-indigo-600",
+    urlBase: "https://proyectos-salones-mi-mesa.vercel.app",
+    rutaInvitado: "/",
+    // MIGRADO: ya vive dentro del portal.
+    rutaInterna: "/mesas",
+  },
+  {
+    clave: F.Album,
+    nombre: "Álbum de fotos",
+    descripcion: "Sube tus fotos y míralas todas juntas.",
+    icono: Camera,
+    acento: "from-fuchsia-500 to-purple-600",
+    urlBase: "https://album-fotos-gamma.vercel.app",
+    rutaInvitado: "/",
+    // MIGRADO: ya vive dentro del portal.
+    rutaInterna: "/album",
+  },
+  {
     clave: F.Muro,
     nombre: "Muro de mensajes",
     descripcion: "Deja tu mensaje y tu firma para los novios.",
@@ -61,17 +117,6 @@ export const MODULOS: ModuloManifest[] = [
     rutaInterna: "/playlist",
   },
   {
-    clave: F.Rsvp,
-    nombre: "Confirmar asistencia",
-    descripcion: "Dinos si vienes y cuántos serán.",
-    icono: CalendarCheck,
-    acento: "from-teal-500 to-emerald-600",
-    urlBase: "https://rsvp-umber-pi.vercel.app",
-    rutaInvitado: "/",
-    // MIGRADO: ya vive dentro del portal.
-    rutaInterna: "/rsvp",
-  },
-  {
     clave: F.Dinamicas,
     nombre: "Dinámicas y juegos",
     descripcion: "Trivia, bingo y rompehielos desde tu teléfono.",
@@ -83,15 +128,26 @@ export const MODULOS: ModuloManifest[] = [
     rutaInterna: "/dinamicas",
   },
   {
-    clave: F.Album,
-    nombre: "Álbum de fotos",
-    descripcion: "Sube tus fotos y míralas todas juntas.",
-    icono: Camera,
-    acento: "from-fuchsia-500 to-purple-600",
-    urlBase: "https://album-fotos-gamma.vercel.app",
+    clave: F.Photobooth,
+    nombre: "Photobooth",
+    descripcion: "Tómate una foto con los marcos del evento.",
+    icono: Aperture,
+    acento: "from-purple-500 to-pink-600",
+    // PUENTE: es una app pesada de cámara (canvas, marcos, permisos del
+    // navegador); traerla al portal no aporta y sí engorda el paquete.
+    urlBase: "https://proyectos-salones-photobooth.vercel.app",
     rutaInvitado: "/",
-    // MIGRADO: ya vive dentro del portal.
-    rutaInterna: "/album",
+  },
+  {
+    clave: F.Brindis,
+    nombre: "Brindis en video",
+    descripcion: "Graba un mensaje en video para los festejados.",
+    icono: Wine,
+    acento: "from-red-500 to-rose-600",
+    // PUENTE: mismo caso que el photobooth — grabación de video y armado del
+    // recuerdo (Shotstack) viven en su app; el portal solo abre la puerta.
+    urlBase: "https://proyectos-salones-brindis.vercel.app",
+    rutaInvitado: "/",
   },
 ];
 

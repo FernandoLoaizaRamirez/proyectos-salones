@@ -25,13 +25,25 @@ import {
   tiempoRelativo,
   type Mensaje,
 } from "./lib";
+import { guardarPerfil, usePerfil } from "@/lib/perfil";
 
 const campo =
   "w-full rounded-[var(--radius)] border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/30";
 
 export function MuroModulo({ evento, nombreEvento }: { evento: string; nombreEvento: string }) {
+  const perfil = usePerfil(evento);
   const [nombre, setNombre] = React.useState("");
   const [texto, setTexto] = React.useState("");
+
+  /*
+   * El perfil llega DESPUÉS del primer pintado (vive en localStorage), así que
+   * no puede ser el estado inicial: cuando aparece, la firma se rellena sola —
+   * editable, por si hoy firma otra persona desde este teléfono.
+   */
+  React.useEffect(() => {
+    if (!perfil) return;
+    setNombre((previo) => (previo.trim() ? previo : perfil.nombre));
+  }, [perfil]);
   /* La foto se guarda en dos piezas: el BLOB comprimido (lo que sube al
    * almacén) y una dirección temporal para la vista previa. Antes era una sola
    * cosa: la foto en TEXTO dentro del propio mensaje, que hacía que el muro
@@ -139,9 +151,15 @@ export function MuroModulo({ evento, nombreEvento }: { evento: string; nombreEve
         texto: texto.trim(),
         fecha: Date.now(),
         ...(foto ? { foto } : {}),
+        // Si firmó con perfil de enlace personal, el mensaje queda atado a su
+        // renglón de la lista del anfitrión (quién escribió qué, con id real).
+        ...(perfil?.id ? { invitadoId: perfil.id } : {}),
       };
 
       await sync.guardar(evento, COLECCION_MENSAJES, msg);
+      // La primera firma se vuelve el perfil común del teléfono: los demás
+      // módulos (playlist, trivia, RSVP…) ya no vuelven a preguntar quién es.
+      if (!perfil) guardarPerfil(evento, { nombre: msg.nombre });
       setEnviado(msg);
     } catch (err) {
       setError(mensajeDeSubida(err));
@@ -151,7 +169,9 @@ export function MuroModulo({ evento, nombreEvento }: { evento: string; nombreEve
   };
 
   const otro = () => {
-    setNombre("");
+    // El nombre no se limpia a ciegas: con perfil, el siguiente mensaje ya
+    // sale firmado (lo normal es que escriba la misma persona).
+    setNombre(perfil?.nombre ?? "");
     setTexto("");
     setFotoBlob(null);
     setVistaPrevia((previa) => {

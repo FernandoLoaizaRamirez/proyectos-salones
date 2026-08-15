@@ -26,6 +26,7 @@ import {
   porVotos,
   type Cancion,
 } from "./lib";
+import { guardarPerfil, usePerfil } from "@/lib/perfil";
 
 const campo =
   "w-full rounded-[var(--radius)] border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/30";
@@ -37,10 +38,18 @@ export function PlaylistModulo({
   evento: string;
   nombreEvento: string;
 }) {
+  const perfil = usePerfil(evento);
   const [canciones, setCanciones] = React.useState<Cancion[]>([]);
   const [misVotos, setMisVotos] = React.useState<string[]>([]);
   const [cargado, setCargado] = React.useState(false);
   const [form, setForm] = React.useState({ titulo: "", artista: "", link: "", nombre: "" });
+
+  // El perfil llega tras el primer pintado; si "Tu nombre" sigue vacío, se
+  // rellena solo (editable — puede pedir la canción alguien más del teléfono).
+  React.useEffect(() => {
+    if (!perfil) return;
+    setForm((f) => (f.nombre.trim() ? f : { ...f, nombre: perfil.nombre }));
+  }, [perfil]);
   const [error, setError] = React.useState("");
   const [agregada, setAgregada] = React.useState(false);
   const [enviando, setEnviando] = React.useState(false);
@@ -117,8 +126,13 @@ export function PlaylistModulo({
       setEnviando(false);
     }
 
+    // Presentarse aquí también alimenta el perfil común del teléfono.
+    if (!perfil && c.pedidaPor) guardarPerfil(evento, { nombre: c.pedidaPor });
+
     setMisVotos((v) => (v.includes(c.id) ? v : [...v, c.id]));
-    setForm({ titulo: "", artista: "", link: "", nombre: "" });
+    // El nombre se queda puesto: lo normal es que la siguiente canción la pida
+    // la misma persona.
+    setForm((f) => ({ titulo: "", artista: "", link: "", nombre: f.nombre }));
     setAgregada(true);
     setTimeout(() => setAgregada(false), 2500);
   };

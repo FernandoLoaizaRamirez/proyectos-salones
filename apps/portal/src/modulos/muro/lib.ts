@@ -21,6 +21,12 @@ export type Mensaje = {
   foto?: string;
   /** Marca de tiempo (ms). */
   fecha: number;
+  /**
+   * El renglón del invitado en la lista del anfitrión, si firmó con perfil de
+   * enlace personal. Campo ADICIONAL: la app `muro` original lo ignora sola, y
+   * solo viaja en mensajes nuevos (los de antes no se reescriben — candado 0016).
+   */
+  invitadoId?: string;
 };
 
 /** Colección compartida en el lugar central (la misma que usa `apps/muro`). */

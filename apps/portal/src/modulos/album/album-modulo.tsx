@@ -31,7 +31,9 @@ import { Button, EmptyState, cn, Confirmar, AvisoParticipacion } from "@salones/
 import {
   esAnfitrion,
   estaConectado,
+  huellaDeAutor,
   obtenerSync,
+  quitarMedio,
   resolverMedios,
   mensajeDeSubida,
 } from "@salones/sync";
@@ -48,6 +50,7 @@ import {
   porFecha,
   type Foto,
 } from "./lib";
+import { usePerfil } from "@/lib/perfil";
 
 export function AlbumModulo({
   evento,
@@ -68,6 +71,9 @@ export function AlbumModulo({
    */
   conVideo: boolean;
 }) {
+  // El perfil común del teléfono: con él, cada recuerdo sube firmado (autor y,
+  // si llegó con enlace personal, su renglón en la lista del anfitrión).
+  const perfil = usePerfil(evento);
   const [fotos, setFotos] = React.useState<Foto[]>([]);
   /** Ids subidos desde ESTE dispositivo. En la demo LOCAL, lo que puede quitar. */
   const [mias, setMias] = React.useState<string[]>([]);
@@ -95,14 +101,22 @@ export function AlbumModulo({
 
   /**
    * ¿Se puede quitar esta foto del álbum?
-   *  · Con servidor (álbum compartido): SOLO el anfitrión. Tras el corte de la
-   *    0009, la base rechaza cualquier borrado que no venga del anfitrión, así que
-   *    enseñarle el botón al invitado sería enseñarle uno que no funciona.
-   *  · En la demo LOCAL (sin servidor): quien la subió en este teléfono.
+   *  · El ANFITRIÓN, cualquiera.
+   *  · Quien la SUBIÓ desde este teléfono, la suya — y solo la suya.
+   *
+   * Lo segundo es nuevo (14 ago 2026). Antes, con servidor, el invitado no podía
+   * quitar ni lo propio: la base solo aceptaba borrados del anfitrión (0009), así
+   * que quien subía una foto por error tenía que buscar a los novios en mitad de
+   * su boda. Ahora cada recuerdo va firmado con la llave de este teléfono y
+   * `media-borrar` la comprueba en el servidor.
+   *
+   * `mias` decide lo que se DIBUJA; quien decide de verdad es el servidor. Si las
+   * dos cosas se desincronizaran (se limpió el navegador a medias), el botón
+   * saldría y el borrado diría que no — se avisa, no se rompe nada.
    */
   const puedeQuitar = React.useCallback(
-    (f: Foto) => (conectado === false ? mias.includes(f.id) : anfitrion),
-    [conectado, mias, anfitrion],
+    (f: Foto) => anfitrion || mias.includes(f.id),
+    [mias, anfitrion],
   );
 
   // Álbum en vivo: con servidor, se suscribe a la colección del evento. En la
@@ -219,13 +233,34 @@ export function AlbumModulo({
       // almacenamiento central y se anota en la colección del evento; el álbum
       // de todos se actualiza solo por la suscripción.
       const sync = obtenerSync();
+      // La firma de este teléfono, una vez para toda la tanda. Va con cada foto
+      // para poder quitarla después; si el navegador no deja guardarla
+      // (incógnito), se sube igual y simplemente no se podrá borrar.
+      const huella = await huellaDeAutor(evento);
       setSubiendo((n) => n + aptos.length);
       for (const a of aptos) {
         try {
           const blob = a.type.startsWith("image/") ? await comprimirImagen(a) : a;
           const tipo = blob.type || a.type;
           const url = await sync.subirArchivo(evento, a.name, blob, tipo);
-          const foto: Foto = { id: nuevoIdFoto(), nombre: a.name, url, tipo, fecha: Date.now() };
+          const foto: Foto = {
+            id: nuevoIdFoto(),
+            nombre: a.name,
+            url,
+            tipo,
+            fecha: Date.now(),
+            // El álbum deja de ser anónimo cuando el teléfono sabe quién es.
+            ...(perfil ? { autor: perfil.nombre } : {}),
+            ...(perfil?.id ? { invitadoId: perfil.id } : {}),
+            /**
+             * La firma que permite QUITARLA después. Ojo con la diferencia:
+             * `autor` es el nombre —para que el anfitrión sepa de quién es— y
+             * cualquiera podría escribir el nombre de otro. Esto es la huella de
+             * un secreto que solo tiene este teléfono, y es lo único que el
+             * servidor acepta como prueba de "esto lo subí yo".
+             */
+            ...(huella ? { autorHuella: huella } : {}),
+          };
           await sync.guardar(evento, COLECCION_FOTOS, foto);
           anotarMias([foto.id]);
         } catch (e) {
@@ -235,7 +270,7 @@ export function AlbumModulo({
         }
       }
     },
-    [evento, anotarMias, conVideo],
+    [evento, anotarMias, conVideo, perfil],
   );
 
   /* ---- Moderación (arreglado el 6 ago 2026) -----------------------------
@@ -246,9 +281,20 @@ export function AlbumModulo({
     async (f: Foto): Promise<boolean> => {
       if (estaConectado()) {
         // Se quita del álbum compartido; la suscripción refresca la vista sola.
-        try {
-          await obtenerSync().eliminar(evento, COLECCION_FOTOS, f.id);
-        } catch {
+        // `quitarMedio` borra la fila Y el archivo del almacén: si solo se
+        // quitara la fila, la foto desaparecería de la vista pero seguiría
+        // gastando el cupo del evento (migración 0018).
+        const r = await quitarMedio(evento, COLECCION_FOTOS, f.id);
+        if (r === "sin-desplegar") {
+          // Todavía sin la Edge Function: camino de siempre, que sirve al
+          // anfitrión. Deja el archivo huérfano, pero es mejor que no poder
+          // moderar durante el despliegue.
+          try {
+            await obtenerSync().eliminar(evento, COLECCION_FOTOS, f.id);
+          } catch {
+            return false;
+          }
+        } else if (r !== "ok") {
           return false;
         }
       } else {

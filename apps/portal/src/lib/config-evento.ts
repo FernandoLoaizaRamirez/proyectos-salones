@@ -11,7 +11,7 @@
  *
  * Degradación elegante — el portal NUNCA se rompe:
  *   • Sin variables de Supabase (o si la función aún no está desplegada / falla la
- *     red) → config DEMO: los 5 módulos y el tema por defecto.
+ *     red) → config DEMO: la suite completa y el tema por defecto.
  *   • Evento inexistente (404) → estado "no-encontrado", sin funciones.
  *
  * Corre en el SERVIDOR (lo llaman los server components), así que la petición no
@@ -42,11 +42,25 @@ export type ConfigEvento = {
   estado: EstadoConfig;
 };
 
-/** Plan DEMO: los 5 módulos del invitado encendidos (cuando no hay servidor). */
+/**
+ * Plan DEMO (cuando no hay servidor): la SUITE COMPLETA del invitado. La demo
+ * es lo que se le renta a los salones como prueba, y una vitrina a medias no
+ * vende; en los eventos reales manda su plan, no esta lista.
+ */
 const PLAN_DEMO: Plan = {
   id: "demo",
   nombre: "Demo",
-  funciones: [F.Muro, F.Playlist, F.Rsvp, F.Dinamicas, F.Album],
+  funciones: [
+    F.Invitacion,
+    F.Rsvp,
+    F.Mesas,
+    F.Album,
+    F.Muro,
+    F.Playlist,
+    F.Dinamicas,
+    F.Photobooth,
+    F.Brindis,
+  ],
 };
 
 /** Lo que devuelve la Edge Function `evento-config`. */

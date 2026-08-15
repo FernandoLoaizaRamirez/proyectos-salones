@@ -11,6 +11,7 @@ import { ArrowLeft, Lock, SearchX } from "lucide-react";
 import { tieneFuncion, FEATURES_CONOCIDAS as F } from "@salones/core";
 import { BrandingScope, Card, type BrandingSalon } from "@salones/ui";
 import { resolverConfigEvento } from "@/lib/config-evento";
+import { CapturaPerfil } from "@/components/captura-perfil";
 import { MuroModulo } from "@/modulos/muro/muro-modulo";
 
 const CODIGO_VALIDO = /^[a-z0-9-]{1,60}$/i;
@@ -43,6 +44,8 @@ export default async function Page({
   return (
     <BrandingScope branding={branding} className="min-h-screen">
       <main className="mx-auto max-w-3xl px-6 py-10">
+        {/* El enlace personal (#) se captura llegue por la puerta que llegue. */}
+        <CapturaPerfil evento={codigo} />
         <Link
           href={volver}
           className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"

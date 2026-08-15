@@ -26,11 +26,13 @@ import {
   type Invitado,
   type RespuestaItem,
 } from "./lib";
+import { guardarPerfil, usePerfil } from "@/lib/perfil";
 
 const campo =
   "w-full rounded-[var(--radius)] border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/30";
 
 export function RsvpModulo({ evento, nombreEvento }: { evento: string; nombreEvento: string }) {
+  const perfil = usePerfil(evento);
   const [invitado, setInvitado] = React.useState<Invitado | null>(null);
   const [mia, setMia] = React.useState<RespuestaItem | null>(null);
   const [listo, setListo] = React.useState(false);
@@ -86,6 +88,17 @@ export function RsvpModulo({ evento, nombreEvento }: { evento: string; nombreEve
 
   const tope = invitado ? invitado.cupos : MAX_PERSONAS_ABIERTO;
 
+  /*
+   * En modo ABIERTO, el perfil común del teléfono rellena el nombre si el campo
+   * sigue vacío (se presentó en el muro o en la trivia y aquí ya lo conocemos).
+   * El perfil llega después del primer pintado, por eso es un efecto y no el
+   * estado inicial; con invitación personal no hace falta: el `#` manda.
+   */
+  React.useEffect(() => {
+    if (!perfil || invitado) return;
+    setNombre((previo) => (previo.trim() ? previo : perfil.nombre));
+  }, [perfil, invitado]);
+
   const enviar = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!asiste) {
@@ -121,6 +134,14 @@ export function RsvpModulo({ evento, nombreEvento }: { evento: string; nombreEve
       } catch {
         /* sin espacio: la respuesta ya viajó, solo se pierde el recordatorio */
       }
+      // Confirmar también alimenta el perfil común: con invitación personal
+      // viaja el id real de su renglón (la fusión de guardarPerfil lo cuida).
+      guardarPerfil(
+        evento,
+        invitado
+          ? { id: invitado.id, nombre: invitado.nombre, cupos: invitado.cupos }
+          : { nombre: suNombre },
+      );
       setMia(respuesta);
       setEditando(false);
     } catch {

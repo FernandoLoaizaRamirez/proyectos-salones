@@ -13,6 +13,8 @@ import { BrandingScope, PieLegal, type BrandingSalon } from "@salones/ui";
 import { tieneFuncion } from "@salones/core";
 import { ArrowUpRight, PartyPopper, SearchX } from "lucide-react";
 import { MODULOS, enlaceModulo, esInterno } from "@/lib/modulos";
+import { CapturaPerfil } from "@/components/captura-perfil";
+import { HeroEvento } from "@/components/hero-evento";
 import type { ConfigEvento } from "@/lib/config-evento";
 
 const CLASES_TARJETA =
@@ -38,6 +40,8 @@ export function PortalHome({ config }: { config: ConfigEvento }) {
   return (
     <BrandingScope branding={branding} className="min-h-screen">
       <main className="mx-auto max-w-3xl px-6 py-14">
+        {/* El enlace personal (#) se captura llegue por la puerta que llegue. */}
+        <CapturaPerfil evento={config.codigo} />
         <div className="flex items-center gap-2 text-sm font-medium text-primary">
           <PartyPopper className="size-4" />
           Portal del evento
@@ -46,7 +50,11 @@ export function PortalHome({ config }: { config: ConfigEvento }) {
         {config.salon ? (
           <p className="mt-1 text-sm text-muted-foreground">En {config.salon}</p>
         ) : null}
-        <p className="mt-2 max-w-xl text-muted-foreground">
+
+        {/* El saludo personal y los datos reales del evento (cuenta regresiva). */}
+        <HeroEvento evento={config.codigo} />
+
+        <p className="mt-6 max-w-xl text-muted-foreground">
           Todo lo del evento, en un solo lugar. Elige una experiencia:
         </p>
 

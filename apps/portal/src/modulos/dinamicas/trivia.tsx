@@ -9,14 +9,23 @@ import { ArrowRight, Check, RefreshCw, Trophy, X } from "lucide-react";
 import { Button, Card, cn, AvisoParticipacion } from "@salones/ui";
 import { TRIVIA_PREGUNTAS, porPuntaje } from "./lib";
 import { useRanking } from "./use-ranking";
+import { guardarPerfil, usePerfil } from "@/lib/perfil";
 
 const campo =
   "w-full rounded-[var(--radius)] border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/30";
 
 export function Trivia({ evento }: { evento: string }) {
   const { ranking, agregar } = useRanking(evento);
+  const perfil = usePerfil(evento);
   const [fase, setFase] = React.useState<"nombre" | "jugando" | "fin">("nombre");
   const [nombre, setNombre] = React.useState("");
+
+  // El perfil común del teléfono rellena el nombre si el campo sigue vacío
+  // (llega después del primer pintado; editable, como en los demás módulos).
+  React.useEffect(() => {
+    if (!perfil) return;
+    setNombre((previo) => (previo.trim() ? previo : perfil.nombre));
+  }, [perfil]);
   const [idx, setIdx] = React.useState(0);
   const [elegida, setElegida] = React.useState<number | null>(null);
   const [aciertos, setAciertos] = React.useState(0);
@@ -28,6 +37,8 @@ export function Trivia({ evento }: { evento: string }) {
   const empezar = (e: React.FormEvent) => {
     e.preventDefault();
     if (!nombre.trim()) return;
+    // Presentarse para jugar también alimenta el perfil común del teléfono.
+    if (!perfil) guardarPerfil(evento, { nombre: nombre.trim() });
     setFase("jugando");
   };
 
@@ -49,7 +60,9 @@ export function Trivia({ evento }: { evento: string }) {
 
   const otraVez = () => {
     setFase("nombre");
-    setNombre("");
+    // Con perfil, la revancha ya sale firmada (lo normal es que repita la
+    // misma persona).
+    setNombre(perfil?.nombre ?? "");
     setIdx(0);
     setElegida(null);
     setAciertos(0);

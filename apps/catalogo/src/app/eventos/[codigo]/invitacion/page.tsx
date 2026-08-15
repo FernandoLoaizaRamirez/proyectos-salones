@@ -412,6 +412,19 @@ export default function InvitacionDelEvento({
                 <MessageCircle className="size-4" /> Enviar por WhatsApp
               </Button>
             </div>
+            {/* Que nadie reparta el enlace general creyendo que era el personal. */}
+            <p className="mt-3 text-xs text-muted-foreground">
+              Este es el enlace general (para grupos o redes). Los enlaces{" "}
+              <strong>personales</strong> —los que saludan a cada invitado por su nombre y le
+              enseñan su mesa— se reparten uno por uno desde{" "}
+              <Link
+                href={`/eventos/${encodeURIComponent(codigo)}/confirmaciones`}
+                className="font-medium text-primary underline underline-offset-2"
+              >
+                Confirmaciones
+              </Link>
+              .
+            </p>
           </>
         ) : (
           <p className="mt-1 text-sm text-amber-600 dark:text-amber-400">

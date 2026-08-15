@@ -23,7 +23,9 @@ import Link from "next/link";
 import {
   ArrowLeft,
   Check,
+  Copy,
   Loader2,
+  Mail,
   MessageCircle,
   Plus,
   Download,
@@ -50,7 +52,7 @@ import {
   listarInvitados,
   type Invitado,
 } from "@/lib/invitados";
-import { baseDeApp } from "@/lib/pantallas";
+import { baseDeApp, enlaceInvitacionPersonal } from "@/lib/pantallas";
 
 type Estado = (typeof EstadoRSVP)[keyof typeof EstadoRSVP];
 
@@ -82,6 +84,8 @@ export default function Confirmaciones({ params }: { params: Promise<{ codigo: s
   const [editId, setEditId] = React.useState<string | null>(null);
   const [error, setError] = React.useState("");
   const [guardando, setGuardando] = React.useState(false);
+  /** De quién se acaba de copiar la invitación personal (para el ✓ de 2 seg). */
+  const [copiadoInv, setCopiadoInv] = React.useState("");
 
   // Ficha del evento + lista de invitados (ambas exigen sesión; la RLS del salón
   // decide qué se ve).
@@ -223,6 +227,33 @@ export default function Confirmaciones({ params }: { params: Promise<{ codigo: s
     if (!url) return;
     const msg = `¡Hola! Nos encantaría contar contigo en ${evento?.nombre ?? "nuestro evento"}. Confirma tu asistencia aquí:\n${url}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, "_blank", "noopener,noreferrer");
+  };
+
+  /*
+   * La INVITACIÓN personal es otro enlace distinto al de "Enviar": aquel lleva
+   * solo a confirmar (el RSVP del portal); este abre la invitación completa,
+   * que lo saluda por su nombre, le deja la confirmación precargada y le
+   * enseña en qué mesa va. Los datos del invitado viajan en el `#`, que nunca
+   * llega al servidor.
+   */
+  const compartirInvitacion = (inv: Invitado) => {
+    const url = enlaceInvitacionPersonal(codigo, inv);
+    if (!url) return;
+    const msg = `Con mucho cariño, esta es su invitación:\n${url}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, "_blank", "noopener,noreferrer");
+  };
+
+  /** Para quien prefiere pegarla a mano (en un chat ya abierto, por ejemplo). */
+  const copiarInvitacion = async (inv: Invitado) => {
+    const url = enlaceInvitacionPersonal(codigo, inv);
+    if (!url) return;
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopiadoInv(inv.id);
+      setTimeout(() => setCopiadoInv(""), 2000);
+    } catch {
+      /* sin portapapeles */
+    }
   };
 
   const descartarSuelta = (id: string) => {
@@ -522,6 +553,28 @@ export default function Confirmaciones({ params }: { params: Promise<{ codigo: s
                         <Button variant="outline" size="sm" onClick={() => compartir(inv)}>
                           <MessageCircle className="size-4" /> Enviar
                         </Button>
+                        {/* La invitación completa (saluda por su nombre y enseña su mesa),
+                            no solo el RSVP: por WhatsApp o copiada para pegarla a mano. */}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => compartirInvitacion(inv)}
+                          title={`La invitación personal de ${inv.nombre}: lo saluda por su nombre y le enseña su mesa`}
+                        >
+                          <Mail className="size-4" /> Invitación
+                        </Button>
+                        <button
+                          onClick={() => void copiarInvitacion(inv)}
+                          aria-label={`Copiar la invitación personal de ${inv.nombre}`}
+                          title="Copiar su enlace de la invitación"
+                          className="grid size-9 place-items-center rounded-[var(--radius)] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                        >
+                          {copiadoInv === inv.id ? (
+                            <Check className="size-4 text-green-600" />
+                          ) : (
+                            <Copy className="size-4" />
+                          )}
+                        </button>
                         <Button variant="ghost" size="sm" onClick={() => editar(inv)}>
                           Editar
                         </Button>

@@ -14,7 +14,7 @@
  */
 import type { ComponentType } from "react";
 import { BookHeart, CalendarCheck, Camera, Gamepad2, ListMusic } from "lucide-react";
-import { FEATURES_CONOCIDAS as F } from "@salones/core";
+import { FEATURES_CONOCIDAS as F, codificarInvitadoEnlace } from "@salones/core";
 import { productos } from "@/lib/catalogo";
 
 export type PantallaAnfitrion = {
@@ -151,6 +151,21 @@ export function enlacePantalla(p: PantallaAnfitrion, codigo: string): string {
 export function enlaceInvitacion(codigo: string): string {
   const base = baseDeApp("invitaciones");
   return base ? `${base}/?e=${encodeURIComponent(codigo)}` : "";
+}
+
+/**
+ * El enlace PERSONAL de la invitación: el que se manda a CADA invitado por
+ * WhatsApp. A diferencia del general, este lo saluda por su nombre, le deja el
+ * RSVP ya precargado y le enseña su mesa. Sus datos van en el fragmento (`#`),
+ * que NUNCA viaja al servidor: la identidad se queda en el teléfono del
+ * invitado, igual que en el enlace personal del portal.
+ */
+export function enlaceInvitacionPersonal(
+  codigo: string,
+  inv: { id: string; nombre: string; cupos: number },
+): string {
+  const base = baseDeApp("invitaciones");
+  return base ? `${base}/?e=${encodeURIComponent(codigo)}#${codificarInvitadoEnlace(inv)}` : "";
 }
 
 /**

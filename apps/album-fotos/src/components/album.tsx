@@ -20,8 +20,10 @@ import {
   esAnfitrion,
   resolverMedios,
   descargarMedios,
+  huellaDeAutor,
   mensajeDeSubida,
   pesaDemasiado,
+  quitarMedio,
   MB_POR_ARCHIVO,
   type ResultadoDescarga,
 } from "@salones/sync";
@@ -56,6 +58,12 @@ export function Album() {
   const [anfitrion, setAnfitrion] = React.useState(false);
   /** ¿Se contrató el paquete de video? Si no, aquí solo se suben fotos. */
   const conVideo = useTieneVideo();
+  /**
+   * La firma de ESTE teléfono. Con ella se sabe qué recuerdos son suyos, que es
+   * lo único que puede quitar un invitado. Arranca en null: hasta saberla, no se
+   * enseña ningún botón de borrar — esconder de más nunca hace daño.
+   */
+  const [miHuella, setMiHuella] = React.useState<string | null>(null);
   // Dirección guardada → dirección con la que se muestra (firmada y con fecha
   // de caducidad). Lo que no esté aquí se muestra tal cual.
   const [vistas, setVistas] = React.useState<Record<string, string>>({});
@@ -66,6 +74,7 @@ export function Album() {
   React.useEffect(() => {
     // Depende del enlace y del navegador, que en el servidor no existen.
     setAnfitrion(esAnfitrion());
+    void huellaDeAutor(eventoActual()).then(setMiHuella);
     if (!estaConectado()) return;
     return obtenerSync().suscribir<Archivo>(eventoActual(), COLECCION_FOTOS, setArchivos);
   }, []);
@@ -140,6 +149,8 @@ export function Album() {
       // anota en la colección; el álbum de todos se actualiza solo.
       const sync = obtenerSync();
       const eventoId = eventoActual();
+      // Una vez para toda la tanda: es la firma que permitirá quitarlas después.
+      const huella = await huellaDeAutor(eventoId);
       setSubiendo((n) => n + aptos.length);
       for (const a of aptos) {
         try {
@@ -152,6 +163,9 @@ export function Album() {
             url,
             tipo,
             fecha: Date.now(),
+            // La prueba de "esto lo subí yo". Es una HUELLA, no la llave: la
+            // colección la puede leer cualquier invitado.
+            ...(huella ? { autorHuella: huella } : {}),
           });
         } catch (e) {
           setErrorSubida(mensajeDeSubida(e));
@@ -163,6 +177,19 @@ export function Album() {
     [conVideo],
   );
 
+  /**
+   * ¿Este recuerdo lo subió ESTE teléfono?
+   *
+   * Se compara la huella guardada con la de aquí, que es exactamente lo que el
+   * servidor va a aceptar: así el botón no promete nada que `media-borrar` vaya
+   * a negar después. Las fotos de antes del 14 ago 2026 no llevan huella, así
+   * que solo las puede quitar el anfitrión.
+   */
+  const esMia = React.useCallback(
+    (f: Archivo) => !!miHuella && f.autorHuella === miHuella,
+    [miHuella],
+  );
+
   /* ---- Moderación (arreglado el 6 ago 2026) -----------------------------
    * Quitar un recuerdo es irreversible. Tenía tres defectos: no preguntaba, el
    * botón solo aparecía al pasar el ratón (invisible en un teléfono, pero
@@ -170,6 +197,12 @@ export function Album() {
   const eliminar = React.useCallback(async (f: Archivo): Promise<boolean> => {
     if (estaConectado()) {
       // Se quita del álbum compartido; la suscripción refresca la vista sola.
+      // `quitarMedio` borra la fila Y el archivo del almacén: si solo se quitara
+      // la fila, la foto desaparecería de la vista pero seguiría gastando el
+      // cupo del evento (migración 0018).
+      const r = await quitarMedio(eventoActual(), COLECCION_FOTOS, f.id);
+      if (r !== "sin-desplegar") return r === "ok";
+      // Todavía sin la Edge Function: camino de siempre, que sirve al anfitrión.
       try {
         await obtenerSync().eliminar(eventoActual(), COLECCION_FOTOS, f.id);
         return true;
@@ -381,7 +414,7 @@ export function Album() {
                   />
                 )}
               </button>
-              {anfitrion ? (
+              {anfitrion || esMia(f) ? (
                 <button
                   type="button"
                   aria-label={`Eliminar ${f.nombre}`}
@@ -451,10 +484,20 @@ export function Album() {
         abierto={porQuitar !== null}
         titulo={porQuitar?.tipo.startsWith("video/") ? "¿Quitar este video?" : "¿Quitar esta foto?"}
         descripcion={
-          <>
-            Se quita <strong>{porQuitar?.nombre}</strong> del álbum de todos los invitados. No se
-            puede deshacer, y si nadie la descargó antes, se pierde.
-          </>
+          // Se le habla distinto a cada uno: el anfitrión está borrando el
+          // recuerdo de OTRA persona —eso hay que decirlo— y el invitado está
+          // retirando el suyo, que es su derecho y no debería sonar a regañina.
+          porQuitar && !anfitrion && esMia(porQuitar) ? (
+            <>
+              Se retira <strong>{porQuitar.nombre}</strong>, que subiste tú. Desaparece del álbum de
+              todos y no se puede deshacer.
+            </>
+          ) : (
+            <>
+              Se quita <strong>{porQuitar?.nombre}</strong> del álbum de todos los invitados. No se
+              puede deshacer, y si nadie la descargó antes, se pierde.
+            </>
+          )
         }
         textoConfirmar="Sí, quitarla"
         onConfirmar={() => {
@@ -465,7 +508,9 @@ export function Album() {
             setErrorQuitar(
               ok
                 ? ""
-                : `No pudimos quitar ${f.nombre}. Si este evento usa llave de anfitrión, ábrelo desde el enlace que la lleva.`,
+                : esMia(f)
+                  ? `No pudimos quitar ${f.nombre}. Solo se puede desde el mismo teléfono con el que la subiste.`
+                  : `No pudimos quitar ${f.nombre}. Solo puede quitarla quien la subió, o quien organiza el evento desde su enlace.`,
             ),
           );
         }}

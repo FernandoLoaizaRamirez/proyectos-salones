@@ -649,6 +649,41 @@ function crearProveedorServidor(url: string, anon: string): ProveedorSync {
     return consulta;
   };
 
+  /* ---- Quitar un recuerdo (Edge Function `media-borrar`) -------------------
+   * Va por la función y no por PostgREST porque hacen falta dos cosas que desde
+   * el navegador no se pueden: comprobar la llave de autor contra la huella
+   * guardada, y borrar TAMBIÉN el archivo del almacén. Sin lo segundo la foto
+   * desaparece del álbum pero sigue gastando cupo. */
+  const funcMediaBorrar = `${raiz}/functions/v1/media-borrar`;
+
+  pedirBorrado = async (evento, coleccion, id) => {
+    const [pase, paseAnfitrion] = await Promise.all([
+      obtenerPase(evento),
+      obtenerPaseAnfitrion(evento),
+    ]);
+    if (!pase && !paseAnfitrion) return "sin-desplegar";
+    try {
+      const res = await fetch(funcMediaBorrar, {
+        method: "POST",
+        headers: {
+          ...auth,
+          ...(pase ? { "x-evento-pase": pase } : {}),
+          ...(paseAnfitrion ? { "x-evento-anfitrion": paseAnfitrion } : {}),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ id, coleccion, llave: llaveDeAutor(evento) ?? "" }),
+      });
+      if (res.ok) return "ok";
+      // 404 = la función todavía no está desplegada. Quien llama tira por el
+      // camino de siempre, que para el anfitrión sigue funcionando.
+      if (res.status === 404) return "sin-desplegar";
+      if (res.status === 403) return "no-es-tuya";
+      return "fallo";
+    } catch {
+      return "fallo";
+    }
+  };
+
   /* ---- El contador de espacio (migración 0018) -----------------------------
    * A diferencia de las funciones contratadas, esto CAMBIA durante la fiesta:
    * cada foto que sube alguien lo mueve. Por eso no se cachea. */
@@ -981,6 +1016,63 @@ export function sufijoEvento(): string {
 }
 
 /* ================================================================== */
+/* "Esto lo subí yo" — la tercera llave, la del invitado               */
+/* ================================================================== */
+
+/**
+ * Hasta ahora había DOS llaves por evento: la del invitado (el `?e=` del QR) y
+ * la del anfitrión (el `&a=`). Esta es la tercera, y es de otra clase: no la
+ * reparte nadie, se la inventa **cada teléfono** la primera vez que sube algo.
+ *
+ * PARA QUÉ: que quien sube una foto pueda quitarla, y SOLO la suya. Es lo que
+ * pide la capa legal —el aviso dice que puedes retirar lo que subas— y lo que
+ * cualquiera espera de una app. Hasta hoy había que pedírselo al anfitrión.
+ *
+ * POR QUÉ NO VALE EL NOMBRE DEL INVITADO: el portal ya guarda `autor` con el
+ * nombre del perfil, pero un nombre no es una credencial — cualquiera puede
+ * decir que es María y llevarse sus recuerdos. Esto es un secreto aleatorio.
+ *
+ * CÓMO NO SE FILTRA: en la foto se guarda solo la **huella** (sha-256) de la
+ * llave, nunca la llave. La colección la puede leer cualquier invitado, así que
+ * ahí no puede viajar nada que sirva para borrar. Para quitar una foto hay que
+ * presentar la llave entera, y eso solo lo puede hacer el teléfono que la subió.
+ *
+ * QUÉ SE PIERDE, DICHO CLARO: la llave vive en ESE navegador. Si el invitado
+ * limpia sus datos, cambia de teléfono o entra de incógnito, deja de poder
+ * borrar lo suyo — y tendrá que pedírselo a quien organiza, como hasta ahora.
+ * La alternativa sería pedirle que se registre, y nadie crea una cuenta en una
+ * boda.
+ */
+const claveAutorKey = (evento: string) => `salones:autor:${evento}`;
+
+/** Lee (o crea) la llave de autor de ESTE navegador para ESTE evento. */
+export function llaveDeAutor(evento: string): string | null {
+  if (!hayNavegador()) return null;
+  try {
+    const guardada = window.localStorage.getItem(claveAutorKey(evento));
+    if (guardada) return guardada;
+    // 32 bytes de azar de verdad: adivinarla no es una opción.
+    const bytes = new Uint8Array(32);
+    crypto.getRandomValues(bytes);
+    const nueva = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+    window.localStorage.setItem(claveAutorKey(evento), nueva);
+    return nueva;
+  } catch {
+    // Sin almacenamiento (incógnito, cookies bloqueadas): se puede subir igual,
+    // simplemente no se podrá borrar después. Mejor eso que no dejar subir.
+    return null;
+  }
+}
+
+/** La huella que SÍ viaja con la foto. Nunca la llave. */
+export async function huellaDeAutor(evento: string): Promise<string | null> {
+  const llave = llaveDeAutor(evento);
+  if (!llave || typeof crypto?.subtle === "undefined") return null;
+  const hash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(llave));
+  return Array.from(new Uint8Array(hash), (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/* ================================================================== */
 /* Qué se contrató para este evento                                    */
 /* ================================================================== */
 
@@ -1038,6 +1130,36 @@ export type EspacioEvento = { usado: number; cupo: number };
  * Lo pone `crearProveedorServidor`. En modo local no hay almacén que medir.
  */
 let preguntarEspacio: ((evento: string) => Promise<EspacioEvento | null>) | null = null;
+
+/** Cómo acabó un intento de quitar un recuerdo. */
+export type ResultadoQuitar = "ok" | "no-es-tuya" | "fallo" | "sin-desplegar";
+
+/** Lo pone `crearProveedorServidor`. En modo local se borra sin preguntar a nadie. */
+let pedirBorrado:
+  | ((evento: string, coleccion: string, id: string) => Promise<ResultadoQuitar>)
+  | null = null;
+
+/**
+ * Quita un recuerdo del álbum: la fila **y** el archivo del almacén.
+ *
+ * Lo puede hacer el ANFITRIÓN con cualquiera, y el AUTOR solo con los suyos —la
+ * prueba es la llave de este teléfono, ver `llaveDeAutor`—. La comprobación la
+ * hace el servidor (`media-borrar`), no esta función: aquí solo se pregunta.
+ *
+ * Si la función todavía no está desplegada devuelve `"sin-desplegar"` y quien
+ * llama debe caer al camino de siempre (`obtenerSync().eliminar`), que sigue
+ * funcionando para el anfitrión. Así esto se puede publicar antes que el
+ * servidor sin dejar a nadie sin moderar a media boda.
+ */
+export async function quitarMedio(
+  evento: string,
+  coleccion: string,
+  id: string,
+): Promise<ResultadoQuitar> {
+  obtenerSync(); // asegura que el proveedor esté construido
+  if (!pedirBorrado) return "sin-desplegar";
+  return pedirBorrado(evento, coleccion, id);
+}
 
 /**
  * Cuánto espacio lleva gastado este evento. Para ENSEÑÁRSELO a quien organiza,

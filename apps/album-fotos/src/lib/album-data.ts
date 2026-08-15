@@ -18,7 +18,19 @@ export const evento = {
 export const EVENTO_ID = "demo";
 export const COLECCION_FOTOS = "fotos";
 
-export type Archivo = { id: string; nombre: string; url: string; tipo: string };
+export type Archivo = {
+  id: string;
+  nombre: string;
+  url: string;
+  tipo: string;
+  /**
+   * Huella del teléfono que lo subió (sha-256 de su llave de autor). Es lo que
+   * permite que quien sube una foto pueda quitarla, y solo la suya. Opcional: los
+   * recuerdos de antes del 14 ago 2026 no la llevan, y esos solo los quita el
+   * anfitrión.
+   */
+  autorHuella?: string;
+};
 
 /**
  * Comprime una imagen a JPEG (máx. ~1600 px) antes de subirla, para que pese

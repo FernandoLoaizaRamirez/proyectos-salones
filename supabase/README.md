@@ -72,7 +72,7 @@ Se aplican **en orden**. Cada una es idempotente/aditiva (segura de correr):
 2. Menú **SQL Editor** → **New query**.
 3. Pega el contenido de cada archivo **en orden** (0001 → 0002 → 0003 → 0005 →
    0006 → 0007 → 0008 → 0009 → 0010 → 0011 → 0012 → 0013 → 0014 → 0015 → 0016 →
-   0017 → 0018) y dale **Run**.
+   0017 → 0018 → 0019 → 0020) y dale **Run**.
    ⚠️ Antes de la `0014`, despliega las Edge Functions.
    ⚠️ La `0018` necesita la `0017` aplicada (le pregunta por el paquete de video).
 4. En el proyecto que ya está en vivo, la `0001` ya está aplicada (no hace daño

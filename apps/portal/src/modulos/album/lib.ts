@@ -40,6 +40,12 @@ export type Foto = {
   autor?: string;
   /** Su renglón en la lista del anfitrión (si llegó con enlace personal). */
   invitadoId?: string;
+  /**
+   * Huella (sha-256) de la llave del teléfono que lo subió. Es lo ÚNICO que el
+   * servidor acepta como prueba de "esto lo subí yo" para dejar quitarlo:
+   * `autor` es solo un nombre, y un nombre lo puede escribir cualquiera.
+   */
+  autorHuella?: string;
 };
 
 /**

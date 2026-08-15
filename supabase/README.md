@@ -31,11 +31,11 @@ Se aplican **en orden**. Cada una es idempotente/aditiva (segura de correr):
 | `0018_cupo_almacenamiento.sql` | **Cupo de espacio por evento**, medido de los bytes reales de `storage.objects`. Necesita la `0017`. | ✅ Corrida el 14 ago 2026. ⚠️ Sus cupos (3 GB / 15 GB) los reemplaza la `0019`: eran más grandes que todo el proyecto. |
 | `0019_cupos_plan_gratis.sql` | **Techo global del almacén** (900 MB) + cupos a escala del plan gratis + aviso al 80% en el diagnóstico. Necesita la `0018`. | ✅ Corrida el 14 ago 2026. **Aquí se cambian los cuatro números el día que se suba a un plan de pago.** |
 
-> ⚠️ **CÓMO SABER DE VERDAD QUÉ ESTÁ CORRIDO.** No te fíes de esta tabla ni de las
-> pruebas: `tests/aislamiento/sobrescritura.test.ts` **se salta sus casos en
-> silencio** si la `0016` no está puesta, así que sale verde igual (y ni siquiera
-> `EXIGIR_SEGURIDAD=1` lo evita — es un agujero del centinela, no una excepción a
-> propósito). Pregúntaselo a la base:
+> ⚠️ **CÓMO SABER DE VERDAD QUÉ ESTÁ CORRIDO.** No te fíes de esta tabla:
+> pregúntaselo a la base. (De las pruebas ya sí te puedes fiar: hasta el 14 ago
+> 2026, `sobrescritura.test.ts` se saltaba sus casos **en silencio** y salía
+> verde con el candado ausente; ahora con `EXIGIR_SEGURIDAD=1` se pone roja, y
+> sin ese interruptor sale como "saltada" en vez de como pasada.)
 >
 > ```bash
 > npx supabase db query --linked --project-ref cpbfisylcquuahrmyaca "select 'media_permisos='||(select count(*) from pg_tables where tablename='media_permisos')||' trigger_0016='||(select count(*) from pg_trigger where tgname='trg_items_candado_sobrescritura') as estado;"

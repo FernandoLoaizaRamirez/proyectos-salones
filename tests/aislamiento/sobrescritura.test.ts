@@ -27,9 +27,17 @@ import { describe, it, expect, beforeAll } from "vitest";
  *      pinta ninguna pantalla. Nunca toca contenido de nadie.
  *   2. El id es FIJO, así que repetirla no acumula basura: la crea la primera
  *      vez y la reutiliza siempre. Deja una fila en el evento `demo`, y solo una.
- *   3. Si el candado NO está puesto, la suite se SALTA ENTERA antes de atacar,
- *      diciendo por qué. Así el CI no se pone rojo por una migración que
- *      todavía no se ha corrido a mano.
+ *   3. Si el candado NO está puesto, la suite no ataca: no tendría sentido.
+ *
+ * QUÉ PASA CUANDO EL CANDADO NO ESTÁ (arreglado el 14 ago 2026):
+ *   · En local, sin `EXIGIR_SEGURIDAD` → se salta DE VERDAD, y sale como
+ *     "saltada" en el informe. Para trabajar contra una base sin la migración.
+ *   · En el CI de main, que corre con `EXIGIR_SEGURIDAD=1` → SE PONE ROJA.
+ *
+ * Hasta esa fecha se saltaba en los dos casos, y un caso saltado CUENTA COMO
+ * PASADO: la suite salía verde entera con el candado ausente. O sea que la
+ * única prueba que vigila que un invitado no pueda vaciar el álbum de una boda
+ * decía que todo estaba bien justo cuando el peligro era real.
  *
  * Igual que las otras suites: TOCA LA RED y se salta si faltan las env.
  */
@@ -38,6 +46,12 @@ const URL_ENV = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const ANON_ENV = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const hayEnv = Boolean(URL_ENV && ANON_ENV);
 const suite = hayEnv ? describe : describe.skip;
+
+/**
+ * El interruptor del CI (mismo que usa el centinela). Con él encendido, esta
+ * suite deja de poder saltarse: si el candado no está, se pone roja.
+ */
+const EXIGIR = process.env.EXIGIR_SEGURIDAD === "1";
 const RED = 20000;
 
 /** Colección de usar y tirar: NO está en la lista blanca, así que está cerrada. */
@@ -131,20 +145,48 @@ suite("Candado de sobrescritura (migración 0016)", () => {
     }
   }, RED);
 
-  /** Salta el caso si el candado todavía no está corrido en la base. */
-  const exigirCandado = (): boolean => {
+  /**
+   * ¿Se puede atacar, o hay que saltar?
+   *
+   * ⚠️ EL AGUJERO QUE ESTO TAPA (arreglado el 14 ago 2026). Antes esto solo
+   * avisaba por consola y devolvía `false`, y cada caso hacía `return`. Un caso
+   * que termina sin comprobar nada **cuenta como PASADO**: la suite salía
+   * verde entera con el candado ausente, en el CI y en el panel de GitHub. O
+   * sea que la única prueba que vigila que un invitado no pueda vaciar el álbum
+   * de una boda avisaba de lo contrario justo cuando el peligro era real.
+   *
+   * Ahora hay dos modos, los mismos que el resto de la carpeta:
+   *   · Sin `EXIGIR_SEGURIDAD` → se salta DE VERDAD (`ctx.skip()`), así que
+   *     sale como "saltada" y no como pasada. Es para quien trabaja en local
+   *     contra una base sin la migración.
+   *   · Con `EXIGIR_SEGURIDAD=1` —que es como corre el CI de main— un candado
+   *     ausente es un FALLO. Si alguien revierte la 0016, se pone rojo.
+   */
+  const exigirCandado = (ctx: { skip: () => void }): boolean => {
     if (candadoPuesto === true) return true;
-    console.warn(
-      `⏭️  La migración 0016 no está aplicada en ${url} — se salta. ` +
-        "Correr supabase/migrations/0016_candado_sobrescritura.sql en el SQL Editor.",
-    );
+
+    const porque =
+      `La migración 0016 no está aplicada en ${url}. ` +
+      "Correrla con `npx supabase db query --linked --project-ref <ref> -f " +
+      "supabase/migrations/0016_candado_sobrescritura.sql` (ver supabase/README.md).";
+
+    if (EXIGIR) {
+      expect(
+        candadoPuesto,
+        `${porque}\n\nSin ese candado, cualquiera con el enlace de una boda puede ` +
+          "vaciar el álbum y el muro enteros de una sola petición.",
+      ).toBe(true);
+    }
+
+    console.warn(`⏭️  ${porque} — se salta.`);
+    ctx.skip();
     return false;
   };
 
   it(
     "no se puede VACIAR el contenido de una fila ajena",
-    async () => {
-      if (!exigirCandado()) return;
+    async (ctx) => {
+      if (!exigirCandado(ctx)) return;
       const r = await atacar(fila, { dato: {} });
       expect(FRENADO).toContain(r.estado);
       expect(r.filas).toBe(0);
@@ -154,9 +196,9 @@ suite("Candado de sobrescritura (migración 0016)", () => {
 
   it(
     "no se puede ESCONDER una fila cambiándole la colección",
-    async () => {
+    async (ctx) => {
       // El peor de todos: rodea el candado de borrar de la 0009 sin romperlo.
-      if (!exigirCandado()) return;
+      if (!exigirCandado(ctx)) return;
       const r = await atacar(fila, { coleccion: "una-coleccion-inventada" });
       expect(FRENADO).toContain(r.estado);
     },
@@ -165,8 +207,8 @@ suite("Candado de sobrescritura (migración 0016)", () => {
 
   it(
     "no se puede SECUESTRAR el identificador de una fila",
-    async () => {
-      if (!exigirCandado()) return;
+    async (ctx) => {
+      if (!exigirCandado(ctx)) return;
       const r = await atacar(fila, { id: "ZZ-SECUESTRADO" });
       expect(FRENADO).toContain(r.estado);
     },
@@ -175,8 +217,8 @@ suite("Candado de sobrescritura (migración 0016)", () => {
 
   it(
     "no se puede FALSEAR la fecha de una fila",
-    async () => {
-      if (!exigirCandado()) return;
+    async (ctx) => {
+      if (!exigirCandado(ctx)) return;
       const r = await atacar(fila, { creado: "2000-01-01T00:00:00Z" });
       expect(FRENADO).toContain(r.estado);
     },
@@ -185,9 +227,9 @@ suite("Candado de sobrescritura (migración 0016)", () => {
 
   it(
     "UNA sola petición no puede vaciar la colección entera",
-    async () => {
+    async (ctx) => {
       // Sin nombrar ni un id: es como se vaciaría un álbum de verdad.
-      if (!exigirCandado()) return;
+      if (!exigirCandado(ctx)) return;
       const r = await atacar(`${rest}/items?evento=eq.${EVENTO}&coleccion=eq.${COL}`, { dato: {} });
       expect(FRENADO).toContain(r.estado);
       expect(r.filas).toBe(0);
@@ -197,10 +239,10 @@ suite("Candado de sobrescritura (migración 0016)", () => {
 
   it(
     "después de todos los ataques, la fila sigue intacta",
-    async () => {
+    async (ctx) => {
       // Lo que de verdad importa: no es el código de estado, es que el recuerdo
       // siga ahí. Un 403 con la fila ya pisada no valdría de nada.
-      if (!exigirCandado()) return;
+      if (!exigirCandado(ctx)) return;
       const filas = (await (
         await fetch(`${fila}&select=id,coleccion,dato`, { headers: H })
       ).json()) as { id: string; coleccion: string; dato: { nota?: string } }[];
@@ -213,7 +255,7 @@ suite("Candado de sobrescritura (migración 0016)", () => {
 
   it(
     "DAR DE ALTA sigue abierto: el invitado puede seguir firmando el muro",
-    async () => {
+    async (ctx) => {
       // El candado no debe convertirse en "los invitados ya no participan".
       //
       // El id es FIJO y el POST va SIN `merge-duplicates`, así que la primera
@@ -221,7 +263,7 @@ suite("Candado de sobrescritura (migración 0016)", () => {
       // dicen lo mismo y es lo único que se quiere saber: la petición LLEGÓ a
       // la tabla, no la paró un permiso. Un 403 sí sería noticia. Y así no se
       // queda una fila más en el evento cada vez que corre la prueba.
-      if (!exigirCandado()) return;
+      if (!exigirCandado(ctx)) return;
       const res = await fetch(`${rest}/items`, {
         method: "POST",
         headers: { ...H, Prefer: "return=minimal" },
@@ -239,7 +281,7 @@ suite("Candado de sobrescritura (migración 0016)", () => {
 
   it(
     "al dar de alta NO se puede elegir la fecha (taparía el muro entero)",
-    async () => {
+    async (ctx) => {
       /*
        * El servidor sirve `order=creado.desc` y la suscripción se queda con las
        * 500 más recientes. Quien pueda ponerse su propia fecha puede clavar su
@@ -251,7 +293,7 @@ suite("Candado de sobrescritura (migración 0016)", () => {
        * tanto si la fila se acaba de crear como si ya existía de otra corrida
        * (en los dos casos su fecha es la de verdad, nunca 2099).
        */
-      if (!exigirCandado()) return;
+      if (!exigirCandado(ctx)) return;
       const ID_FECHA = "ZZ-FECHA-0016";
       await fetch(`${rest}/items`, {
         method: "POST",

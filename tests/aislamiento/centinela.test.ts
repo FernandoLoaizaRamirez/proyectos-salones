@@ -97,6 +97,23 @@ suite("Centinela de seguridad — qué candados están encendidos", () => {
     }
   };
 
+  /**
+   * ¿Existe esta tabla en la base?
+   *
+   * PostgREST contesta **404** (`PGRST205`) a una tabla que no existe y **200**
+   * a una que sí, aunque la RLS esconda todas sus filas y devuelva `[]`. Eso
+   * permite medir una migración SIN ESCRIBIR NADA, que es la regla de esta
+   * pantalla: el centinela mira, no toca.
+   */
+  const sondearTabla = async (tabla: string): Promise<{ viva: boolean; estado: number | null }> => {
+    try {
+      const res = await fetch(`${url}/rest/v1/${tabla}?select=*&limit=1`, { headers: auth });
+      return { viva: res.status !== 404, estado: res.status };
+    } catch {
+      return { viva: false, estado: null };
+    }
+  };
+
   const piezas: Pieza[] = [];
 
   beforeAll(async () => {
@@ -140,6 +157,30 @@ suite("Centinela de seguridad — qué candados están encendidos", () => {
       });
     }
 
+    /*
+     * 0016 · EL CANDADO DE SOBRESCRIBIR. La propia migración dejó escrito que
+     * había que apuntarla aquí EN CUANTO se corriera, y no antes: mientras
+     * estuviera pendiente habría puesto el CI en rojo por algo sabido. Se
+     * corrió el 14 ago 2026, así que ya le toca.
+     *
+     * Se mide por su tabla, que es lo único que se puede mirar sin escribir.
+     * ⚠️ Eso prueba que la migración PASÓ, no que el disparador siga
+     * enganchado: quien lo comprueba de verdad —atacando— es
+     * `sobrescritura.test.ts`, que con EXIGIR_SEGURIDAD=1 ya no puede saltarse
+     * en silencio. Las dos juntas cubren el hueco: si se revierte la migración
+     * entera, se cae esta; si alguien solo suelta el disparador, se cae la otra.
+     */
+    const candado0016 = await sondearTabla("items_reescribibles");
+    piezas.push({
+      nombre: "0016 · candado de sobrescribir",
+      que: "nadie vacía lo que subió otro",
+      pruebasDormidas: 8,
+      viva: candado0016.viva,
+      detalle: candado0016.viva
+        ? "la lista blanca `items_reescribibles` existe"
+        : `la migración 0016 no está aplicada${candado0016.estado === null ? " (no respondió)" : ""}`,
+    });
+
     // El informe. Es lo que hace visible lo que hoy es invisible.
     const linea = (p: Pieza) =>
       `  ${p.viva ? "✅" : "💤"}  ${p.nombre.padEnd(32)} ${p.que.padEnd(34)} ${p.detalle}`;
@@ -169,7 +210,8 @@ suite("Centinela de seguridad — qué candados están encendidos", () => {
     "el sondeo llegó a Supabase y midió todas las piezas",
     () => {
       // Si esto falla, el informe de arriba no vale: no se pudo medir nada.
-      expect(piezas).toHaveLength(6);
+      // Siete desde el 14 ago 2026, cuando entró el candado de la 0016.
+      expect(piezas).toHaveLength(7);
       expect(piezas.every((p) => typeof p.viva === "boolean")).toBe(true);
     },
     RED,

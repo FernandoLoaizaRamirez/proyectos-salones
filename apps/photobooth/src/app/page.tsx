@@ -1,6 +1,10 @@
 import { ThemeToggle } from "@salones/ui";
-import { evento } from "@/lib/photobooth";
-import { PhotoboothCliente, CompartirBooth } from "@/components/photobooth-cliente";
+import {
+  PhotoboothCliente,
+  CompartirBooth,
+  TituloBooth,
+  PieBooth,
+} from "@/components/photobooth-cliente";
 
 export default function Page() {
   return (
@@ -11,10 +15,8 @@ export default function Page() {
             <div className="grid size-9 place-items-center rounded-[var(--radius)] bg-primary text-sm font-bold text-primary-foreground">
               SR
             </div>
-            <div className="min-w-0">
-              <div className="truncate text-sm font-semibold leading-tight">{evento.nombre}</div>
-              <div className="truncate text-xs text-muted-foreground">Photobooth · {evento.lugar}</div>
-            </div>
+            {/* El nombre lo pinta el cliente: es él quien sabe de qué evento es. */}
+            <TituloBooth />
           </div>
           <div className="flex items-center gap-2">
             <CompartirBooth />
@@ -29,8 +31,7 @@ export default function Page() {
 
       <footer className="border-t border-border">
         <div className="mx-auto max-w-3xl px-6 py-8 text-center text-xs text-muted-foreground">
-          {evento.lugar} · Demo de {evento.organizador.nombre}. Tu foto se arma en tu propio
-          dispositivo; nada se sube a ningún servidor en esta demostración.
+          <PieBooth />
         </div>
       </footer>
     </main>

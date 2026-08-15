@@ -9,39 +9,67 @@ import {
   RefreshCw,
   X,
   Aperture,
+  ImagePlus,
   Loader2,
   Copy,
   Check,
   QrCode,
 } from "lucide-react";
-import { Button, Card, cn } from "@salones/ui";
+import { AvisoParticipacion, Button, Card, cn } from "@salones/ui";
+import {
+  estaConectado,
+  huellaDeAutor,
+  mensajeDeSubida,
+  obtenerSync,
+  sufijoEvento,
+} from "@salones/sync";
 import { QR } from "@/components/qr";
 import {
   evento,
-  marcos,
+  crearMarcos,
   componer,
   capturarDeVideo,
   descargar,
   nombreDescarga,
   compartir,
+  aBlobJpeg,
   type Marco,
 } from "@/lib/photobooth";
+import { useEventoReal } from "@/lib/evento-real";
+import { useInvitadoPersonal } from "@/lib/invitado";
 
 type Modo = "inicio" | "camara" | "resultado";
 
+/** El viaje del botón de guardar: quieto → guardando → ya en el álbum. */
+type EstadoGuardar = "nada" | "guardando" | "guardada";
+
 export function PhotoboothCliente() {
+  // De qué evento es el booth y quién es este invitado (si llegó con su
+  // enlace personal). En la vitrina, los dos caen a la muestra sin más.
+  const { codigo, textos } = useEventoReal();
+  const invitado = useInvitadoPersonal(codigo);
+
   const [modo, setModo] = React.useState<Modo>("inicio");
   const [fotoBase, setFotoBase] = React.useState<string | null>(null);
-  const [marcoId, setMarcoId] = React.useState<string>(marcos[0]?.id ?? "clasico");
+  const [marcoId, setMarcoId] = React.useState<string>("clasico");
   const [resultado, setResultado] = React.useState<string | null>(null);
   const [error, setError] = React.useState("");
   const [aviso, setAviso] = React.useState("");
   const [compartiendo, setCompartiendo] = React.useState(false);
+  const [guardar, setGuardar] = React.useState<EstadoGuardar>("nada");
+  const [errorGuardar, setErrorGuardar] = React.useState("");
+  // Se calcula tras montar para no desincronizar el render del servidor.
+  const [conectado, setConectado] = React.useState<boolean | null>(null);
 
   const videoRef = React.useRef<HTMLVideoElement>(null);
   const streamRef = React.useRef<MediaStream | null>(null);
   const fileRef = React.useRef<HTMLInputElement>(null);
 
+  React.useEffect(() => setConectado(estaConectado()), []);
+
+  // Los mismos marcos de siempre, con los textos del evento real (o los de la
+  // muestra mientras no haya otros).
+  const marcos = React.useMemo(() => crearMarcos(textos), [textos]);
   const marco: Marco = marcos.find((m) => m.id === marcoId) ?? marcos[0]!;
 
   const detenerCamara = React.useCallback(() => {
@@ -64,6 +92,13 @@ export function PhotoboothCliente() {
       vivo = false;
     };
   }, [fotoBase, marco]);
+
+  // Cada composición nueva (otra foto, otro marco) es una foto DISTINTA de la
+  // que ya se guardó: el botón de guardar vuelve a empezar de cero.
+  React.useEffect(() => {
+    setGuardar("nada");
+    setErrorGuardar("");
+  }, [resultado]);
 
   const usarCamara = async () => {
     setError("");
@@ -122,17 +157,60 @@ export function PhotoboothCliente() {
   };
 
   const alDescargar = () => {
-    if (resultado) descargar(resultado, nombreDescarga(marcoId));
+    if (resultado) descargar(resultado, nombreDescarga(marcoId, textos.hashtag));
   };
   const alCompartir = async () => {
     if (!resultado) return;
     setCompartiendo(true);
-    const ok = await compartir(resultado);
+    const ok = await compartir(resultado, textos);
     setCompartiendo(false);
     if (!ok) {
-      descargar(resultado, nombreDescarga(marcoId));
+      descargar(resultado, nombreDescarga(marcoId, textos.hashtag));
       setAviso("Tu navegador no permite compartir directo; descargamos la foto para que la envíes.");
       setTimeout(() => setAviso(""), 4000);
+    }
+  };
+
+  /**
+   * Guarda la foto compuesta en el ÁLBUM DEL EVENTO — el mismo álbum al que
+   * los invitados suben sus fotos desde el portal. Hasta hoy el photobooth era
+   * un callejón: la foto se descargaba al teléfono y jamás llegaba al recuerdo
+   * común de la fiesta.
+   */
+  const alGuardarEnAlbum = async () => {
+    if (!resultado || guardar !== "nada") return;
+    setGuardar("guardando");
+    setErrorGuardar("");
+    try {
+      // En JPEG, para que pese como las demás fotos del álbum (el PNG del
+      // photobooth pesa varias veces más y se comería el cupo del evento).
+      const blob = await aBlobJpeg(resultado);
+      const nombre = `photobooth-${Date.now()}.jpg`;
+      const sync = obtenerSync();
+      const url = await sync.subirArchivo(codigo, nombre, blob, "image/jpeg");
+      // La firma de este teléfono: es lo que le permitirá quitar SU foto del
+      // álbum después (el nombre no vale como credencial, la huella sí).
+      const huella = await huellaDeAutor(codigo);
+      // La colección "fotos" es la del álbum del evento, con el mismo formato
+      // de id que usa el portal. Los campos que aquí no aplican (autor,
+      // invitadoId, autorHuella) simplemente no van; las apps que no los
+      // conocen los ignoran.
+      await sync.guardar(codigo, "fotos", {
+        id: "F-" + Math.random().toString(36).slice(2, 10).toUpperCase(),
+        nombre,
+        url,
+        tipo: "image/jpeg",
+        fecha: Date.now(),
+        // Sin enlace personal NO se pide el nombre: el photobooth es un juego
+        // rápido y la foto va anónima, solo con la huella.
+        ...(invitado ? { autor: invitado.nombre } : {}),
+        ...(invitado?.id ? { invitadoId: invitado.id } : {}),
+        ...(huella ? { autorHuella: huella } : {}),
+      });
+      setGuardar("guardada");
+    } catch (e) {
+      setGuardar("nada");
+      setErrorGuardar(mensajeDeSubida(e));
     }
   };
 
@@ -152,7 +230,7 @@ export function PhotoboothCliente() {
           </div>
           <h1 className="mt-4 text-2xl font-semibold tracking-tight">Photobooth</h1>
           <p className="mt-1 text-muted-foreground">
-            Tómate una foto con el marco de {evento.nombre} y descárgala o compártela al instante.
+            Tómate una foto con el marco de {textos.nombre} y descárgala o compártela al instante.
           </p>
           <div className="mt-6 flex flex-col gap-2">
             <Button onClick={usarCamara} size="lg">
@@ -258,6 +336,40 @@ export function PhotoboothCliente() {
                 <Download className="size-4" /> Descargar
               </Button>
             </div>
+            {/*
+              El aviso va ANTES del botón, pegado a él: para que el
+              consentimiento valga, la persona tiene que poder enterarse justo
+              cuando entrega su foto — igual que en el álbum del portal.
+            */}
+            <AvisoParticipacion accion="subir tu foto al álbum" imagen className="text-center" />
+            <Button
+              onClick={() => void alGuardarEnAlbum()}
+              variant="outline"
+              disabled={!resultado || guardar !== "nada"}
+            >
+              {guardar === "guardando" ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" /> Guardando…
+                </>
+              ) : guardar === "guardada" ? (
+                <>
+                  <Check className="size-4" /> Ya está en el álbum del evento
+                </>
+              ) : (
+                <>
+                  <ImagePlus className="size-4" /> Guardar en el álbum del evento
+                </>
+              )}
+            </Button>
+            {errorGuardar ? (
+              <p className="text-center text-sm text-red-600 dark:text-red-400">{errorGuardar}</p>
+            ) : null}
+            {conectado === false ? (
+              <p className="text-center text-xs text-muted-foreground">
+                En esta demostración la foto se queda en este teléfono; con el servicio del evento,
+                cae al álbum de todos los invitados.
+              </p>
+            ) : null}
             <Button onClick={reiniciar} variant="ghost">
               <RefreshCw className="size-4" /> Tomar otra
             </Button>
@@ -274,7 +386,10 @@ export function CompartirBooth() {
   const [url, setUrl] = React.useState("");
   const [copiado, setCopiado] = React.useState(false);
 
-  React.useEffect(() => setUrl(window.location.origin), []);
+  // El enlace lleva el `?e=` del evento: sin él, el QR de las mesas de una
+  // boda real mandaría a los invitados al photobooth de la muestra. En la
+  // vitrina el sufijo es vacío y el enlace queda igual que siempre.
+  React.useEffect(() => setUrl(window.location.origin + sufijoEvento()), []);
 
   const copiar = async () => {
     try {
@@ -334,6 +449,51 @@ export function CompartirBooth() {
           </Card>
         </div>
       ) : null}
+    </>
+  );
+}
+
+/**
+ * El nombre del evento en el encabezado. Es un componente de cliente porque el
+ * evento se sabe hasta leer el enlace: el servidor pinta la muestra y, si hay
+ * evento real con datos, el nombre se corrige al montar.
+ */
+export function TituloBooth() {
+  const { textos, conDatosReales } = useEventoReal();
+  return (
+    <div className="min-w-0">
+      <div className="truncate text-sm font-semibold leading-tight">{textos.nombre}</div>
+      <div className="truncate text-xs text-muted-foreground">
+        {/* El lugar de la muestra solo aplica a la muestra: un evento real no
+            captura "lugar" para el photobooth, así que no se inventa uno. */}
+        {conDatosReales ? "Photobooth del evento" : `Photobooth · ${evento.lugar}`}
+      </div>
+    </div>
+  );
+}
+
+/** El pie de la página: el texto de la demo solo cuando ES la demo. */
+export function PieBooth() {
+  const { conDatosReales } = useEventoReal();
+  // Se sabe hasta montar (mismo motivo que el título); mientras, se asume que
+  // no hay servidor, que es lo que menos promete.
+  const [conServidor, setConServidor] = React.useState(false);
+  React.useEffect(() => setConServidor(estaConectado()), []);
+
+  if (conDatosReales) {
+    return (
+      <>La foto se arma en tu propio teléfono y solo llega al álbum si tú decides guardarla.</>
+    );
+  }
+  return (
+    <>
+      {evento.lugar} · Demo de {evento.organizador.nombre}. Tu foto se arma en tu propio
+      dispositivo
+      {conServidor
+        ? // La vitrina desplegada SÍ tiene servidor: decir "nada se sube" sería
+          // mentira en cuanto alguien use el botón de guardar.
+          " y solo llega al álbum de demostración si tú decides guardarla."
+        : "; nada se sube a ningún servidor en esta demostración."}
     </>
   );
 }

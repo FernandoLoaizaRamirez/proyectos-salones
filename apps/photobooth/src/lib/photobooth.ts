@@ -6,9 +6,17 @@
  * La composición se hace en un canvas (foto + marco dibujado encima) y se
  * exporta como PNG. No hay servidor: la foto se procesa en el propio teléfono.
  *
- * TODO editable aquí (white-label): datos del evento y los marcos.
+ * Los TEXTOS de los marcos (nombre, fecha, hashtag) se INYECTAN con
+ * `crearMarcos`: el dibujo de cada marco es siempre el mismo, lo único que
+ * cambia por evento es qué se escribe encima (ver `src/lib/evento-real.ts`).
  */
 
+/**
+ * Los datos de la MUESTRA. Ya no son "el evento" a secas: son el respaldo con
+ * el que se pinta el photobooth cuando el enlace no trae evento o cuando el
+ * evento es la vitrina ("demo"). Un evento real trae sus textos de la
+ * colección `invitacion` (ver `src/lib/evento-real.ts`).
+ */
 export const evento = {
   nombre: "Ana & Rodrigo",
   fecha: "20 · 03 · 2027",
@@ -44,89 +52,108 @@ export type Marco = {
   sub?: string;
 };
 
-/** Marcos disponibles. Edítalos, agrégalos o quítalos libremente. */
-export const marcos: Marco[] = [
-  {
-    id: "clasico",
-    nombre: "Clásico",
-    tipo: "clasico",
-    acento: "#ffffff",
-    etiqueta: evento.nombre,
-    sub: evento.fecha,
-  },
-  {
-    id: "corazones",
-    nombre: "Corazones",
-    tipo: "corazones",
-    acento: "#ec4899",
-    etiqueta: evento.nombre,
-    sub: `#${evento.hashtag}`,
-  },
-  {
-    id: "dorado",
-    nombre: "Dorado clásico",
-    tipo: "dorado",
-    acento: "#e7c76b",
-    etiqueta: evento.nombre,
-    sub: evento.fecha,
-  },
-  {
-    id: "deco",
-    nombre: "Art déco",
-    tipo: "deco",
-    acento: "#f4e3a1",
-    etiqueta: evento.nombre,
-    sub: evento.fecha,
-  },
-  {
-    id: "polaroid",
-    nombre: "Instantánea",
-    tipo: "polaroid",
-    acento: "#111111",
-    etiqueta: evento.nombre,
-    sub: evento.fecha,
-  },
-  {
-    id: "mariposas",
-    nombre: "Mariposas",
-    tipo: "mariposas",
-    acento: "#e9a7b0",
-    etiqueta: evento.nombre,
-    sub: evento.fecha,
-  },
-  {
-    id: "arco",
-    nombre: "Arco floral",
-    tipo: "arco",
-    acento: "#d9b56a",
-    etiqueta: evento.nombre,
-    sub: evento.fecha,
-  },
-  {
-    id: "monograma",
-    nombre: "Monograma",
-    tipo: "monograma",
-    acento: "#e7c76b",
-    etiqueta: evento.nombre,
-    sub: evento.fecha,
-  },
-  {
-    id: "constelacion",
-    nombre: "Constelación",
-    tipo: "constelacion",
-    acento: "#e6cd92",
-    etiqueta: evento.nombre,
-    sub: evento.fecha,
-  },
-  {
-    id: "botanico",
-    nombre: "Botánico",
-    tipo: "botanico",
-    acento: "#d9b56a",
-    etiqueta: evento.nombre,
-    sub: evento.fecha,
-  },
-];
+/** Los textos que cada evento escribe sobre sus marcos. */
+export type TextosMarcos = { nombre: string; fecha: string; hashtag: string };
+
+/**
+ * Los marcos disponibles, con los textos del evento puestos en su sitio.
+ *
+ * Es una función y no una lista fija porque los textos cambian por evento: el
+ * DIBUJO de cada marco es exactamente el aprobado de siempre; lo único que
+ * entra de fuera es qué nombre, qué fecha y qué hashtag se escriben encima
+ * (el marco de corazones es el único que lleva el hashtag en vez de la fecha).
+ */
+export function crearMarcos(t: TextosMarcos): Marco[] {
+  return [
+    {
+      id: "clasico",
+      nombre: "Clásico",
+      tipo: "clasico",
+      acento: "#ffffff",
+      etiqueta: t.nombre,
+      sub: t.fecha,
+    },
+    {
+      id: "corazones",
+      nombre: "Corazones",
+      tipo: "corazones",
+      acento: "#ec4899",
+      etiqueta: t.nombre,
+      sub: `#${t.hashtag}`,
+    },
+    {
+      id: "dorado",
+      nombre: "Dorado clásico",
+      tipo: "dorado",
+      acento: "#e7c76b",
+      etiqueta: t.nombre,
+      sub: t.fecha,
+    },
+    {
+      id: "deco",
+      nombre: "Art déco",
+      tipo: "deco",
+      acento: "#f4e3a1",
+      etiqueta: t.nombre,
+      sub: t.fecha,
+    },
+    {
+      id: "polaroid",
+      nombre: "Instantánea",
+      tipo: "polaroid",
+      acento: "#111111",
+      etiqueta: t.nombre,
+      sub: t.fecha,
+    },
+    {
+      id: "mariposas",
+      nombre: "Mariposas",
+      tipo: "mariposas",
+      acento: "#e9a7b0",
+      etiqueta: t.nombre,
+      sub: t.fecha,
+    },
+    {
+      id: "arco",
+      nombre: "Arco floral",
+      tipo: "arco",
+      acento: "#d9b56a",
+      etiqueta: t.nombre,
+      sub: t.fecha,
+    },
+    {
+      id: "monograma",
+      nombre: "Monograma",
+      tipo: "monograma",
+      acento: "#e7c76b",
+      etiqueta: t.nombre,
+      sub: t.fecha,
+    },
+    {
+      id: "constelacion",
+      nombre: "Constelación",
+      tipo: "constelacion",
+      acento: "#e6cd92",
+      etiqueta: t.nombre,
+      sub: t.fecha,
+    },
+    {
+      id: "botanico",
+      nombre: "Botánico",
+      tipo: "botanico",
+      acento: "#d9b56a",
+      etiqueta: t.nombre,
+      sub: t.fecha,
+    },
+  ];
+}
+
+/** Los marcos con los textos de la muestra: lo que siempre enseñó la demo. */
+export const marcos: Marco[] = crearMarcos({
+  nombre: evento.nombre,
+  fecha: evento.fecha,
+  hashtag: evento.hashtag,
+});
 
 /** Zona donde va la foto dentro del lienzo (el marco "Instantánea" la reduce). */
 function areaFoto(marco: Marco): { x: number; y: number; w: number; h: number } {
@@ -1072,11 +1099,11 @@ export function capturarDeVideo(video: HTMLVideoElement, espejo = true): string 
  * el invitado puede guardar la misma foto con varios marcos sin que el teléfono
  * pida "reemplazar" la anterior.
  */
-export function nombreDescarga(marcoId: string): string {
+export function nombreDescarga(marcoId: string, hashtag = evento.hashtag): string {
   const d = new Date();
   const p = (n: number) => String(n).padStart(2, "0");
   const sello = `${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
-  return `photobooth-${evento.hashtag}-${marcoId}-${sello}`;
+  return `photobooth-${hashtag}-${marcoId}-${sello}`;
 }
 
 /** Descarga un dataURL como archivo PNG. */
@@ -1096,7 +1123,10 @@ export function descargar(dataUrl: string, nombre = "photobooth") {
  * Devuelve true si se pudo compartir; false si el navegador no lo soporta
  * (en ese caso conviene ofrecer la descarga).
  */
-export async function compartir(dataUrl: string): Promise<boolean> {
+export async function compartir(
+  dataUrl: string,
+  textos: Pick<TextosMarcos, "nombre" | "hashtag"> = evento,
+): Promise<boolean> {
   try {
     const blob = await (await fetch(dataUrl)).blob();
     const file = new File([blob], "photobooth.png", { type: "image/png" });
@@ -1105,11 +1135,47 @@ export async function compartir(dataUrl: string): Promise<boolean> {
       share?: (data?: ShareData) => Promise<void>;
     };
     if (nav.share && nav.canShare && nav.canShare({ files: [file] })) {
-      await nav.share({ files: [file], title: evento.nombre, text: `#${evento.hashtag}` });
+      await nav.share({ files: [file], title: textos.nombre, text: `#${textos.hashtag}` });
       return true;
     }
     return false;
   } catch {
     return false;
   }
+}
+
+/**
+ * Convierte la foto compuesta (dataURL en PNG) en un JPEG para el álbum.
+ *
+ * El PNG de `componer` va perfecto para descargar, pero pesa varias veces lo
+ * que pesan las demás fotos del álbum (que suben comprimidas en JPEG). Antes
+ * de mandarla al álbum del evento se vuelve a exportar como JPEG, para que la
+ * foto del photobooth pese como una foto más y no se coma el cupo del evento.
+ */
+export function aBlobJpeg(dataUrl: string, calidad = 0.9): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = img.naturalWidth || LADO;
+      canvas.height = img.naturalHeight || LADO;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        reject(new Error("No se pudo crear el lienzo."));
+        return;
+      }
+      // El JPEG no tiene transparencia: se pinta un fondo por si acaso, aunque
+      // la foto compuesta ya viene opaca (componer pinta su propio fondo).
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0);
+      canvas.toBlob(
+        (blob) => (blob ? resolve(blob) : reject(new Error("No se pudo preparar la foto."))),
+        "image/jpeg",
+        calidad,
+      );
+    };
+    img.onerror = () => reject(new Error("No se pudo cargar la foto."));
+    img.src = dataUrl;
+  });
 }

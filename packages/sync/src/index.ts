@@ -376,16 +376,35 @@ function crearProveedorServidor(url: string, anon: string): ProveedorSync {
    * que es el único que permite borrar una vez hecho el corte.
    * Ver docs/MIGRACION-TOKEN-FIRMADO.md y docs/LLAVE-ANFITRION.md.
    */
+  /* ---- La huella de autor en cada lectura (migración 0022) -----------------
+   * Con el álbum PRIVADO, la política de lectura solo devuelve las fotos cuya
+   * huella coincide con esta. Va en todas las peticiones y no solo en las del
+   * álbum: es un dato inerte —no abre nada por sí solo— y así no hay que
+   * acordarse de añadirlo en cada sitio.
+   *
+   * Se cachea porque el sondeo repite la consulta cada tres segundos y calcular
+   * un sha-256 por vuelta no tiene sentido. */
+  const huellas = new Map<string, string>();
+  const huellaPara = async (evento: string): Promise<string | null> => {
+    const guardada = huellas.get(evento);
+    if (guardada) return guardada;
+    const h = await huellaDeAutor(evento);
+    if (h) huellas.set(evento, h);
+    return h;
+  };
+
   const headersDe = async (evento: string): Promise<Record<string, string>> => {
-    const [pase, paseAnfitrion] = await Promise.all([
+    const [pase, paseAnfitrion, huella] = await Promise.all([
       obtenerPase(evento),
       obtenerPaseAnfitrion(evento),
+      huellaPara(evento),
     ]);
     return {
       ...auth,
       "x-evento": evento,
       ...(pase ? { "x-evento-pase": pase } : {}),
       ...(paseAnfitrion ? { "x-evento-anfitrion": paseAnfitrion } : {}),
+      ...(huella ? { "x-autor-huella": huella } : {}),
       "Content-Type": "application/json",
     };
   };
@@ -701,6 +720,36 @@ function crearProveedorServidor(url: string, anon: string): ProveedorSync {
       // responde ABIERTO: equivocarse hacia el lado cerrado dejaría a una boda
       // sin poder subir fotos en plena fiesta, y eso es mucho peor que una foto
       // de más que el servidor rechazará igual.
+      if (!res.ok) return false;
+      return (await res.json()) === true;
+    } catch {
+      return false;
+    }
+  };
+
+  preguntarPrivado = async (evento) => {
+    try {
+      const res = await fetch(`${raiz}/rest/v1/rpc/album_es_privado`, {
+        method: "POST",
+        headers: { ...auth, "Content-Type": "application/json" },
+        body: JSON.stringify({ p_codigo: evento }),
+      });
+      if (!res.ok) return false;
+      return (await res.json()) === true;
+    } catch {
+      return false;
+    }
+  };
+
+  cambiarPrivado = async (evento, privado) => {
+    const paseAnfitrion = await obtenerPaseAnfitrion(evento);
+    if (!paseAnfitrion) return false;
+    try {
+      const res = await fetch(`${raiz}/rest/v1/rpc/cambiar_privacidad_album`, {
+        method: "POST",
+        headers: { ...auth, "Content-Type": "application/json" },
+        body: JSON.stringify({ p_pase: paseAnfitrion, p_privado: privado }),
+      });
       if (!res.ok) return false;
       return (await res.json()) === true;
     } catch {
@@ -1200,6 +1249,32 @@ export async function cambiarAlbumCerrado(evento: string, cerrado: boolean): Pro
   obtenerSync();
   if (!cambiarCerrado) return false;
   return cambiarCerrado(evento, cerrado);
+}
+
+let preguntarPrivado: ((evento: string) => Promise<boolean>) | null = null;
+let cambiarPrivado: ((evento: string, privado: boolean) => Promise<boolean>) | null = null;
+
+/**
+ * ¿Es privado el álbum de este evento? (migración 0022)
+ *
+ * Privado quiere decir que **cada invitado solo ve lo que él subió**; quien
+ * organiza lo ve todo. No lo hace valer esta función ni la pantalla: lo hace la
+ * política de lectura de la base, que directamente NO devuelve las filas ajenas.
+ * Esto solo sirve para explicárselo a la gente.
+ *
+ * Ante la duda responde `false` (público), que es como se ha comportado siempre.
+ */
+export async function albumEsPrivado(evento: string): Promise<boolean> {
+  obtenerSync();
+  if (!preguntarPrivado) return false;
+  return preguntarPrivado(evento);
+}
+
+/** Cambia entre público y privado. Solo desde el enlace de quien organiza. */
+export async function cambiarAlbumPrivado(evento: string, privado: boolean): Promise<boolean> {
+  obtenerSync();
+  if (!cambiarPrivado) return false;
+  return cambiarPrivado(evento, privado);
 }
 
 /** Cómo acabó un intento de quitar un recuerdo. */

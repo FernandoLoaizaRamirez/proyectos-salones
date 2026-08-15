@@ -45,8 +45,10 @@ import {
 } from "lucide-react";
 import { Button, cn } from "@salones/ui";
 import {
+  albumEsPrivado,
   albumEstaCerrado,
   cambiarAlbumCerrado,
+  cambiarAlbumPrivado,
   claveAnfitrion,
   espacioDelEvento,
   estaConectado,
@@ -212,6 +214,7 @@ export function PanelAnfitrion() {
   /** `null` mientras no se sepa, y también si no se puede saber. */
   const [espacio, setEspacio] = React.useState<EspacioEvento | null>(null);
   const [cerrado, setCerrado] = React.useState(false);
+  const [privado, setPrivado] = React.useState(false);
   const [cambiando, setCambiando] = React.useState(false);
   const [avisoCierre, setAvisoCierre] = React.useState("");
 
@@ -230,6 +233,9 @@ export function PanelAnfitrion() {
     });
     void albumEstaCerrado(evento).then((c) => {
       if (vivo) setCerrado(c);
+    });
+    void albumEsPrivado(evento).then((p) => {
+      if (vivo) setPrivado(p);
     });
     return () => {
       vivo = false;
@@ -260,6 +266,17 @@ export function PanelAnfitrion() {
     const ok = await cambiarAlbumCerrado(evento, !cerrado);
     setCambiando(false);
     if (ok) setCerrado(!cerrado);
+    else setAvisoCierre("No pudimos cambiarlo. Vuelve a abrir tu enlace privado e inténtalo.");
+  };
+
+  /** Cambia entre "todos ven todo" y "cada quien ve lo suyo". */
+  const alternarPrivacidad = async () => {
+    const evento = eventoActual();
+    setCambiando(true);
+    setAvisoCierre("");
+    const ok = await cambiarAlbumPrivado(evento, !privado);
+    setCambiando(false);
+    if (ok) setPrivado(!privado);
     else setAvisoCierre("No pudimos cambiarlo. Vuelve a abrir tu enlace privado e inténtalo.");
   };
 
@@ -327,6 +344,35 @@ export function PanelAnfitrion() {
           </div>
 
           {espacio ? <Contador espacio={espacio} /> : null}
+
+          <div className="mt-4 rounded-[var(--radius)] border border-border bg-background p-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h4 className="flex items-center gap-2 text-sm font-semibold">
+                  {privado ? (
+                    <EyeOff className="size-4 text-amber-600 dark:text-amber-500" />
+                  ) : (
+                    <Eye className="size-4 text-primary" />
+                  )}
+                  {privado ? "Cada quien ve solo lo suyo" : "Todos ven las fotos de todos"}
+                </h4>
+                <p className="mt-1 max-w-md text-sm text-muted-foreground">
+                  {privado
+                    ? "Los invitados suben con normalidad, pero cada uno solo ve sus propias fotos. Tú las ves todas."
+                    : "Es el álbum compartido de siempre: cualquiera con el enlace ve —y se descarga— las fotos de todos los invitados."}
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => void alternarPrivacidad()}
+                disabled={cambiando}
+              >
+                {privado ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
+                {cambiando ? "Un momento…" : privado ? "Que todos lo vean" : "Que cada quien vea lo suyo"}
+              </Button>
+            </div>
+          </div>
 
           <div className="mt-4 rounded-[var(--radius)] border border-border bg-background p-4">
             <div className="flex flex-wrap items-start justify-between gap-3">

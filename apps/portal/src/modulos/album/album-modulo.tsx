@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { Button, EmptyState, cn, Confirmar, AvisoParticipacion } from "@salones/ui";
 import {
+  albumEsPrivado,
   albumEstaCerrado,
   esAnfitrion,
   estaConectado,
@@ -89,6 +90,13 @@ export function AlbumModulo({
    * la rechazaría igual— que dejar a los invitados sin aportar en plena fiesta.
    */
   const [cerrado, setCerrado] = React.useState(false);
+  /**
+   * ¿El álbum es privado? (migración 0022). Solo sirve para EXPLICARLO: quien lo
+   * hace valer es la política de lectura de la base, que ni siquiera envía las
+   * fotos ajenas. Sin este aviso, un invitado vería su álbum casi vacío y
+   * pensaría que sus fotos no subieron.
+   */
+  const [privado, setPrivado] = React.useState(false);
   const [arrastrando, setArrastrando] = React.useState(false);
   const [subiendo, setSubiendo] = React.useState(0);
   const [porQuitar, setPorQuitar] = React.useState<Foto | null>(null);
@@ -134,6 +142,7 @@ export function AlbumModulo({
     setConectado(enServidor);
     setAnfitrion(esAnfitrion(evento));
     void albumEstaCerrado(evento).then(setCerrado);
+    void albumEsPrivado(evento).then(setPrivado);
     if (!enServidor) return;
     return obtenerSync().suscribir<Foto>(evento, COLECCION_FOTOS, (items) =>
       setFotos([...items].sort(porFecha)),
@@ -496,6 +505,13 @@ export function AlbumModulo({
           ))}
         </div>
       )}
+
+      {privado && !anfitrion ? (
+        <p className="rounded-[var(--radius)] border border-border bg-muted/40 p-3 text-center text-sm text-muted-foreground">
+          En este álbum <strong className="text-foreground">cada quien ve solo sus propias fotos</strong>.
+          Las tuyas están aquí; quien organiza las ve todas.
+        </p>
+      ) : null}
 
       {conectado === false ? (
         <p className="text-xs text-muted-foreground">

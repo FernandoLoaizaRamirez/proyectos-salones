@@ -19,6 +19,7 @@ import {
   eventoActual,
   esAnfitrion,
   resolverMedios,
+  albumEsPrivado,
   albumEstaCerrado,
   descargarMedios,
   huellaDeAutor,
@@ -74,6 +75,13 @@ export function Album() {
    * mientras que enseñarla de más solo cuesta un aviso del servidor.
    */
   const [cerrado, setCerrado] = React.useState(false);
+  /**
+   * ¿El álbum es privado? (migración 0022). Solo sirve para EXPLICARLO: quien lo
+   * hace valer es la política de lectura de la base, que ni siquiera envía las
+   * fotos ajenas. Sin este aviso, un invitado vería su álbum casi vacío y
+   * pensaría que sus fotos no subieron.
+   */
+  const [privado, setPrivado] = React.useState(false);
   // Dirección guardada → dirección con la que se muestra (firmada y con fecha
   // de caducidad). Lo que no esté aquí se muestra tal cual.
   const [vistas, setVistas] = React.useState<Record<string, string>>({});
@@ -86,6 +94,7 @@ export function Album() {
     setAnfitrion(esAnfitrion());
     void huellaDeAutor(eventoActual()).then(setMiHuella);
     void albumEstaCerrado(eventoActual()).then(setCerrado);
+    void albumEsPrivado(eventoActual()).then(setPrivado);
     if (!estaConectado()) return;
     return obtenerSync().suscribir<Archivo>(eventoActual(), COLECCION_FOTOS, setArchivos);
   }, []);
@@ -353,6 +362,13 @@ export function Album() {
         </div>
       </div>
       )}
+
+      {privado && !anfitrion ? (
+        <p className="rounded-[var(--radius)] border border-border bg-muted/40 p-3 text-center text-sm text-muted-foreground">
+          En este álbum <strong className="text-foreground">cada quien ve solo sus propias fotos</strong>.
+          Las tuyas están aquí; quien organiza las ve todas.
+        </p>
+      ) : null}
 
       {/* Contador + descargar */}
       <div className="space-y-2">

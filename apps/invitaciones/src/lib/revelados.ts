@@ -97,8 +97,14 @@ export function dibujarAhora(el: Element | null): void {
 /**
  * Enciende los revelados de toda la página. Se vuelve a pasar cuando cambian
  * los datos, porque hasta que la invitación no llega no existen las secciones.
+ *
+ * La `senal` existe por las secciones que se montan DESPUÉS del primer pase:
+ * el saludo personal espera a que se lea el `#` y "Tu lugar" espera su lectura
+ * del acomodo, así que el observador ya hizo su ronda cuando aparecen y nadie
+ * las revelaría. Cuando la página cambia la señal, el pase se repite entero —
+ * es seguro repetirlo: `revelar` deja en paz lo que ya está visible o dibujado.
  */
-export function useRevelados(listo: boolean): void {
+export function useRevelados(listo: boolean, senal?: unknown): void {
   React.useEffect(() => {
     if (!listo) return;
     const reducir = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -168,5 +174,5 @@ export function useRevelados(listo: boolean): void {
       window.removeEventListener("scroll", revisarManual);
       window.removeEventListener("resize", revisarManual);
     };
-  }, [listo]);
+  }, [listo, senal]);
 }

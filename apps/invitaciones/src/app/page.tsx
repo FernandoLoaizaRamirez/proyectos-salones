@@ -14,6 +14,14 @@
  * Lo que NO está aquí, y es a propósito: el ÁLBUM de fotos de los invitados y
  * el MURO de mensajes. Son productos aparte del catálogo, así que esta
  * invitación se vende y se usa sola, sin dar por hecho lo que no se contrató.
+ * Lo que SÍ hay es un puente al portal del evento al final (ver
+ * `@/components/portal`): el portal ya esconde solo lo no contratado, así que
+ * enlazarlo no regala nada.
+ *
+ * Y si el invitado llegó con su ENLACE PERSONAL (su nombre y sus lugares en el
+ * `#`), la invitación se vuelve suya: lo saluda por su nombre, le precarga el
+ * RSVP y le dice en qué mesa va. Sin enlace personal, todo eso se esconde solo
+ * y la página es idéntica a la de siempre.
  */
 import * as React from "react";
 import { tituloInvitacion } from "@salones/core";
@@ -29,7 +37,11 @@ import { Nota } from "@/components/nota";
 import { Rsvp } from "@/components/rsvp";
 import { Cierre } from "@/components/cierre";
 import { Musica } from "@/components/musica";
+import { SaludoPersonal } from "@/components/invitado";
+import { TuMesa } from "@/components/mesa";
+import { Portal } from "@/components/portal";
 import { useInvitacion } from "@/lib/cargar";
+import { useInvitadoPersonal } from "@/lib/invitado";
 import { useRevelados } from "@/lib/revelados";
 
 export default function Page() {
@@ -38,7 +50,17 @@ export default function Page() {
   const hayDatos = estado.fase === "lista" || estado.fase === "muestra";
   const inv = hayDatos ? estado.inv : null;
 
-  useRevelados(hayDatos);
+  // La identidad del enlace personal (si la hay) se lee aquí una sola vez y
+  // baja por props: la usan el saludo, el RSVP, "Tu lugar" y el puente al portal.
+  const invitado = useInvitadoPersonal(hayDatos ? estado.codigo : null);
+
+  // "Tu lugar" avisa cuando ya está en el árbol (espera su lectura del acomodo).
+  const [mesaLista, setMesaLista] = React.useState(false);
+  const alAparecerMesa = React.useCallback(() => setMesaLista(true), []);
+
+  // La señal repite el pase de revelado por las secciones que se montan tarde:
+  // el saludo personal (espera el `#`) y "Tu lugar" (espera al servidor).
+  useRevelados(hayDatos, `${invitado ? "p" : ""}${mesaLista ? "m" : ""}`);
 
   // El acento de CADA invitación. Se pone en la raíz —y no en un contenedor—
   // porque la tarjeta de apertura vive fuera del cuerpo de la página y también
@@ -91,6 +113,7 @@ export default function Page() {
 
       <main id="pagina">
         <Portada inv={inv} />
+        <SaludoPersonal invitado={invitado} />
         <Saludo inv={inv} />
         <Guarda id="g1" />
         <Cita inv={inv} />
@@ -104,7 +127,9 @@ export default function Page() {
         <Vestimenta inv={inv} />
         <Regalos inv={inv} />
         <Nota inv={inv} />
-        <Rsvp inv={inv} codigo={estado.codigo} />
+        <TuMesa codigo={estado.codigo} invitado={invitado} onAparece={alAparecerMesa} />
+        <Rsvp inv={inv} codigo={estado.codigo} invitado={invitado} />
+        <Portal codigo={estado.codigo} invitado={invitado} />
         <Cierre inv={inv} />
       </main>
 

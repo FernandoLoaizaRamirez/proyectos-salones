@@ -1,7 +1,12 @@
 "use client";
 
 import * as React from "react";
-import { EstadoRSVP, tituloInvitacion, type Invitacion } from "@salones/core";
+import {
+  EstadoRSVP,
+  tituloInvitacion,
+  type Invitacion,
+  type InvitadoEnlace,
+} from "@salones/core";
 import { obtenerSync } from "@salones/sync";
 import { Rincon } from "./botanica";
 import { IconoWhatsApp } from "./iconos";
@@ -23,13 +28,26 @@ import { IconoWhatsApp } from "./iconos";
  * no hacía falta porque cada invitado abría un enlace personal que ya lo
  * identificaba; este se comparte igual para todos, así que sin el nombre el
  * salón recibiría "alguien confirmó para 4".
+ *
+ * Y cuando SÍ hay enlace personal (llegó con su `#`), lo mejor de los dos
+ * mundos: el nombre y sus lugares vienen precargados —editables, por si
+ * contesta otro de la familia— y la respuesta viaja con SU id, así que cae en
+ * su renglón del tablero "Confirmaciones" del panel en vez de crear uno nuevo.
  */
 const COLECCION_RESPUESTAS = "respuestas";
 
 /** Recuerda qué contestó ESTE teléfono, para corregir en vez de duplicar. */
 const claveMia = (evento: string) => `invitacion:rsvp:${evento}`;
 
-export function Rsvp({ inv, codigo }: { inv: Invitacion; codigo: string }) {
+export function Rsvp({
+  inv,
+  codigo,
+  invitado = null,
+}: {
+  inv: Invitacion;
+  codigo: string;
+  invitado?: InvitadoEnlace | null;
+}) {
   const [nombre, setNombre] = React.useState("");
   const [asiste, setAsiste] = React.useState<boolean | null>(null);
   const [personas, setPersonas] = React.useState("2");
@@ -37,6 +55,23 @@ export function Rsvp({ inv, codigo }: { inv: Invitacion; codigo: string }) {
   const [aviso, setAviso] = React.useState("");
   const [enviando, setEnviando] = React.useState(false);
   const [enviada, setEnviada] = React.useState(false);
+
+  /*
+   * El enlace personal se lee DESPUÉS del primer pintado (viene del `#`), así
+   * que no puede ser el estado inicial: cuando llega, se precargan nombre y
+   * personas. El nombre solo se rellena si el campo sigue vacío —puede que ya
+   * lo esté escribiendo otro miembro de la familia— y los cupos caben siempre
+   * en el select, porque abajo ofrece hasta max(6, cupos).
+   */
+  React.useEffect(() => {
+    if (!invitado) return;
+    setNombre((previo) => (previo.trim() ? previo : invitado.nombre));
+    setPersonas(String(invitado.cupos));
+  }, [invitado]);
+
+  // Hasta 6 como siempre, o hasta los cupos del enlace si son más ("Familia
+  // Núñez" con 8 lugares tiene que poder decir que van los 8).
+  const topePases = Math.max(6, invitado?.cupos ?? 0);
 
   const textoWhatsApp = () =>
     [
@@ -75,11 +110,18 @@ export function Rsvp({ inv, codigo }: { inv: Invitacion; codigo: string }) {
 
     // El mismo id de este teléfono en este evento: volver a contestar CORRIGE
     // la respuesta anterior en vez de dejar dos personas donde hay una.
-    let id = "";
-    try {
-      id = localStorage.getItem(claveMia(codigo)) ?? "";
-    } catch {
-      /* sin almacenamiento: se manda como respuesta nueva */
+    //
+    // Con enlace personal manda SU id: así la respuesta cae en su renglón del
+    // tablero del panel (la colección `respuestas` admite que el invitado
+    // reescriba lo suyo — candado 0016). El id local se sigue guardando abajo
+    // como respaldo, por si un día vuelve sin el enlace.
+    let id = invitado?.id ?? "";
+    if (!id) {
+      try {
+        id = localStorage.getItem(claveMia(codigo)) ?? "";
+      } catch {
+        /* sin almacenamiento: se manda como respuesta nueva */
+      }
     }
     if (!id) id = "RS-" + Math.random().toString(36).slice(2, 8).toUpperCase();
 
@@ -180,7 +222,7 @@ export function Rsvp({ inv, codigo }: { inv: Invitacion; codigo: string }) {
                     value={personas}
                     onChange={(e) => setPersonas(e.target.value)}
                   >
-                    {["1", "2", "3", "4", "5", "6"].map((n) => (
+                    {Array.from({ length: topePases }, (_, i) => String(i + 1)).map((n) => (
                       <option key={n} value={n}>
                         {n === "1" ? "1 persona" : `${n} personas`}
                       </option>

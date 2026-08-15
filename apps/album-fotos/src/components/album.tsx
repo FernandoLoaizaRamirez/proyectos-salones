@@ -19,6 +19,7 @@ import {
   eventoActual,
   esAnfitrion,
   resolverMedios,
+  albumEstaCerrado,
   descargarMedios,
   huellaDeAutor,
   mensajeDeSubida,
@@ -64,6 +65,15 @@ export function Album() {
    * enseña ningún botón de borrar — esconder de más nunca hace daño.
    */
   const [miHuella, setMiHuella] = React.useState<string | null>(null);
+  /**
+   * ¿El álbum ya no admite fotos nuevas? (migración 0021)
+   *
+   * Arranca ABIERTO, al revés que los otros interruptores de esta pantalla. Aquí
+   * la duda se resuelve al otro lado a propósito: esconder la zona de subir por
+   * un fallo de red dejaría a los invitados sin poder aportar en plena fiesta,
+   * mientras que enseñarla de más solo cuesta un aviso del servidor.
+   */
+  const [cerrado, setCerrado] = React.useState(false);
   // Dirección guardada → dirección con la que se muestra (firmada y con fecha
   // de caducidad). Lo que no esté aquí se muestra tal cual.
   const [vistas, setVistas] = React.useState<Record<string, string>>({});
@@ -75,6 +85,7 @@ export function Album() {
     // Depende del enlace y del navegador, que en el servidor no existen.
     setAnfitrion(esAnfitrion());
     void huellaDeAutor(eventoActual()).then(setMiHuella);
+    void albumEstaCerrado(eventoActual()).then(setCerrado);
     if (!estaConectado()) return;
     return obtenerSync().suscribir<Archivo>(eventoActual(), COLECCION_FOTOS, setArchivos);
   }, []);
@@ -270,7 +281,17 @@ export function Album() {
 
   return (
     <div className="space-y-8">
-      {/* Zona para subir */}
+      {/* Zona para subir — desaparece con el álbum cerrado. Al anfitrión se le
+          deja: cerrar es para que no entre nada de fuera, no para atarse las
+          manos (después se agregan las fotos del fotógrafo). */}
+      {cerrado && !anfitrion ? (
+        <div className="rounded-[var(--radius)] border border-border bg-muted/40 p-6 text-center">
+          <p className="font-medium">Este álbum ya está cerrado</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Ya no admite fotos nuevas, pero puedes seguir viéndolo y descargando lo que quieras.
+          </p>
+        </div>
+      ) : (
       <div
         onDragOver={(e) => {
           e.preventDefault();
@@ -324,8 +345,14 @@ export function Album() {
             onChange={(e) => agregar(e.target.files)}
           />
           <AvisoParticipacion accion="subir tus fotos" imagen className="max-w-md text-center" />
+          {cerrado && anfitrion ? (
+            <p className="text-xs text-muted-foreground">
+              El álbum está cerrado para los invitados. Tú sí puedes seguir subiendo.
+            </p>
+          ) : null}
         </div>
       </div>
+      )}
 
       {/* Contador + descargar */}
       <div className="space-y-2">

@@ -267,6 +267,7 @@ const CORTES_DEL_SERVIDOR = new Set([
   "video-no-incluido", // 402 · migración 0017
   "archivo-muy-grande", // 413 · migración 0018
   "evento-sin-espacio", // 507 · migración 0018
+  "album-cerrado", // 423 · migración 0021
 ]);
 
 /**
@@ -597,6 +598,7 @@ function crearProveedorServidor(url: string, anon: string): ProveedorSync {
       // detrás justo lo que se acaba de negar.
       if (res.status === 413) throw new Error("archivo-muy-grande");
       if (res.status === 507) throw new Error("evento-sin-espacio");
+      if (res.status === 423) throw new Error("album-cerrado");
       if (!res.ok) return null;
       const dato = (await res.json()) as Partial<PermisoSubida>;
       if (typeof dato.subirUrl !== "string" || typeof dato.urlPublica !== "string") return null;
@@ -681,6 +683,44 @@ function crearProveedorServidor(url: string, anon: string): ProveedorSync {
       return "fallo";
     } catch {
       return "fallo";
+    }
+  };
+
+  /* ---- Cerrar el álbum (migración 0021) ------------------------------------
+   * Leer es público (es un sí/no que se nota igual al intentar subir). Escribir
+   * exige el PASE DE ANFITRIÓN, el mismo que permite borrar: quien lo tiene es
+   * quien organiza, y no hace falta nada más. */
+  preguntarCerrado = async (evento) => {
+    try {
+      const res = await fetch(`${raiz}/rest/v1/rpc/album_esta_cerrado`, {
+        method: "POST",
+        headers: { ...auth, "Content-Type": "application/json" },
+        body: JSON.stringify({ p_codigo: evento }),
+      });
+      // 404 = migración sin aplicar; sin red = no se sabe. En los dos casos se
+      // responde ABIERTO: equivocarse hacia el lado cerrado dejaría a una boda
+      // sin poder subir fotos en plena fiesta, y eso es mucho peor que una foto
+      // de más que el servidor rechazará igual.
+      if (!res.ok) return false;
+      return (await res.json()) === true;
+    } catch {
+      return false;
+    }
+  };
+
+  cambiarCerrado = async (evento, cerrado) => {
+    const paseAnfitrion = await obtenerPaseAnfitrion(evento);
+    if (!paseAnfitrion) return false;
+    try {
+      const res = await fetch(`${raiz}/rest/v1/rpc/cerrar_album`, {
+        method: "POST",
+        headers: { ...auth, "Content-Type": "application/json" },
+        body: JSON.stringify({ p_pase: paseAnfitrion, p_cerrado: cerrado }),
+      });
+      if (!res.ok) return false;
+      return (await res.json()) === true;
+    } catch {
+      return false;
     }
   };
 
@@ -1131,6 +1171,37 @@ export type EspacioEvento = { usado: number; cupo: number };
  */
 let preguntarEspacio: ((evento: string) => Promise<EspacioEvento | null>) | null = null;
 
+/** Lo ponen `crearProveedorServidor`. En modo local no hay álbum que cerrar. */
+let preguntarCerrado: ((evento: string) => Promise<boolean>) | null = null;
+let cambiarCerrado: ((evento: string, cerrado: boolean) => Promise<boolean>) | null = null;
+
+/**
+ * ¿Está cerrado el álbum de este evento? (migración 0021)
+ *
+ * Cerrado quiere decir que ya no admite fotos nuevas. **Verlo y descargarlo
+ * sigue igual**: cerrar no esconde nada.
+ *
+ * Ante la duda responde `false` (abierto), al revés que casi todo lo demás en
+ * este paquete. Es deliberado: equivocarse hacia el lado cerrado dejaría a una
+ * boda sin poder subir fotos en plena fiesta, mientras que equivocarse hacia el
+ * abierto solo cuesta una petición que el servidor rechazará igual.
+ */
+export async function albumEstaCerrado(evento: string): Promise<boolean> {
+  obtenerSync();
+  if (!preguntarCerrado) return false;
+  return preguntarCerrado(evento);
+}
+
+/**
+ * Cierra (o vuelve a abrir) el álbum. Solo funciona desde el enlace de quien
+ * organiza: la credencial es su pase de anfitrión. Devuelve si se pudo.
+ */
+export async function cambiarAlbumCerrado(evento: string, cerrado: boolean): Promise<boolean> {
+  obtenerSync();
+  if (!cambiarCerrado) return false;
+  return cambiarCerrado(evento, cerrado);
+}
+
 /** Cómo acabó un intento de quitar un recuerdo. */
 export type ResultadoQuitar = "ok" | "no-es-tuya" | "fallo" | "sin-desplegar";
 
@@ -1257,6 +1328,9 @@ export function mensajeDeSubida(e: unknown): string {
     // Se le habla al INVITADO, que no contrató nada y no tiene culpa de nada: se
     // le dice qué sí puede hacer, no que a alguien le falta pagar.
     return "En este evento solo se pueden subir fotos. Tus fotos sí se suben con normalidad.";
+  }
+  if (msg === "album-cerrado") {
+    return "Este álbum ya no admite fotos nuevas, pero puedes seguir viéndolo y descargándolo.";
   }
   if (msg === "imagen-ilegible") {
     // La foto no llegó a subir: falló al abrirla. Mandarle a revisar la conexión

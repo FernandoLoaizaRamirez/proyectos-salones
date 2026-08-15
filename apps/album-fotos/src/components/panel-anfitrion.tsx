@@ -37,12 +37,16 @@ import {
   EyeOff,
   HardDrive,
   KeyRound,
+  Lock,
+  LockOpen,
   LogOut,
   ShieldAlert,
   Users,
 } from "lucide-react";
 import { Button, cn } from "@salones/ui";
 import {
+  albumEstaCerrado,
+  cambiarAlbumCerrado,
   claveAnfitrion,
   espacioDelEvento,
   estaConectado,
@@ -207,6 +211,9 @@ export function PanelAnfitrion() {
   const [quien, setQuien] = React.useState<Quien | null>(null);
   /** `null` mientras no se sepa, y también si no se puede saber. */
   const [espacio, setEspacio] = React.useState<EspacioEvento | null>(null);
+  const [cerrado, setCerrado] = React.useState(false);
+  const [cambiando, setCambiando] = React.useState(false);
+  const [avisoCierre, setAvisoCierre] = React.useState("");
 
   React.useEffect(() => {
     const evento = eventoActual();
@@ -220,6 +227,9 @@ export function PanelAnfitrion() {
     let vivo = true;
     void espacioDelEvento(evento).then((e) => {
       if (vivo) setEspacio(e);
+    });
+    void albumEstaCerrado(evento).then((c) => {
+      if (vivo) setCerrado(c);
     });
     return () => {
       vivo = false;
@@ -236,6 +246,21 @@ export function PanelAnfitrion() {
     const destino = `${window.location.origin}/${sufijoEvento()}`;
     olvidarClaveAnfitrion(evento);
     window.location.replace(destino);
+  };
+
+  /**
+   * Cierra o reabre el álbum. Se pinta el resultado solo si el servidor dijo que
+   * sí: enseñar el interruptor cambiado cuando no se guardó sería mentirle a
+   * quien organiza justo en la decisión que menos admite dudas.
+   */
+  const alternarCierre = async () => {
+    const evento = eventoActual();
+    setCambiando(true);
+    setAvisoCierre("");
+    const ok = await cambiarAlbumCerrado(evento, !cerrado);
+    setCambiando(false);
+    if (ok) setCerrado(!cerrado);
+    else setAvisoCierre("No pudimos cambiarlo. Vuelve a abrir tu enlace privado e inténtalo.");
   };
 
   if (!quien?.anfitrion) return null;
@@ -302,6 +327,31 @@ export function PanelAnfitrion() {
           </div>
 
           {espacio ? <Contador espacio={espacio} /> : null}
+
+          <div className="mt-4 rounded-[var(--radius)] border border-border bg-background p-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h4 className="flex items-center gap-2 text-sm font-semibold">
+                  {cerrado ? (
+                    <Lock className="size-4 text-amber-600 dark:text-amber-500" />
+                  ) : (
+                    <LockOpen className="size-4 text-primary" />
+                  )}
+                  {cerrado ? "El álbum está cerrado" : "El álbum está abierto"}
+                </h4>
+                <p className="mt-1 max-w-md text-sm text-muted-foreground">
+                  {cerrado
+                    ? "Los invitados ya no pueden subir. Siguen viéndolo y descargándolo, y tú puedes seguir agregando fotos."
+                    : "Cualquiera con el enlace puede subir. Ciérralo cuando termine el evento: el QR sigue circulando después, y cada foto nueva gasta espacio."}
+                </p>
+              </div>
+              <Button variant="outline" size="sm" onClick={() => void alternarCierre()} disabled={cambiando}>
+                {cerrado ? <LockOpen className="size-4" /> : <Lock className="size-4" />}
+                {cambiando ? "Un momento…" : cerrado ? "Volver a abrirlo" : "Cerrar el álbum"}
+              </Button>
+            </div>
+            {avisoCierre ? <p className="mt-2 text-sm text-destructive">{avisoCierre}</p> : null}
+          </div>
 
           <p className="mt-4 text-xs text-muted-foreground">
             Si abriste tu enlace en una pantalla prestada —la del salón, la del DJ, un proyector—

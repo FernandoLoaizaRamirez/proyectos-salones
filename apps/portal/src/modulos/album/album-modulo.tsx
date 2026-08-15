@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { Button, EmptyState, cn, Confirmar, AvisoParticipacion } from "@salones/ui";
 import {
+  albumEstaCerrado,
   esAnfitrion,
   estaConectado,
   huellaDeAutor,
@@ -82,6 +83,12 @@ export function AlbumModulo({
   // Con servidor, borrar del álbum COMPARTIDO es solo del anfitrión (llave 0009):
   // el invitado no puede quitar fotos de otros, ni las suyas una vez subidas.
   const [anfitrion, setAnfitrion] = React.useState(false);
+  /**
+   * ¿El álbum ya no admite fotos nuevas? (migración 0021). Arranca ABIERTO: si
+   * fallara la consulta, es mejor enseñar la zona de subir de más —el servidor
+   * la rechazaría igual— que dejar a los invitados sin aportar en plena fiesta.
+   */
+  const [cerrado, setCerrado] = React.useState(false);
   const [arrastrando, setArrastrando] = React.useState(false);
   const [subiendo, setSubiendo] = React.useState(0);
   const [porQuitar, setPorQuitar] = React.useState<Foto | null>(null);
@@ -126,6 +133,7 @@ export function AlbumModulo({
     const enServidor = estaConectado();
     setConectado(enServidor);
     setAnfitrion(esAnfitrion(evento));
+    void albumEstaCerrado(evento).then(setCerrado);
     if (!enServidor) return;
     return obtenerSync().suscribir<Foto>(evento, COLECCION_FOTOS, (items) =>
       setFotos([...items].sort(porFecha)),
@@ -346,7 +354,16 @@ export function AlbumModulo({
 
   return (
     <div className="space-y-8">
-      {/* Zona para subir */}
+      {/* Zona para subir — desaparece con el álbum cerrado. Al anfitrión se le
+          deja, para que pueda agregar las fotos del fotógrafo después. */}
+      {cerrado && !anfitrion ? (
+        <div className="rounded-[var(--radius)] border border-border bg-muted/40 p-6 text-center">
+          <p className="font-medium">Este álbum ya está cerrado</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Ya no admite fotos nuevas, pero puedes seguir viéndolo y descargando lo que quieras.
+          </p>
+        </div>
+      ) : (
       <div
         onDragOver={(e) => {
           e.preventDefault();
@@ -403,8 +420,14 @@ export function AlbumModulo({
               e.target.value = "";
             }}
           />
+          {cerrado && anfitrion ? (
+            <p className="text-xs text-muted-foreground">
+              El álbum está cerrado para los invitados. Tú sí puedes seguir subiendo.
+            </p>
+          ) : null}
         </div>
       </div>
+      )}
 
       {/* Contador */}
       <div className="flex items-center justify-between gap-4">

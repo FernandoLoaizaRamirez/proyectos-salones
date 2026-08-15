@@ -92,14 +92,14 @@ async function rpc(nombre: string, cuerpo: Record<string, unknown>): Promise<unk
 async function eventoDelPase(
   pase: string,
   paseAnfitrion: string,
-): Promise<{ evento: string; usado: string } | null> {
+): Promise<{ evento: string; usado: string; esAnfitrion: boolean } | null> {
   if (paseAnfitrion) {
     const e = await rpc("evento_del_pase_anfitrion", { p_pase: paseAnfitrion });
-    if (typeof e === "string" && e) return { evento: e, usado: paseAnfitrion };
+    if (typeof e === "string" && e) return { evento: e, usado: paseAnfitrion, esAnfitrion: true };
   }
   if (pase) {
     const e = await rpc("evento_del_pase", { p_pase: pase });
-    if (typeof e === "string" && e) return { evento: e, usado: pase };
+    if (typeof e === "string" && e) return { evento: e, usado: pase, esAnfitrion: false };
   }
   return null;
 }
@@ -206,6 +206,38 @@ async function cabeEnElEvento(evento: string, bytes: number): Promise<boolean> {
   if (res.status === 404) return true; // migración 0018 pendiente
   if (!res.ok) return false;
   return (await res.json()) === true;
+}
+
+/**
+ * ¿Está cerrado el álbum de este evento? (migración 0021)
+ *
+ * Cuando la boda termina, quien organiza puede cerrar el álbum: se sigue viendo
+ * y descargando, pero ya no entra nada nuevo. Sin esto, cualquiera con el QR
+ * —o con una foto del QR hecha en la fiesta— podía seguir subiendo semanas
+ * después, gastando el cupo del evento.
+ *
+ * Mismo trato no-fatal que el resto: si la migración no está aplicada, la base
+ * responde 404 y se deja pasar (o sea, abierto). Cualquier otro fallo también
+ * deja pasar, y aquí eso es deliberado: al contrario que el paquete de video,
+ * equivocarse hacia el lado abierto solo cuesta una foto de más, mientras que
+ * equivocarse hacia el cerrado deja a una boda sin poder subir en plena fiesta.
+ */
+async function albumCerrado(evento: string): Promise<boolean> {
+  try {
+    const res = await fetch(`${URL_SUPABASE}/rest/v1/rpc/album_esta_cerrado`, {
+      method: "POST",
+      headers: {
+        apikey: SERVICE_ROLE,
+        Authorization: `Bearer ${SERVICE_ROLE}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ p_codigo: evento }),
+    });
+    if (!res.ok) return false;
+    return (await res.json()) === true;
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -318,11 +350,39 @@ Deno.serve(async (req: Request) => {
     );
     // Sin pase válido no se firma nada. No se dice por qué falló.
     if (!quien) return json({ error: "sin permiso para este evento" }, 403);
-    const { evento, usado } = quien;
+    const { evento, usado, esAnfitrion } = quien;
+
+    /* ---- El álbum cerrado (migración 0021) --------------------------------
+     * Quien organiza SÍ puede seguir subiendo con el álbum cerrado: se cierra a
+     * los invitados para que no entre nada de fuera, y después se agregan las
+     * fotos del fotógrafo. Cerrar no es atarse las manos. */
+    if (!esAnfitrion && (await albumCerrado(evento))) {
+      return json(
+        {
+          error: "álbum cerrado",
+          detalle: "Este álbum ya no admite fotos nuevas. Puedes seguir viéndolo y descargándolo.",
+        },
+        423, // "cerrado con llave": ni un permiso roto ni un fallo de red
+      );
+    }
 
     /* ---- El paquete de video (migración 0017) ------------------------------
      * Va ANTES del tope a propósito: una subida que se va a negar no debe
      * gastarle cupo al evento. */
+    /* ---- El álbum cerrado (migración 0021) --------------------------------
+     * Quien organiza SÍ puede seguir subiendo con el álbum cerrado: se cierra a
+     * los invitados para que no entre nada de fuera, y después se agregan las
+     * fotos del fotógrafo. Cerrar no es atarse las manos. */
+    if (!esAnfitrion && (await albumCerrado(evento))) {
+      return json(
+        {
+          error: "álbum cerrado",
+          detalle: "Este álbum ya no admite fotos nuevas. Puedes seguir viéndolo y descargándolo.",
+        },
+        423, // "cerrado con llave": ni un permiso roto ni un fallo de red
+      );
+    }
+
     /* ---- El paquete de video (migración 0017) ------------------------------
      * Va ANTES del tope a propósito: una subida que se va a negar no debe
      * gastarle cupo al evento. */

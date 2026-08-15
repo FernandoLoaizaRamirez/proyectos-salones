@@ -274,10 +274,22 @@ export function CatalogoCliente() {
                         <span className="text-sm text-muted-foreground">{modeloInfo.periodo}</span>
                       </div>
                       {otros.length > 0 ? (
+                        /*
+                         * Cada precio va en su propio `whitespace-nowrap`: en un
+                         * celular (375 px) este renglón no cabe de una, y cuando
+                         * era un solo texto partía "pago único" dejando "único"
+                         * solo en la línea de abajo. Ahora solo puede cortar por
+                         * el " · ", que es donde se ve bien.
+                         */
                         <p className="mt-1 text-xs text-muted-foreground">
-                          {otros
-                            .map((m) => `${m.corto} ${money(p.precios[m.clave])}${m.periodo}`)
-                            .join(" · ")}
+                          {otros.map((m, i) => (
+                            <React.Fragment key={m.clave}>
+                              {i > 0 ? " · " : null}
+                              <span className="whitespace-nowrap">
+                                {`${m.corto} ${money(p.precios[m.clave])}${m.periodo}`}
+                              </span>
+                            </React.Fragment>
+                          ))}
                         </p>
                       ) : (
                         <p className="mt-1 text-xs text-muted-foreground">

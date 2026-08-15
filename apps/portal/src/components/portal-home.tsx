@@ -10,17 +10,30 @@
  */
 import Link from "next/link";
 import { BrandingScope, PieLegal, type BrandingSalon } from "@salones/ui";
-import { tieneFuncion } from "@salones/core";
+import { tieneFuncion, codificarInvitadoEnlace } from "@salones/core";
 import { ArrowUpRight, PartyPopper, SearchX } from "lucide-react";
 import { MODULOS, enlaceModulo, esInterno } from "@/lib/modulos";
 import { CapturaPerfil } from "@/components/captura-perfil";
 import { HeroEvento } from "@/components/hero-evento";
+import { usePerfil } from "@/lib/perfil";
 import type { ConfigEvento } from "@/lib/config-evento";
 
 const CLASES_TARJETA =
   "group block rounded-[var(--radius)] border border-border bg-card p-5 transition hover:border-ring hover:shadow-sm";
 
 export function PortalHome({ config }: { config: ConfigEvento }) {
+  /*
+   * La identidad para los PUENTES. Los módulos internos comparten el perfil por
+   * localStorage, pero photobooth y brindis viven en otro dominio y allá ese
+   * almacén no existe: la identidad viaja en el fragmento (#) del enlace, igual
+   * que en el enlace personal del anfitrión — y el # nunca toca el servidor.
+   * Llega tras montar (usePerfil arranca en null), así que los enlaces se
+   * completan solos en cuanto se conoce el perfil.
+   */
+  const perfil = usePerfil(config.codigo);
+  const hashPerfil = perfil
+    ? `#${codificarInvitadoEnlace({ id: perfil.id ?? "", nombre: perfil.nombre, cupos: perfil.cupos ?? 1 })}`
+    : "";
   // Enlace roto o código mal escrito: mejor decirlo claro que fingir un portal.
   if (config.estado === "no-encontrado") {
     return (
@@ -82,7 +95,9 @@ export function PortalHome({ config }: { config: ConfigEvento }) {
                 </div>
               );
 
-              // Migrado → se queda en el portal. Aún no → puente a su app.
+              // Migrado → se queda en el portal. Aún no → puente a su app,
+              // llevándose la identidad en el fragmento (los internos no la
+              // necesitan: comparten el perfil por localStorage).
               return interno ? (
                 <Link key={m.clave} href={href} className={CLASES_TARJETA}>
                   {contenido}
@@ -90,7 +105,7 @@ export function PortalHome({ config }: { config: ConfigEvento }) {
               ) : (
                 <a
                   key={m.clave}
-                  href={href}
+                  href={`${href}${hashPerfil}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className={CLASES_TARJETA}

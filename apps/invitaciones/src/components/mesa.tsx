@@ -72,7 +72,9 @@ type Datos = { mesas: MesaEvento[]; invitados: InvitadoMesa[] };
 /** "Fulano, Zutano y Mengano" — la lista como se diría en voz alta. */
 function nombresEnLista(gente: InvitadoMesa[]): string {
   const nombres = gente.map((g) => g.nombre);
-  if (nombres.length === 1) return nombres[0];
+  // El `?? ""` no sobra aunque acabemos de comprobar el largo: TypeScript no
+  // ata las dos cosas y da `string | undefined` al sacar de una lista.
+  if (nombres.length === 1) return nombres[0] ?? "";
   return `${nombres.slice(0, -1).join(", ")} y ${nombres[nombres.length - 1]}`;
 }
 

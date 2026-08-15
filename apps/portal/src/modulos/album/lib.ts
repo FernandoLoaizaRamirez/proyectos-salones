@@ -12,7 +12,11 @@
  * módulo se puede extraer a `@salones/module-album`.
  */
 
-import { MB_POR_ARCHIVO, pesaDemasiado as pesaDemasiadoSync } from "@salones/sync";
+import {
+  MB_POR_ARCHIVO,
+  comprimirImagen as comprimirImagenCompartida,
+  pesaDemasiado as pesaDemasiadoSync,
+} from "@salones/sync";
 
 /** Colección compartida en el lugar central (la misma que usa `apps/album-fotos`). */
 export const COLECCION_FOTOS = "fotos";
@@ -27,6 +31,15 @@ export type Foto = {
   tipo: string;
   /** Marca de tiempo (ms). */
   fecha?: number;
+  /**
+   * Quién la subió, si el teléfono tenía perfil. Campos ADICIONALES que la app
+   * `album-fotos` original ignora sola; hasta hoy el álbum era anónimo y el
+   * anfitrión no podía saber de quién era cada recuerdo. Solo viajan en fotos
+   * nuevas (las de antes no se reescriben — candado 0016).
+   */
+  autor?: string;
+  /** Su renglón en la lista del anfitrión (si llegó con enlace personal). */
+  invitadoId?: string;
 };
 
 /**
@@ -80,36 +93,15 @@ export function claveMisFotos(evento: string): string {
 /**
  * Comprime una imagen a JPEG (máx. ~1600 px) antes de subirla, para que pese
  * poco y el almacenamiento rinda: una boda entera cabe en el plan gratuito.
- * Solo corre en el navegador (usa canvas).
+ *
+ * ⚠️ ERA UNA COPIA y ya no lo es (14 ago 2026). El mismo canvas estaba escrito
+ * tres veces —aquí, en el portal y en `@salones/sync`—, y por eso arreglar el
+ * mensaje de "no pudimos leer esa foto" en un sitio no lo arreglaba en los
+ * otros. Ahora solo se elige el tamaño: 1600 px en el álbum, porque aquí la
+ * foto es el producto y el muro puede permitirse menos.
  */
 export function comprimirImagen(file: File, maxLado = 1600, calidad = 0.82): Promise<Blob> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    const url = URL.createObjectURL(file);
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      const escala = Math.min(1, maxLado / Math.max(img.width, img.height));
-      const canvas = document.createElement("canvas");
-      canvas.width = Math.round(img.width * escala);
-      canvas.height = Math.round(img.height * escala);
-      const ctx = canvas.getContext("2d");
-      if (!ctx) {
-        reject(new Error("No se pudo procesar la imagen."));
-        return;
-      }
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      canvas.toBlob(
-        (b) => (b ? resolve(b) : reject(new Error("No se pudo procesar la imagen."))),
-        "image/jpeg",
-        calidad,
-      );
-    };
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-      reject(new Error("Imagen no válida."));
-    };
-    img.src = url;
-  });
+  return comprimirImagenCompartida(file, maxLado, calidad);
 }
 
 /**

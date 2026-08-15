@@ -1136,6 +1136,17 @@ export function mensajeDeSubida(e: unknown): string {
     // le dice qué sí puede hacer, no que a alguien le falta pagar.
     return "En este evento solo se pueden subir fotos. Tus fotos sí se suben con normalidad.";
   }
+  if (msg === "imagen-ilegible") {
+    // La foto no llegó a subir: falló al abrirla. Mandarle a revisar la conexión
+    // sería el consejo equivocado, y es lo que hacía esto hasta el 14 ago 2026.
+    return "No pudimos leer esa foto. Puede estar dañada o en un formato que este teléfono no abre. Prueba con otra.";
+  }
+  if (msg === "imagen-no-procesable") {
+    // Aquí el que falla es el navegador, no el archivo: cambiar de foto no
+    // arregla nada, y decirle que lo intente con otra sería hacerle perder el
+    // tiempo con todas.
+    return "Este navegador no pudo preparar la foto. Prueba desde otro navegador o desde otro teléfono.";
+  }
   if (msg === "archivo-muy-grande") {
     return `Ese archivo pesa demasiado (el tope es de ${MB_POR_ARCHIVO} MB). Prueba con uno más corto o más ligero.`;
   }
@@ -1193,6 +1204,14 @@ export function mensajeSinPermiso(): string {
  * refresco, no pasaba por la red de entrega rápida y se saltaba el candado de
  * fotos privadas de la 0013. El álbum ya lo hacía bien; esto es lo mismo, aquí
  * para que no haya tres copias.
+ *
+ * ⚠️ LOS FALLOS SALEN CON CÓDIGO, NO CON TEXTO (arreglado el 14 ago 2026). Antes
+ * lanzaban frases ("Imagen no válida."), que `mensajeDeSubida` no reconocía, así
+ * que acababan en el mensaje de reserva: **"Revisa tu conexión"**. Un invitado
+ * elegía una foto que su navegador no sabe abrir y la app lo mandaba a mirar el
+ * wifi en mitad de una boda. Distinguir los dos fallos importa porque el consejo
+ * es distinto: si la foto no se puede leer, se prueba con otra; si el que falla
+ * es el navegador, cambiar de foto no arregla nada.
  */
 export function comprimirImagen(file: File, maxLado = 1200, calidad = 0.82): Promise<Blob> {
   return new Promise((resolve, reject) => {
@@ -1206,19 +1225,22 @@ export function comprimirImagen(file: File, maxLado = 1200, calidad = 0.82): Pro
       canvas.height = Math.round(img.height * escala);
       const ctx = canvas.getContext("2d");
       if (!ctx) {
-        reject(new Error("No se pudo procesar la imagen."));
+        // El navegador no da lienzo: no es culpa del archivo.
+        reject(new Error("imagen-no-procesable"));
         return;
       }
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
       canvas.toBlob(
-        (b) => (b ? resolve(b) : reject(new Error("No se pudo procesar la imagen."))),
+        (b) => (b ? resolve(b) : reject(new Error("imagen-no-procesable"))),
         "image/jpeg",
         calidad,
       );
     };
     img.onerror = () => {
+      // El archivo no se puede decodificar: dañado, o un formato que este
+      // navegador no abre. Con otra foto probablemente funcione.
       URL.revokeObjectURL(url);
-      reject(new Error("Imagen no válida."));
+      reject(new Error("imagen-ilegible"));
     };
     img.src = url;
   });

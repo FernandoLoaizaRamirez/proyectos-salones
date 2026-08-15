@@ -122,3 +122,10 @@ export * from "./entitlements";
 /* ------------------------------------------------------------------ */
 
 export * from "./invitacion";
+
+/* ------------------------------------------------------------------ */
+/* Identidad del invitado y acomodo de mesas (compartidos)            */
+/* ------------------------------------------------------------------ */
+
+export * from "./invitado-enlace";
+export * from "./acomodo";

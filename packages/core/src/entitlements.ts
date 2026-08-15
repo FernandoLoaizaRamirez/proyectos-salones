@@ -42,6 +42,14 @@ export const FEATURES_CONOCIDAS = {
   SyncColectivo: "sync-colectivo",
   /** Tiempo real por websockets (a futuro, premium). */
   Realtime: "realtime",
+  /** El acomodo de mesas del organizador, montable en el portal. */
+  Mesas: "mesas",
+  /** La invitación digital del evento, la que captura el salón en su panel. */
+  Invitacion: "invitacion",
+  /** El photobooth con marcos, montable en el portal. */
+  Photobooth: "photobooth",
+  /** El brindis con video recuerdo, montable en el portal. */
+  Brindis: "brindis",
 } as const;
 
 export const FeatureSchema = z.object({

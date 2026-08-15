@@ -25,8 +25,8 @@ Se aplican **en orden**. Cada una es idempotente/aditiva (segura de correr):
 | `0012_diagnostico.sql` | Tabla `app_errores` + la función que la escribe: los fallos dejan rastro. | Solo agrega una tabla nueva, cerrada. |
 | `0013_media_privado.sql` | El almacén pasa a **privado**: las fotos se ven con dirección firmada que caduca. | Su corte va en la `0014`. |
 | `0014_cortes_aplicados.sql` | **Los tres cortes de seguridad**, ya sin comentar. Lo que convierte la base insegura en la segura. | **Ninguno en el proyecto en vivo** (ya se corrieron a mano el 24 jul 2026); es el cierre en uno nuevo. |
-| `0015_tope_subidas.sql` | Tope de subidas por pase y por evento, para que nadie llene el almacén compartido. | Aditiva. ⛔ **PENDIENTE DE CORRER** (comprobado en la base el 14 ago 2026: no existe `media_permisos`). |
-| `0016_candado_sobrescritura.sql` | **El candado de SOBRESCRIBIR**: un invitado ya no puede vaciar, esconder ni renombrar lo que subió otro. | Cambia el comportamiento en cuanto se corre. ⛔ **PENDIENTE DE CORRER** (comprobado el 14 ago 2026: no existe el disparador `trg_items_candado_sobrescritura`). |
+| `0015_tope_subidas.sql` | Tope de subidas por pase y por evento, para que nadie llene el almacén compartido. | Aditiva. ✅ **Corrida el 14 ago 2026** (comprobado en la base: están la tabla `media_permisos`, sus índices y la función `permitir_subida`). |
+| `0016_candado_sobrescritura.sql` | **El candado de SOBRESCRIBIR**: un invitado ya no puede vaciar, esconder ni renombrar lo que subió otro. | ✅ **Corrida el 14 ago 2026** y verificada atacando producción con un pase de invitado normal: vaciar una fila ajena, esconderla cambiándole la colección y el borrado masivo por colección dan **401 y 0 filas**; el anfitrión sigue guardando (200). Están el disparador `trg_items_candado_sobrescritura`, su función y las 6 colecciones de la lista blanca. ⚠️ Contesta **401, no 403** como dice el archivo: lo traduce PostgREST. `esSinPermiso` de `@salones/sync` ya cuenta los dos. |
 | `0017_paquete_video.sql` | El **paquete de video** como función vendible + `evento_tiene_funcion`, la única respuesta para el navegador y para el servidor. | ✅ Corrida el 14 ago 2026. Apaga el video en los eventos que no lo tengan contratado. |
 | `0018_cupo_almacenamiento.sql` | **Cupo de espacio por evento**, medido de los bytes reales de `storage.objects`. Necesita la `0017`. | ✅ Corrida el 14 ago 2026. |
 
@@ -41,6 +41,16 @@ Se aplican **en orden**. Cada una es idempotente/aditiva (segura de correr):
 > ```
 >
 > Un `0` significa que esa migración **no está**, por mucho que digan las notas.
+>
+> Y para que esas pruebas **ataquen de verdad** en vez de saltarse, hay que darles
+> las dos variables públicas, que ya están en el disco:
+>
+> ```bash
+> set -a && . ./apps/muro/.env.local && set +a && EXIGIR_SEGURIDAD=1 npx vitest run tests/aislamiento/
+> ```
+>
+> Con la `0016` puesta, `sobrescritura.test.ts` pasa de saltada a 8 casos verdes de
+> verdad. Esa es la señal, no el color de la suite sin las variables.
 
 > ⚠️ **La `0014` no es opcional.** Sin ella, un proyecto reconstruido desde
 > este repositorio nace con los tres agujeros abiertos: cualquier invitado

@@ -29,17 +29,20 @@ import {
   Copy,
   ExternalLink,
   Eye,
+  Image as ImageIcon,
   Loader2,
   MessageCircle,
   Plus,
   SearchX,
   Trash2,
+  Upload,
 } from "lucide-react";
 import { Button, Card } from "@salones/ui";
 import {
   COLECCION_INVITACION,
   COLOR_INVITACION,
   fechaLarga,
+  fotosDeInvitacion,
   idInvitacion,
   invitacionDe,
   invitacionVacia,
@@ -50,7 +53,14 @@ import {
   type Sede,
   type Tienda,
 } from "@salones/core";
-import { esSinPermiso, obtenerSync, recordarClaveAnfitrion } from "@salones/sync";
+import {
+  comprimirImagen,
+  esSinPermiso,
+  mensajeDeSubida,
+  obtenerSync,
+  recordarClaveAnfitrion,
+  resolverMedios,
+} from "@salones/sync";
 import { obtenerSupabase } from "@/lib/supabase";
 import { obtenerEvento, type EventoFila } from "@/lib/eventos";
 import { enlaceInvitacion } from "@/lib/pantallas";
@@ -89,6 +99,137 @@ function Campo({
       />
       {ayuda ? <span className="mt-1 block text-xs text-muted-foreground">{ayuda}</span> : null}
     </label>
+  );
+}
+
+/** Lo que necesita un campo de foto para subir y para enseñar la miniatura. */
+type Fotos = {
+  /** A qué evento se suben (y con qué pase se firman). */
+  codigo: string;
+  /** Referencia guardada → dirección que sí se puede pintar aquí y ahora. */
+  verse: (referencia: string) => string;
+  /** Apunta la vista previa de una foto recién subida. */
+  recordar: (referencia: string, url: string) => void;
+};
+
+/**
+ * UN CAMPO DE FOTO: se sube desde el teléfono o la computadora, o se pega un
+ * enlace de toda la vida.
+ *
+ * Por qué las dos cosas: SUBIR es lo que necesita un salón que no es técnico
+ * —antes había que tener la foto colgada en algún lado y pegar su dirección—, y
+ * el ENLACE se queda porque las invitaciones capturadas así siguen funcionando
+ * y porque a veces la foto ya vive en otro sitio.
+ *
+ * Lo que se guarda al subir es una REFERENCIA al almacén privado (corte de la
+ * 0013), no una dirección que se pueda abrir: las firmadas caducan en una hora
+ * y una invitación se manda meses antes. Se firman al abrir la invitación; aquí
+ * se firman aparte, solo para la miniatura.
+ */
+function CampoFoto({
+  etiqueta,
+  valor,
+  onChange,
+  ayuda,
+  placeholder = "https://…/foto.jpg",
+  fotos,
+}: {
+  etiqueta?: string;
+  valor: string;
+  onChange: (v: string) => void;
+  ayuda?: string;
+  placeholder?: string;
+  fotos: Fotos;
+}) {
+  const { codigo, verse, recordar } = fotos;
+  const [subiendo, setSubiendo] = React.useState(false);
+  const [error, setError] = React.useState("");
+  const entrada = React.useRef<HTMLInputElement>(null);
+
+  const elegir = async (file: File | undefined) => {
+    if (!file) return;
+    setSubiendo(true);
+    setError("");
+    try {
+      // Se comprime antes de subir, igual que en el álbum y el muro: una foto de
+      // teléfono son 4 MB y todos los eventos comparten el mismo cajón.
+      const blob = await comprimirImagen(file);
+      const referencia = await obtenerSync().subirArchivo(
+        codigo,
+        `invitacion-${Date.now()}.jpg`,
+        blob,
+        "image/jpeg",
+      );
+      // La miniatura sale del archivo que ya tenemos, sin volver a pedirlo.
+      recordar(referencia, URL.createObjectURL(blob));
+      onChange(referencia);
+    } catch (e) {
+      setError(mensajeDeSubida(e));
+    } finally {
+      setSubiendo(false);
+      // Para poder reintentar con el MISMO archivo si algo salió mal.
+      if (entrada.current) entrada.current.value = "";
+    }
+  };
+
+  return (
+    <div>
+      {etiqueta ? <span className="mb-1.5 block text-sm font-medium">{etiqueta}</span> : null}
+      <div className="flex items-start gap-3">
+        <div className="grid size-16 shrink-0 place-items-center overflow-hidden rounded-[var(--radius)] border border-border bg-muted">
+          {valor ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={verse(valor)} alt="" className="size-full object-cover" />
+          ) : (
+            <ImageIcon className="size-5 text-muted-foreground" />
+          )}
+        </div>
+        <div className="min-w-0 flex-1 space-y-2">
+          <div className="flex flex-wrap gap-2">
+            <input
+              ref={entrada}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => void elegir(e.target.files?.[0])}
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={subiendo}
+              onClick={() => entrada.current?.click()}
+            >
+              {subiendo ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" /> Subiendo…
+                </>
+              ) : (
+                <>
+                  <Upload className="size-4" /> {valor ? "Cambiar foto" : "Subir foto"}
+                </>
+              )}
+            </Button>
+            {valor ? (
+              <Button variant="ghost" size="sm" onClick={() => onChange("")}>
+                Quitar
+              </Button>
+            ) : null}
+          </div>
+          <input
+            type="text"
+            className={CAMPO}
+            value={valor}
+            placeholder={placeholder}
+            onChange={(e) => onChange(e.target.value)}
+          />
+        </div>
+      </div>
+      {error ? (
+        <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">{error}</p>
+      ) : ayuda ? (
+        <p className="mt-2 text-xs text-muted-foreground">{ayuda}</p>
+      ) : null}
+    </div>
   );
 }
 
@@ -188,7 +329,15 @@ function Lista<T>({
 }
 
 /** Los datos de una sede (la misa, el salón). */
-function CamposSede({ sede, onChange }: { sede: Sede; onChange: (s: Sede) => void }) {
+function CamposSede({
+  sede,
+  onChange,
+  fotos,
+}: {
+  sede: Sede;
+  onChange: (s: Sede) => void;
+  fotos: Fotos;
+}) {
   const set = (k: keyof Sede, v: string) => onChange({ ...sede, [k]: v });
   return (
     <div className="grid gap-4 sm:grid-cols-2">
@@ -222,12 +371,13 @@ function CamposSede({ sede, onChange }: { sede: Sede; onChange: (s: Sede) => voi
         />
       </div>
       <div className="sm:col-span-2">
-        <Campo
+        <CampoFoto
           etiqueta="Foto del lugar"
           valor={sede.foto}
           onChange={(v) => set("foto", v)}
           placeholder="https://…/salon.jpg"
           ayuda="Va arriba de la tarjeta. Sin ella, la tarjeta sale sin foto."
+          fotos={fotos}
         />
       </div>
     </div>
@@ -254,6 +404,15 @@ export default function InvitacionDelEvento({
   const [guardando, setGuardando] = React.useState(false);
   const [aviso, setAviso] = React.useState<{ tipo: "ok" | "error"; texto: string } | null>(null);
   const [copiado, setCopiado] = React.useState("");
+  /**
+   * Miniaturas: referencia guardada → dirección que se puede pintar AHORA.
+   *
+   * Vive FUERA de la ficha a propósito. Lo que se guarda en la invitación es la
+   * referencia; esto es solo para que el salón vea la foto mientras captura, y
+   * se tira al recargar. Metido dentro de `inv` se acabaría guardando en la base
+   * una dirección firmada que caduca en una hora.
+   */
+  const [vistas, setVistas] = React.useState<Record<string, string>>({});
 
   const enlace = enlaceInvitacion(codigo);
 
@@ -274,7 +433,20 @@ export default function InvitacionDelEvento({
         try {
           const items = await obtenerSync().listar(codigo, COLECCION_INVITACION);
           const guardada = invitacionDe(codigo, items);
-          if (guardada) setInv(guardada);
+          if (guardada) {
+            setInv(guardada);
+            // Las fotos ya subidas son referencias a un almacén privado: para
+            // enseñar la miniatura hay que pedir su dirección firmada. Si falla,
+            // se queda el icono gris — es una miniatura, no la invitación.
+            const fotos = fotosDeInvitacion(guardada);
+            if (fotos.length) {
+              try {
+                setVistas(await resolverMedios(codigo, fotos));
+              } catch {
+                /* sin miniaturas; la ficha se captura igual */
+              }
+            }
+          }
         } catch {
           // Sin red: se empieza con la ficha en blanco. No se pisa nada hasta
           // que el salón pulse Guardar, así que no hay riesgo de borrar lo que
@@ -369,6 +541,13 @@ export default function InvitacionDelEvento({
   }
 
   const esXV = inv.tipo === "xv";
+
+  /** Lo que necesitan los campos de foto: dónde subir y cómo verse. */
+  const fotos: Fotos = {
+    codigo,
+    verse: (referencia) => vistas[referencia] ?? referencia,
+    recordar: (referencia, url) => setVistas((v) => ({ ...v, [referencia]: url })),
+  };
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-14 pb-28">
@@ -537,19 +716,21 @@ export default function InvitacionDelEvento({
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
-          <Campo
+          <CampoFoto
             etiqueta="Foto de portada"
             valor={inv.fotoPortada}
             onChange={(v) => set("fotoPortada", v)}
             placeholder="https://…/portada.jpg"
-            ayuda="Pega el enlace de la foto (tiene que ser pública). Ocupa toda la primera pantalla."
+            ayuda="Ocupa toda la primera pantalla: mejor una apaisada y con espacio arriba."
+            fotos={fotos}
           />
-          <Campo
+          <CampoFoto
             etiqueta="Foto del cierre"
             valor={inv.fotoCierre}
             onChange={(v) => set("fotoCierre", v)}
             placeholder="https://…/cierre.jpg"
             ayuda="La del final, con el «gracias». Si la dejas vacía se repite la de portada."
+            fotos={fotos}
           />
         </div>
       </Bloque>
@@ -669,11 +850,11 @@ export default function InvitacionDelEvento({
         titulo="Ceremonia"
         descripcion="El primer lugar del día: la misa, el civil… Si solo hay un lugar, llena este y deja la recepción vacía."
       >
-        <CamposSede sede={inv.ceremonia} onChange={(s) => set("ceremonia", s)} />
+        <CamposSede sede={inv.ceremonia} onChange={(s) => set("ceremonia", s)} fotos={fotos} />
       </Bloque>
 
       <Bloque titulo="Recepción" descripcion="El salón, la fiesta.">
-        <CamposSede sede={inv.recepcion} onChange={(s) => set("recepcion", s)} />
+        <CamposSede sede={inv.recepcion} onChange={(s) => set("recepcion", s)} fotos={fotos} />
       </Bloque>
 
       <Bloque
@@ -709,12 +890,7 @@ export default function InvitacionDelEvento({
                   onChange={(e) => cambiar({ ...m, detalle: e.target.value })}
                   placeholder="Servicio de tres tiempos en el salón"
                 />
-                <input
-                  className={CAMPO}
-                  value={m.foto}
-                  onChange={(e) => cambiar({ ...m, foto: e.target.value })}
-                  placeholder="https://…/foto.jpg"
-                />
+                <CampoFoto valor={m.foto} onChange={(v) => cambiar({ ...m, foto: v })} fotos={fotos} />
               </div>
             </div>
           )}
@@ -772,14 +948,7 @@ export default function InvitacionDelEvento({
           nuevo={() => ""}
           etiquetaAgregar="Agregar foto"
           vacio="Sin fotos de repuesto: los círculos vacíos usarán la de portada."
-          render={(url, cambiar) => (
-            <input
-              className={CAMPO}
-              value={url}
-              onChange={(e) => cambiar(e.target.value)}
-              placeholder="https://…/foto.jpg"
-            />
-          )}
+          render={(url, cambiar) => <CampoFoto valor={url} onChange={cambiar} fotos={fotos} />}
         />
       </Bloque>
 

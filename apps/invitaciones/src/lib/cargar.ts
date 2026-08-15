@@ -20,11 +20,13 @@
 import * as React from "react";
 import {
   COLECCION_INVITACION,
+  conFotosResueltas,
+  fotosDeInvitacion,
   invitacionDe,
   invitacionTieneContenido,
   type Invitacion,
 } from "@salones/core";
-import { eventoActual, obtenerSync } from "@salones/sync";
+import { eventoActual, obtenerSync, resolverMedios } from "@salones/sync";
 import { INVITACION_DEMO } from "./invitacion";
 
 export type EstadoInvitacion =
@@ -52,6 +54,27 @@ export function useInvitacion(): EstadoInvitacion {
         // Sin red o sin servidor: se sigue al plan B de abajo, que para la
         // vitrina es la muestra y para un evento real es "preparando".
         inv = null;
+      }
+      /*
+       * LAS FOTOS SE FIRMAN AQUÍ, AL ABRIR.
+       *
+       * El almacén es privado desde el corte de la 0013: lo guardado es una
+       * referencia y hay que cambiarla por una dirección que caduca en horas.
+       * Por eso NO se puede firmar al guardar en el panel —una invitación se
+       * manda meses antes y llegaría muerta—, sino cada vez que un invitado la
+       * abre. `resolverMedios` no falla nunca: si no hay red o la función no
+       * está desplegada devuelve las de siempre, y lo que no es del almacén
+       * (las fotos de la muestra, un enlace pegado a mano) lo deja igual.
+       */
+      if (inv) {
+        const fotos = fotosDeInvitacion(inv);
+        if (fotos.length) {
+          try {
+            inv = conFotosResueltas(inv, await resolverMedios(codigo, fotos));
+          } catch {
+            /* se pinta con las referencias: peor sería no pintar nada */
+          }
+        }
       }
       if (!vivo) return;
 

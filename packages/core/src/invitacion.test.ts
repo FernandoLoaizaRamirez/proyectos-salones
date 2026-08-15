@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import {
+  conFotosResueltas,
   enlaceCalendario,
+  fotosDeInvitacion,
   fechaCorta,
   fechaLarga,
   fechaPuntos,
@@ -59,6 +61,61 @@ describe("normalizar: una invitación a medias tiene que poder pintarse", () => 
     expect(invitacionTieneContenido(normalizarInvitacion({ fechaISO: "2027-03-20T18:00" }))).toBe(
       true,
     );
+  });
+});
+
+describe("las fotos, que viven en un almacén privado", () => {
+  const conFotos = normalizarInvitacion({
+    fotoPortada: "REF-portada",
+    fotoCierre: "REF-cierre",
+    ceremonia: { foto: "REF-misa" },
+    recepcion: { foto: "REF-salon" },
+    itinerario: [{ titulo: "Vals", foto: "REF-vals" }, { titulo: "Cena", foto: "" }],
+    fotos: ["REF-repuesto", "REF-portada"],
+  });
+
+  it("las junta TODAS y sin repetir (una por firmar, no una por hueco)", () => {
+    expect(fotosDeInvitacion(conFotos).sort()).toEqual([
+      "REF-cierre",
+      "REF-misa",
+      "REF-portada",
+      "REF-repuesto",
+      "REF-salon",
+      "REF-vals",
+    ]);
+  });
+
+  it("no cuenta los huecos vacíos", () => {
+    expect(fotosDeInvitacion(invitacionVacia())).toEqual([]);
+  });
+
+  it("cambia cada referencia por su dirección firmada, en todos los sitios", () => {
+    const mapa = {
+      "REF-portada": "https://firmada/portada?token=x",
+      "REF-misa": "https://firmada/misa?token=x",
+      "REF-vals": "https://firmada/vals?token=x",
+    };
+    const lista = conFotosResueltas(conFotos, mapa);
+    expect(lista.fotoPortada).toBe("https://firmada/portada?token=x");
+    expect(lista.ceremonia.foto).toBe("https://firmada/misa?token=x");
+    expect(lista.itinerario[0]?.foto).toBe("https://firmada/vals?token=x");
+    expect(lista.fotos[1]).toBe("https://firmada/portada?token=x");
+  });
+
+  /*
+   * Lo que NO está en el mapa tiene que quedarse igual: las fotos de ejemplo de
+   * la muestra (`/img/…`) y los enlaces que el salón pegó a mano no pasan por el
+   * almacén. Esta función no puede empeorar una foto que ya se veía.
+   */
+  it("deja intacto lo que no es del almacén", () => {
+    const demo = normalizarInvitacion({ fotoPortada: "/img/u16.jpg", fotoCierre: "" });
+    const lista = conFotosResueltas(demo, { "REF-otra": "https://firmada/otra" });
+    expect(lista.fotoPortada).toBe("/img/u16.jpg");
+    expect(lista.fotoCierre).toBe("");
+  });
+
+  it("con el mapa vacío devuelve la invitación tal cual", () => {
+    expect(conFotosResueltas(conFotos, {})).toEqual(conFotos);
   });
 });
 

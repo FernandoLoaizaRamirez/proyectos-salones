@@ -212,6 +212,55 @@ export function invitacionVacia(): Invitacion {
   return InvitacionSchema.parse({});
 }
 
+/* ------------------------------------------------------------------ */
+/* Las fotos                                                          */
+/* ------------------------------------------------------------------ */
+
+/**
+ * TODAS las fotos de una invitación, en una lista sin repetidos.
+ *
+ * Hace falta porque desde el corte de la 0013 el almacén es PRIVADO: lo que se
+ * guarda es una referencia, y para pintarla hay que cambiarla por una dirección
+ * firmada que caduca (ver `resolverMedios` en @salones/sync). Como la
+ * invitación vive meses y la dirección firmada dura horas, la conversión se
+ * hace AL PINTAR y nunca al guardar.
+ *
+ * Se saca aquí, en el molde, para que el panel (que enseña miniaturas) y la
+ * invitación (que las pinta a pantalla completa) no puedan olvidarse de una.
+ */
+export function fotosDeInvitacion(inv: Invitacion): string[] {
+  const todas = [
+    inv.fotoPortada,
+    inv.fotoCierre,
+    inv.ceremonia.foto,
+    inv.recepcion.foto,
+    ...inv.itinerario.map((m) => m.foto),
+    ...inv.fotos,
+  ];
+  return [...new Set(todas.filter(Boolean))];
+}
+
+/**
+ * La misma invitación con sus fotos cambiadas según el mapa que devuelve
+ * `resolverMedios` (referencia → dirección para mostrar).
+ *
+ * Lo que no esté en el mapa se queda **igual**: así las fotos de ejemplo de la
+ * muestra (`/img/…`) y los enlaces que el salón pegó a mano siguen funcionando
+ * exactamente como antes. Esta función no puede empeorar una foto que ya se veía.
+ */
+export function conFotosResueltas(inv: Invitacion, mapa: Record<string, string>): Invitacion {
+  const cambiar = (foto: string): string => (foto && mapa[foto]) || foto;
+  return {
+    ...inv,
+    fotoPortada: cambiar(inv.fotoPortada),
+    fotoCierre: cambiar(inv.fotoCierre),
+    ceremonia: { ...inv.ceremonia, foto: cambiar(inv.ceremonia.foto) },
+    recepcion: { ...inv.recepcion, foto: cambiar(inv.recepcion.foto) },
+    itinerario: inv.itinerario.map((m) => ({ ...m, foto: cambiar(m.foto) })),
+    fotos: inv.fotos.map(cambiar),
+  };
+}
+
 /**
  * Convierte lo que venga de la base en una invitación que se pueda pintar.
  *

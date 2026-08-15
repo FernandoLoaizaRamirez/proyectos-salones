@@ -208,6 +208,35 @@ async function cabeEnElEvento(evento: string, bytes: number): Promise<boolean> {
   return (await res.json()) === true;
 }
 
+/**
+ * Deja constancia en el diagnóstico si el almacén va por encima del 80%
+ * (migración 0019).
+ *
+ * POR QUÉ EXISTE: el plan gratis de Supabase da 1 GB para TODAS las bodas. Sin
+ * esto, la forma de enterarse de que se está llenando sería que una novia llame
+ * enfadada porque sus invitados no pueden subir fotos. La función de la base
+ * escribe como mucho una fila por hora, así que llamarla en cada subida no
+ * inunda nada.
+ *
+ * NUNCA rompe una subida: si falla, se ignora. Avisar de un problema no puede
+ * provocar otro — la misma regla que el diagnóstico del cliente.
+ */
+async function avisarSiAlmacenLleno(): Promise<void> {
+  try {
+    await fetch(`${URL_SUPABASE}/rest/v1/rpc/avisar_si_almacen_lleno`, {
+      method: "POST",
+      headers: {
+        apikey: SERVICE_ROLE,
+        Authorization: `Bearer ${SERVICE_ROLE}`,
+        "Content-Type": "application/json",
+      },
+      body: "{}",
+    });
+  } catch {
+    /* la migración 0019 todavía no está, o no hay red: da igual */
+  }
+}
+
 /** Extensión razonable a partir del nombre o del tipo MIME (igual que @salones/sync). */
 function extensionDe(nombre: string, tipo: string): string {
   const porNombre = /\.([a-z0-9]{1,5})$/i.exec(nombre)?.[1];
@@ -319,6 +348,10 @@ Deno.serve(async (req: Request) => {
         507, // "no queda sitio": no es culpa de quien sube ni un fallo de red
       );
     }
+
+    // Va aquí, con la subida ya concedida: si se está llenando, que quede
+    // constancia ANTES de que alguien se quede fuera (migración 0019).
+    await avisarSiAlmacenLleno();
 
     /* ---- El tope (migración 0015) -----------------------------------------
      * Antes esto no llevaba ninguna cuenta, y como la llave pública viaja

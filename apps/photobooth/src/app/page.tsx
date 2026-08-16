@@ -11,14 +11,21 @@ export default function Page() {
     <main className="min-h-screen">
       <header className="sticky top-0 z-30 border-b border-border bg-background/85 backdrop-blur">
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-4 px-6 py-3">
-          <div className="flex items-center gap-3">
-            <div className="grid size-9 place-items-center rounded-[var(--radius)] bg-primary text-sm font-bold text-primary-foreground">
+          {/*
+           * `min-w-0` a la izquierda y `shrink-0` a la derecha: sin eso, en un
+           * celular de 375 px el nombre del evento se negaba a encogerse y
+           * empujaba "Compartir" y el botón de tema FUERA de la pantalla (la
+           * página medía 530 px y se arrastraba de lado). El `truncate` que ya
+           * traía el título nunca llegaba a activarse.
+           */}
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="grid size-9 shrink-0 place-items-center rounded-[var(--radius)] bg-primary text-sm font-bold text-primary-foreground">
               SR
             </div>
             {/* El nombre lo pinta el cliente: es él quien sabe de qué evento es. */}
             <TituloBooth />
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             <CompartirBooth />
             <ThemeToggle />
           </div>

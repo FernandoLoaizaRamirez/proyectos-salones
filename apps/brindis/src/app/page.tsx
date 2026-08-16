@@ -7,8 +7,16 @@ export default function Page() {
     <main className="min-h-screen">
       <header className="sticky top-0 z-30 border-b border-border bg-background/85 backdrop-blur">
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-4 px-6 py-3">
-          <div className="flex items-center gap-3">
-            <div className="grid size-9 place-items-center rounded-[var(--radius)] bg-primary text-sm font-bold text-primary-foreground">
+          {/*
+           * `min-w-0` a la izquierda y `shrink-0` a la derecha: sin eso, en un
+           * celular de 375 px el nombre del evento se negaba a encogerse y
+           * empujaba "Compartir" y el botón de tema FUERA de la pantalla (la
+           * página medía 423 px y se arrastraba de lado). El `min-w-0` de aquí
+           * abajo no bastaba: el que tiene que poder encogerse es ESTE bloque,
+           * que es el hijo directo del flex.
+           */}
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="grid size-9 shrink-0 place-items-center rounded-[var(--radius)] bg-primary text-sm font-bold text-primary-foreground">
               SR
             </div>
             <div className="min-w-0">
@@ -16,7 +24,7 @@ export default function Page() {
               <div className="truncate text-xs text-muted-foreground">Brindis en video</div>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             <CompartirBrindis />
             <ThemeToggle />
           </div>

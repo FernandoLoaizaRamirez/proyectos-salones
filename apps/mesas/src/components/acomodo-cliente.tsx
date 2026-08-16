@@ -575,7 +575,14 @@ export function AcomodoCliente() {
         </div>
       ) : null}
 
-      <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,20rem)_minmax(0,1fr)] lg:items-start">
+      {/*
+       * `grid-cols-[minmax(0,1fr)]` también en la base, no solo en `lg:`. Una
+       * columna de rejilla no se encoge por debajo de su contenido a menos que
+       * se lo pidas con `minmax(0,...)`. En `lg:` ya estaba puesto, pero en un
+       * celular de 375 px mandaba la base: la caja medía 327 px y su columna
+       * 477, así que la página entera se arrastraba de lado (502 px de ancho).
+       */}
+      <div className="mt-8 grid grid-cols-[minmax(0,1fr)] gap-8 lg:grid-cols-[minmax(0,20rem)_minmax(0,1fr)] lg:items-start">
         {/* Columna izquierda: formularios + sin asignar */}
         <div className="space-y-6">
           {/* Alta / edición de mesa */}
@@ -742,7 +749,8 @@ export function AcomodoCliente() {
               Aún no hay mesas. Crea la primera con el formulario de la izquierda.
             </div>
           ) : (
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="grid grid-cols-[minmax(0,1fr)] gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              {/* Misma razón que la rejilla de arriba: en celular manda la base. */}
               {mesas.map((mesa) => {
                 const usados = asientosUsados(mesa.id, invitados);
                 const gente = invitadosDeMesa(mesa.id, invitados);

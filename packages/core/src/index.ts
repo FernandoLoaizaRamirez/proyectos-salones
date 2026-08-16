@@ -128,4 +128,5 @@ export * from "./invitacion";
 /* ------------------------------------------------------------------ */
 
 export * from "./invitado-enlace";
+export * from "./pase-enlace";
 export * from "./acomodo";

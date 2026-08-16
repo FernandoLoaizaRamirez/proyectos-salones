@@ -189,11 +189,6 @@ describe("El portero SALTA cuando el cambio no le toca a la app", () => {
     expect(codigo).toBe(SALTAR);
   });
 
-  it("no cambió ningún archivo (mismo commit)", () => {
-    const { codigo } = decidir({}, { hasta: base });
-    expect(codigo).toBe(SALTAR);
-  });
-
   it("desde la carpeta de OTRA app, un cambio en miapp no la construye", () => {
     // La carpeta se deduce del cwd, no del nombre del paquete: se comprueba que
     // cada app decide por SÍ MISMA y no arrastra a las demás.
@@ -221,6 +216,29 @@ describe("Regla de oro: ante la duda, CONSTRUIR", () => {
   it("nos llaman desde una carpeta sin package.json", () => {
     const { codigo } = decidir({ "docs/algo.md": "otra cosa\n" }, { app: "docs" });
     expect(codigo).toBe(CONSTRUIR);
+  });
+
+  /**
+   * EL COMMIT VACÍO TIENE QUE CONSTRUIR. Esta prueba decía lo contrario —que se
+   * saltara— hasta el 16 ago 2026, y esa regla costó caro: `suite-salones` estuvo
+   * DOS DÍAS con precios viejos en producción teniendo el arreglo ya fusionado.
+   *
+   * Lo que pasó: se empujó un commit vacío para forzar el redespliegue, que es el
+   * truco de siempre cuando la app en vivo se quedó atrás. Vercel lo comparó
+   * contra su padre, vio cero archivos, este portero dijo SALTAR, y Vercel lo
+   * canceló con "este proyecto no fue afectado".
+   *
+   * Cero archivos NO es "no hay nada que hacer": es "no me consta que lo haya", y
+   * eso cae de lleno en la regla de oro de este bloque. Cuesta cuota —14 apps por
+   * commit vacío— pero pasa muy poco, y ya pagamos el precio de equivocarnos al
+   * otro lado.
+   */
+  it("no cambió ningún archivo: es el commit vacío que pide un redespliegue", () => {
+    const { codigo, salida } = decidir({}, { hasta: base });
+    expect(codigo).toBe(CONSTRUIR);
+    // El motivo se imprime en el registro de Vercel: sin él, quien vea 14
+    // construcciones de golpe no sabrá de dónde salieron.
+    expect(salida).toMatch(/ningún archivo cambiado|app en vivo esté atrasada/);
   });
 });
 

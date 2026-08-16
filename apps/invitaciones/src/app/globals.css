@@ -11,6 +11,12 @@
  * habría descuadrado a la primera. Todo lo que se pinta está aquí.
  *
  * El acento (`--magenta`) lo reescribe la página con el color de CADA evento.
+ *
+ * SUELO DE 12 px: ninguna letra baja de ahí. Los rótulos en versalitas venían
+ * de la plantilla a 0.7/0.72/0.74rem (11.2 a 11.8 px) y en un celular se leían
+ * con esfuerzo — y esta app la abren tías y abuelas. Subieron a 0.78/0.8/0.82rem
+ * (12.5 a 13.1 px), que respeta el aire del diseño y ya se lee de corrido.
+ * Si algún día añades un rótulo nuevo, no bajes de 0.78rem.
  */
 :root {
   --magenta: #b33a6a;
@@ -307,7 +313,7 @@ section.compacta {
 }
 #introFecha {
   font-family: var(--sans);
-  font-size: 0.72rem;
+  font-size: 0.8rem;
   letter-spacing: 0.34em;
   text-transform: uppercase;
   color: var(--salvia);
@@ -322,7 +328,7 @@ section.compacta {
   color: var(--magenta);
   padding: 13px 26px;
   border-radius: 100px;
-  font-size: 0.7rem;
+  font-size: 0.78rem;
   letter-spacing: 0.26em;
   text-transform: uppercase;
   font-weight: 400;
@@ -415,13 +421,13 @@ section.compacta {
   flex: none;
 }
 #heroFecha {
-  font-size: 0.74rem;
+  font-size: 0.82rem;
   letter-spacing: 0.3em;
   text-transform: uppercase;
   margin: 0;
 }
 #heroLugar {
-  font-size: 0.74rem;
+  font-size: 0.82rem;
   letter-spacing: 0.14em;
   margin: 8px 0 0;
   opacity: 0.85;
@@ -478,7 +484,7 @@ section.compacta {
 }
 #citaAutor {
   margin: var(--e3) 0 0;
-  font-size: 0.7rem;
+  font-size: 0.78rem;
   letter-spacing: 0.28em;
   text-transform: uppercase;
   color: var(--salvia);
@@ -512,7 +518,7 @@ section.compacta {
   display: block;
   font-style: normal;
   margin-top: 7px;
-  font-size: 0.7rem;
+  font-size: 0.78rem;
   letter-spacing: 0.2em;
   text-transform: uppercase;
   color: var(--salvia);
@@ -541,7 +547,7 @@ section.compacta {
   text-align: center;
 }
 .ficha .rol {
-  font-size: 0.7rem;
+  font-size: 0.78rem;
   letter-spacing: 0.24em;
   text-transform: uppercase;
   color: var(--salvia);
@@ -582,7 +588,7 @@ section.compacta {
   text-align: center;
 }
 .recinto .rol {
-  font-size: 0.7rem;
+  font-size: 0.78rem;
   letter-spacing: 0.26em;
   text-transform: uppercase;
   color: var(--magenta);
@@ -605,7 +611,7 @@ section.compacta {
   align-items: center;
   gap: 8px;
   margin: 0 0 var(--e3);
-  font-size: 0.72rem;
+  font-size: 0.8rem;
   letter-spacing: 0.2em;
   text-transform: uppercase;
   color: var(--salvia);
@@ -631,7 +637,7 @@ section.compacta {
   background: transparent;
   color: var(--salvia);
   text-decoration: none;
-  font-size: 0.7rem;
+  font-size: 0.78rem;
   letter-spacing: 0.2em;
   text-transform: uppercase;
   transition:
@@ -717,7 +723,7 @@ section.compacta {
   object-position: 50% 30%;
 }
 .linea .hora {
-  font-size: 0.7rem;
+  font-size: 0.78rem;
   letter-spacing: 0.24em;
   text-transform: uppercase;
   color: var(--magenta);
@@ -795,7 +801,7 @@ section.compacta {
   margin: 0 auto;
 }
 .sobre .rol {
-  font-size: 0.7rem;
+  font-size: 0.78rem;
   letter-spacing: 0.24em;
   text-transform: uppercase;
   color: var(--salvia);
@@ -837,7 +843,7 @@ section.compacta {
   border: 1px solid var(--linea);
   background: transparent;
   color: var(--tinta-suave);
-  font-size: 0.7rem;
+  font-size: 0.78rem;
   letter-spacing: 0.18em;
   text-transform: uppercase;
   transition: all 0.3s ease;
@@ -854,7 +860,7 @@ section.compacta {
 }
 .campo label {
   display: block;
-  font-size: 0.7rem;
+  font-size: 0.78rem;
   letter-spacing: 0.22em;
   text-transform: uppercase;
   color: var(--salvia);
@@ -1008,14 +1014,14 @@ footer {
   margin: 0;
 }
 #pieFecha {
-  font-size: 0.7rem;
+  font-size: 0.78rem;
   letter-spacing: 0.28em;
   text-transform: uppercase;
   color: var(--salvia);
   margin: 10px 0 var(--e3);
 }
 .firma {
-  font-size: 0.7rem;
+  font-size: 0.78rem;
   letter-spacing: 0.2em;
   text-transform: uppercase;
   color: rgba(110, 90, 97, 0.6);

@@ -323,7 +323,7 @@ export function RsvpCliente() {
                       {conf ? (
                         <select
                           aria-label="Personas que asistirán"
-                          className="rounded-[var(--radius)] border border-border bg-background px-2 py-1.5 text-sm"
+                          className="min-h-10 rounded-[var(--radius)] border border-border bg-background px-2 py-1.5 text-sm"
                           value={String(estados[inv.id]?.personas ?? inv.cupos)}
                           onChange={(e) => cambiarPersonas(inv.id, parseInt(e.target.value, 10))}
                         >
@@ -334,11 +334,18 @@ export function RsvpCliente() {
                           ))}
                         </select>
                       ) : null}
+                      {/*
+                       * `min-h-10 px-3` (40 px de alto) en los tres botones: con
+                       * el `py-1.5` de antes medían 32 px, y son tres blancos
+                       * pegados uno al lado del otro. Quien pasa lista lo hace
+                       * de pie, en la entrada y con el teléfono en una mano; a
+                       * ese tamaño se le va el dedo al de junto.
+                       */}
                       <div className="inline-flex overflow-hidden rounded-[var(--radius)] border border-border">
                         <button
                           onClick={() => marcar(inv, EstadoRSVP.Confirmado)}
                           className={cn(
-                            "px-2.5 py-1.5 text-sm transition-colors",
+                            "min-h-10 px-3 py-1.5 text-sm transition-colors",
                             estado === EstadoRSVP.Confirmado
                               ? "bg-green-500/15 text-green-600"
                               : "text-muted-foreground hover:bg-muted",
@@ -349,7 +356,7 @@ export function RsvpCliente() {
                         <button
                           onClick={() => marcar(inv, EstadoRSVP.Rechazado)}
                           className={cn(
-                            "border-l border-border px-2.5 py-1.5 text-sm transition-colors",
+                            "min-h-10 border-l border-border px-3 py-1.5 text-sm transition-colors",
                             estado === EstadoRSVP.Rechazado
                               ? "bg-red-500/15 text-red-600"
                               : "text-muted-foreground hover:bg-muted",
@@ -361,7 +368,7 @@ export function RsvpCliente() {
                           onClick={() => marcar(inv, EstadoRSVP.Pendiente)}
                           aria-label="Marcar pendiente"
                           className={cn(
-                            "border-l border-border px-2.5 py-1.5 text-sm transition-colors",
+                            "min-h-10 border-l border-border px-3 py-1.5 text-sm transition-colors",
                             estado === EstadoRSVP.Pendiente
                               ? "bg-amber-500/15 text-amber-600"
                               : "text-muted-foreground hover:bg-muted",

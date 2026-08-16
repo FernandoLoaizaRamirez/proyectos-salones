@@ -484,10 +484,17 @@ export function AcomodoCliente() {
         <Users className="size-3" />
         {inv.asientos}
       </span>
-      {/* Alternativa al arrastre (móvil/táctil): mover con un menú. */}
+      {/*
+       * Alternativa al arrastre (móvil/táctil): mover con un menú.
+       *
+       * SUELO DE 36 px en esta fila. El menú medía 28 y los dos botones de al
+       * lado 28×28, uno pegado al otro: en un celular el dedo tapa los tres a
+       * la vez y se borra un invitado queriendo editarlo. Si añades otro
+       * control aquí, dale también 36.
+       */}
       <select
         aria-label={`Mover a ${inv.nombre}`}
-        className="max-w-[7.5rem] shrink-0 rounded-[var(--radius)] border border-border bg-background py-1 pl-1.5 pr-0.5 text-xs text-muted-foreground"
+        className="min-h-9 max-w-[7.5rem] shrink-0 rounded-[var(--radius)] border border-border bg-background py-1 pl-1.5 pr-0.5 text-xs text-muted-foreground"
         value={inv.mesaId ?? ""}
         onChange={(e) => moverInvitado(inv.id, e.target.value || null)}
       >
@@ -501,7 +508,7 @@ export function AcomodoCliente() {
       <button
         onClick={() => editarInvitado(inv)}
         aria-label={`Editar ${inv.nombre}`}
-        className="grid size-7 shrink-0 place-items-center rounded-[var(--radius)] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        className="grid size-9 shrink-0 place-items-center rounded-[var(--radius)] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
       >
         <Pencil className="size-3.5" />
       </button>
@@ -509,7 +516,7 @@ export function AcomodoCliente() {
         <button
           onClick={() => setPorQuitar({ tipo: "invitado", inv })}
           aria-label={`Eliminar ${inv.nombre}`}
-          className="grid size-7 shrink-0 place-items-center rounded-[var(--radius)] text-muted-foreground transition-colors hover:bg-muted hover:text-red-500"
+          className="grid size-9 shrink-0 place-items-center rounded-[var(--radius)] text-muted-foreground transition-colors hover:bg-muted hover:text-red-500"
         >
           <Trash2 className="size-3.5" />
         </button>
@@ -783,14 +790,14 @@ export function AcomodoCliente() {
                         <button
                           onClick={() => editarMesa(mesa)}
                           aria-label={`Editar ${mesa.nombre}`}
-                          className="grid size-8 place-items-center rounded-[var(--radius)] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                          className="grid size-9 place-items-center rounded-[var(--radius)] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                         >
                           <Pencil className="size-4" />
                         </button>
                         <button
                           onClick={() => setPorQuitar({ tipo: "mesa", mesa })}
                           aria-label={`Eliminar ${mesa.nombre}`}
-                          className="grid size-8 place-items-center rounded-[var(--radius)] text-muted-foreground transition-colors hover:bg-muted hover:text-red-500"
+                          className="grid size-9 place-items-center rounded-[var(--radius)] text-muted-foreground transition-colors hover:bg-muted hover:text-red-500"
                         >
                           <Trash2 className="size-4" />
                         </button>

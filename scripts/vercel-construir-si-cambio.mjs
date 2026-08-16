@@ -163,7 +163,26 @@ if (!anterior) construir("primera construcción de esta app (no hay con qué com
 
 const cambios = archivosCambiados(anterior, actual);
 if (cambios === null) construir("no pude comparar los commits (¿clon superficial?)");
-if (cambios.length === 0) saltar("no cambió ningún archivo");
+
+// CERO ARCHIVOS = CONSTRUIR, no saltar. Antes esto saltaba, y el 16 ago 2026 dejó
+// `suite-salones` DOS DÍAS con una versión vieja en producción:
+//
+//   - Un arreglo del catálogo llevaba días fusionado en `main` y sin publicarse.
+//   - Se empujó un commit VACÍO (`--allow-empty`) para forzar el redespliegue,
+//     que es el truco de siempre.
+//   - Vercel comparó ese commit contra su padre, vio 0 archivos, y este portero
+//     dijo SALTAR. Vercel lo canceló con "este proyecto no fue afectado".
+//
+// El truco del commit vacío existe justo para cuando la app en vivo se quedó
+// atrás, así que saltarlo es lo contrario de lo que hace falta. Y encaja con la
+// REGLA DE ORO de arriba: cero archivos no es "no hay nada que hacer", es "no me
+// consta que haya algo que hacer", y ante la duda se construye.
+//
+// Cuesta cuota (14 apps por commit vacío), pero pasa muy poco y el precio de
+// equivocarse al revés ya lo pagamos: dos días de precios viejos en la tienda.
+if (cambios.length === 0) {
+  construir("no veo ningún archivo cambiado: puede que la app en vivo esté atrasada");
+}
 
 // Las carpetas que le importan a ESTA app: la suya y la de sus dependencias.
 const mapa = mapaDePaquetes();

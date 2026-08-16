@@ -38,7 +38,13 @@ export type TipoMarco =
   | "arco"
   | "monograma"
   | "constelacion"
-  | "botanico";
+  | "botanico"
+  | "corona"
+  | "globos"
+  | "brillos"
+  | "neon"
+  | "confeti"
+  | "foquitos";
 
 export type Marco = {
   id: string;
@@ -142,6 +148,54 @@ export function crearMarcos(t: TextosMarcos): Marco[] {
       nombre: "Botánico",
       tipo: "botanico",
       acento: "#d9b56a",
+      etiqueta: t.nombre,
+      sub: t.fecha,
+    },
+    {
+      id: "corona",
+      nombre: "Corona de XV",
+      tipo: "corona",
+      acento: "#f0cf8a",
+      etiqueta: t.nombre,
+      sub: t.fecha,
+    },
+    {
+      id: "globos",
+      nombre: "Globos",
+      tipo: "globos",
+      acento: "#f2a8c0",
+      etiqueta: t.nombre,
+      sub: t.fecha,
+    },
+    {
+      id: "brillos",
+      nombre: "Brillos",
+      tipo: "brillos",
+      acento: "#f7d9a0",
+      etiqueta: t.nombre,
+      sub: t.fecha,
+    },
+    {
+      id: "neon",
+      nombre: "Neón",
+      tipo: "neon",
+      acento: "#ff63c8",
+      etiqueta: t.nombre,
+      sub: `#${t.hashtag}`,
+    },
+    {
+      id: "confeti",
+      nombre: "Confeti",
+      tipo: "confeti",
+      acento: "#ff6b9d",
+      etiqueta: t.nombre,
+      sub: t.fecha,
+    },
+    {
+      id: "foquitos",
+      nombre: "Foquitos",
+      tipo: "foquitos",
+      acento: "#ffd79a",
       etiqueta: t.nombre,
       sub: t.fecha,
     },
@@ -509,6 +563,181 @@ function ramaOlivo(
   ctx.restore();
 }
 
+/* ---- Fiesta: XV años, cumpleaños y noche ---- */
+
+/** Corona de tres picos, con perlas en las puntas y gemas en la banda. */
+function corona(ctx: CanvasRenderingContext2D, cx: number, cy: number, w: number, oro: Pintura, gema: string) {
+  const h = w * 0.62;
+  ctx.fillStyle = oro;
+  ctx.beginPath();
+  ctx.moveTo(cx - w * 0.5, cy);
+  ctx.lineTo(cx - w * 0.34, cy - h * 0.55);
+  ctx.lineTo(cx - w * 0.17, cy - h * 0.14);
+  ctx.lineTo(cx, cy - h * 0.9);
+  ctx.lineTo(cx + w * 0.17, cy - h * 0.14);
+  ctx.lineTo(cx + w * 0.34, cy - h * 0.55);
+  ctx.lineTo(cx + w * 0.5, cy);
+  ctx.closePath();
+  ctx.fill();
+  rectRedondo(ctx, cx - w * 0.54, cy, w * 1.08, h * 0.24, h * 0.12);
+  ctx.fill();
+  for (const [px, py] of [
+    [-0.34, -0.55],
+    [0, -0.9],
+    [0.34, -0.55],
+  ] as const) {
+    ctx.beginPath();
+    ctx.arc(cx + w * px, cy + h * py - h * 0.07, w * 0.035, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  for (const px of [-0.3, 0, 0.3]) rombo(ctx, cx + w * px, cy + h * 0.12, w * 0.032, gema);
+}
+
+/** Globo con su nudo y el cordel rizado. `r` es el radio horizontal. */
+function globo(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  r: number,
+  color: string,
+  giro = 0,
+) {
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(giro);
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, r, r * 1.18, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(-r * 0.13, r * 1.14);
+  ctx.lineTo(r * 0.13, r * 1.14);
+  ctx.lineTo(0, r * 1.38);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = "rgba(255,255,255,0.4)";
+  ctx.beginPath();
+  ctx.ellipse(-r * 0.34, -r * 0.44, r * 0.18, r * 0.3, -0.5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = "rgba(255,255,255,0.55)";
+  ctx.lineWidth = Math.max(1, r * 0.05);
+  ctx.beginPath();
+  ctx.moveTo(0, r * 1.38);
+  ctx.bezierCurveTo(r * 0.55, r * 1.9, -r * 0.5, r * 2.4, r * 0.25, r * 3);
+  ctx.stroke();
+  ctx.restore();
+}
+
+/** Guirnalda de foquitos: el cable cuelga en curva y los focos van colgados. */
+function guirnalda(
+  ctx: CanvasRenderingContext2D,
+  x0: number,
+  y0: number,
+  x1: number,
+  y1: number,
+  caida: number,
+  cuantos: number,
+  r: number,
+) {
+  const mx = (x0 + x1) / 2;
+  const my = (y0 + y1) / 2 + caida;
+  ctx.strokeStyle = "rgba(40,34,28,0.75)";
+  ctx.lineWidth = Math.max(1.5, r * 0.16);
+  ctx.beginPath();
+  ctx.moveTo(x0, y0);
+  ctx.quadraticCurveTo(mx, my, x1, y1);
+  ctx.stroke();
+  for (let i = 1; i <= cuantos; i++) {
+    const t = i / (cuantos + 1);
+    const u = 1 - t;
+    const px = u * u * x0 + 2 * u * t * mx + t * t * x1;
+    const py = u * u * y0 + 2 * u * t * my + t * t * y1;
+    ctx.fillStyle = "rgba(40,34,28,0.8)";
+    ctx.fillRect(px - r * 0.3, py, r * 0.6, r * 0.4);
+    ctx.save();
+    ctx.shadowColor = "rgba(255,196,110,0.95)";
+    ctx.shadowBlur = r * 2.6;
+    ctx.fillStyle = "#ffd79a";
+    ctx.beginPath();
+    ctx.ellipse(px, py + r * 1.15, r * 0.68, r * 0.82, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
+/**
+ * Traza con resplandor de NEÓN: un halo ancho, uno medio y el núcleo claro
+ * encima, que es lo que hace que parezca un tubo encendido y no una raya.
+ */
+function neon(ctx: CanvasRenderingContext2D, trazar: () => void, color: string, ancho: number) {
+  ctx.save();
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.shadowColor = color;
+  ctx.strokeStyle = color;
+  for (const [w, halo, alfa] of [
+    [ancho * 2.4, ancho * 3.4, 0.3],
+    [ancho * 1.4, ancho * 1.8, 0.65],
+  ] as const) {
+    ctx.lineWidth = w;
+    ctx.shadowBlur = halo;
+    ctx.globalAlpha = alfa;
+    trazar();
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+  ctx.strokeStyle = "#fff8fd";
+  ctx.lineWidth = ancho * 0.45;
+  ctx.shadowBlur = ancho * 1.2;
+  trazar();
+  ctx.stroke();
+  ctx.restore();
+}
+
+/** Papelito de confeti (rectángulo inclinado) o serpentina (cinta ondulada). */
+function papelito(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  w: number,
+  h: number,
+  giro: number,
+  color: string,
+) {
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(giro);
+  ctx.fillStyle = color;
+  ctx.fillRect(-w / 2, -h / 2, w, h);
+  ctx.restore();
+}
+
+/** Serpentina: una cinta que ondula hacia abajo. */
+function serpentina(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  largo: number,
+  onda: number,
+  grosor: number,
+  color: string,
+) {
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = grosor;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  const paso = largo / 4;
+  for (let i = 0; i < 4; i++) {
+    const lado = i % 2 ? -onda : onda;
+    ctx.quadraticCurveTo(x + lado, y + paso * (i + 0.5), x, y + paso * (i + 1));
+  }
+  ctx.stroke();
+  ctx.restore();
+}
+
 /**
  * Texto en VERSALITAS: la inicial de cada palabra grande y el resto en
  * mayúsculas más chicas. Se dibuja letra por letra porque `fontVariantCaps`
@@ -584,6 +813,8 @@ function pieDeMarco(
     linea?: Pintura;
     adorno?: (cx: number, cy: number) => void;
     velo?: number;
+    /** Halo de color detrás de las letras (el neón). */
+    resplandor?: string;
   },
 ) {
   const c = ctx as Ctx2D;
@@ -600,6 +831,10 @@ function pieDeMarco(
   const maxW = L - 2 * o.margen - L * 0.07;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
+  if (o.resplandor) {
+    ctx.shadowColor = o.resplandor;
+    ctx.shadowBlur = L * 0.03;
+  }
 
   if (marco.etiqueta) {
     ctx.fillStyle = o.colorNombre;
@@ -641,6 +876,7 @@ function pieDeMarco(
     ctx.fillText(marco.sub, L / 2, L * 0.897);
     c.letterSpacing = "0px";
   }
+  ctx.shadowBlur = 0;
   ctx.textBaseline = "alphabetic";
 }
 
@@ -1022,6 +1258,230 @@ function dibujarMarco(ctx: CanvasRenderingContext2D, marco: Marco) {
         hoja(ctx, cx + L * 0.003, cy, L * 0.02, L * 0.0055, -0.4, verde);
       },
       velo: 0.58,
+    });
+  } else if (marco.tipo === "corona") {
+    // XV años: doble filete oro rosa, corona arriba y brillos alrededor.
+    const m = Math.round(L * 0.05);
+    const m2 = m + Math.round(L * 0.016);
+    const oro = ctx.createLinearGradient(0, 0, L, 0);
+    oro.addColorStop(0, "#f6dcb0");
+    oro.addColorStop(0.5, "#e0b56a");
+    oro.addColorStop(1, "#f6dcb0");
+    ctx.strokeStyle = oro;
+    ctx.lineWidth = Math.max(2, Math.round(L * 0.004));
+    rectRedondo(ctx, m, m, L - 2 * m, L - 2 * m, L * 0.04);
+    ctx.stroke();
+    ctx.strokeStyle = "#f2b6c9";
+    ctx.lineWidth = Math.max(1, Math.round(L * 0.002));
+    rectRedondo(ctx, m2, m2, L - 2 * m2, L - 2 * m2, L * 0.032);
+    ctx.stroke();
+    // La base va a 0.21: más arriba, las puntas se salen del filete.
+    corona(ctx, L / 2, L * 0.21, L * 0.19, oro, "#ffd9e5");
+    ctx.fillStyle = "#f8e2c0";
+    for (const [x, y, r, op] of [
+      [0.3, 0.1, 0.02, 0.9], [0.7, 0.1, 0.016, 0.8], [0.24, 0.19, 0.012, 0.6],
+      [0.77, 0.2, 0.014, 0.7], [0.13, 0.35, 0.013, 0.5], [0.88, 0.33, 0.011, 0.5],
+      [0.35, 0.06, 0.01, 0.5], [0.64, 0.055, 0.012, 0.55],
+    ] as const) {
+      ctx.globalAlpha = op;
+      chispa(ctx, L * x, L * y, L * r);
+    }
+    ctx.globalAlpha = 1;
+    pieDeMarco(ctx, marco, {
+      margen: m,
+      familia: CURSIVA,
+      estilo: "italic",
+      tamNombre: 0.095,
+      colorNombre: "#fff3f6",
+      tamFecha: 0.026,
+      colorFecha: "#f6d9b6",
+      familiaFecha: SERIF,
+      linea: "#f0c9a0",
+      adorno: (cx, cy) => {
+        ctx.fillStyle = "#f6dcb0";
+        chispa(ctx, cx, cy, L * 0.014);
+      },
+      velo: 0.58,
+    });
+  } else if (marco.tipo === "globos") {
+    // Cumpleaños: racimos de globos en las dos esquinas de arriba.
+    const m = Math.round(L * 0.045);
+    ctx.strokeStyle = "#ffffff";
+    ctx.globalAlpha = 0.85;
+    ctx.lineWidth = Math.max(2, Math.round(L * 0.0035));
+    rectRedondo(ctx, m, m, L - 2 * m, L - 2 * m, L * 0.038);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+    const colores = ["#f19ab8", "#f7d08a", "#fdf3f6", "#f4a98a", "#e87fa6"];
+    // [x, y, radio, giro, color]
+    const racimo: [number, number, number, number, number][] = [
+      [0.115, 0.115, 0.055, -0.18, 0], [0.225, 0.09, 0.045, 0.15, 1],
+      [0.185, 0.205, 0.038, -0.1, 2], [0.085, 0.235, 0.032, 0.2, 3],
+      [0.295, 0.175, 0.028, -0.22, 4],
+      [0.885, 0.115, 0.055, 0.18, 1], [0.775, 0.09, 0.045, -0.15, 0],
+      [0.815, 0.205, 0.038, 0.1, 4], [0.915, 0.235, 0.032, -0.2, 2],
+      [0.705, 0.175, 0.028, 0.22, 3],
+    ];
+    for (const [x, y, r, giro, ci] of racimo) {
+      globo(ctx, L * x, L * y, L * r, colores[ci]!, giro);
+    }
+    for (const [x, y, w, h, giro, ci] of [
+      [0.42, 0.12, 0.016, 0.008, 0.6, 0], [0.55, 0.2, 0.014, 0.007, -0.4, 1],
+      [0.48, 0.31, 0.012, 0.006, 1.1, 3], [0.62, 0.35, 0.015, 0.007, 0.3, 4],
+      [0.38, 0.26, 0.013, 0.006, -0.9, 2], [0.58, 0.07, 0.012, 0.006, 0.5, 3],
+    ] as const) {
+      papelito(ctx, L * x, L * y, L * w, L * h, giro, colores[ci]!);
+    }
+    pieDeMarco(ctx, marco, {
+      margen: m,
+      familia: CURSIVA,
+      estilo: "italic",
+      tamNombre: 0.095,
+      colorNombre: "#ffffff",
+      tamFecha: 0.026,
+      colorFecha: "#ffe3ec",
+      familiaFecha: SERIF,
+      linea: "#f7bdd0",
+      adorno: (cx, cy) => globo(ctx, cx, cy - L * 0.012, L * 0.013, "#f19ab8", 0),
+      velo: 0.6,
+    });
+  } else if (marco.tipo === "brillos") {
+    // Polvo de brillos dorado y rosa, denso en las esquinas.
+    const m = Math.round(L * 0.05);
+    const oro = ctx.createLinearGradient(0, 0, L, L);
+    oro.addColorStop(0, "#f7d9a0");
+    oro.addColorStop(0.5, "#f3b6cd");
+    oro.addColorStop(1, "#f7d9a0");
+    ctx.strokeStyle = oro;
+    ctx.lineWidth = Math.max(2, Math.round(L * 0.0032));
+    ctx.strokeRect(m, m, L - 2 * m, L - 2 * m);
+    // [x, y, radio, opacidad, rosa?]
+    const polvo: [number, number, number, number, number][] = [
+      [0.11, 0.1, 0.026, 0.95, 0], [0.2, 0.16, 0.015, 0.75, 1], [0.09, 0.21, 0.012, 0.6, 0],
+      [0.27, 0.09, 0.013, 0.65, 1], [0.16, 0.27, 0.01, 0.5, 0], [0.33, 0.17, 0.009, 0.45, 1],
+      [0.89, 0.1, 0.026, 0.95, 1], [0.8, 0.16, 0.015, 0.75, 0], [0.91, 0.21, 0.012, 0.6, 1],
+      [0.73, 0.09, 0.013, 0.65, 0], [0.84, 0.27, 0.01, 0.5, 1], [0.67, 0.17, 0.009, 0.45, 0],
+      [0.1, 0.62, 0.014, 0.55, 1], [0.9, 0.62, 0.014, 0.55, 0],
+      [0.14, 0.75, 0.011, 0.45, 0], [0.86, 0.75, 0.011, 0.45, 1],
+      [0.5, 0.07, 0.011, 0.5, 0], [0.42, 0.13, 0.008, 0.35, 1],
+    ];
+    for (const [x, y, r, op, rosa] of polvo) {
+      ctx.globalAlpha = op;
+      ctx.fillStyle = rosa ? "#f6c3d6" : "#f8e0ac";
+      chispa(ctx, L * x, L * y, L * r);
+    }
+    ctx.globalAlpha = 1;
+    pieDeMarco(ctx, marco, {
+      margen: m,
+      familia: SERIF,
+      tamNombre: 0.082,
+      colorNombre: "#fff6ea",
+      tamFecha: 0.026,
+      colorFecha: "#f6d9b6",
+      linea: "#f0cba2",
+      adorno: (cx, cy) => {
+        ctx.fillStyle = "#f8e0ac";
+        chispa(ctx, cx, cy, L * 0.014);
+      },
+      velo: 0.6,
+    });
+  } else if (marco.tipo === "neon") {
+    // Noche: marco de tubo encendido, rosa por fuera y cian por dentro.
+    const m = Math.round(L * 0.055);
+    const m2 = m + Math.round(L * 0.022);
+    const grueso = Math.max(4, Math.round(L * 0.009));
+    neon(ctx, () => rectRedondo(ctx, m, m, L - 2 * m, L - 2 * m, L * 0.05), "#ff63c8", grueso);
+    neon(
+      ctx,
+      () => rectRedondo(ctx, m2, m2, L - 2 * m2, L - 2 * m2, L * 0.04),
+      "#5ce1ff",
+      grueso * 0.55,
+    );
+    pieDeMarco(ctx, marco, {
+      margen: m,
+      familia: CURSIVA,
+      estilo: "italic",
+      tamNombre: 0.095,
+      colorNombre: "#ffffff",
+      tamFecha: 0.026,
+      colorFecha: "#9fefff",
+      familiaFecha: SERIF,
+      resplandor: "#ff63c8",
+      velo: 0.66,
+    });
+  } else if (marco.tipo === "confeti") {
+    // Fiesta: papelitos y serpentinas cayendo desde arriba.
+    const m = Math.round(L * 0.042);
+    const colores = ["#ff6b9d", "#ffd166", "#6bcbff", "#b28dff", "#7ee787", "#ffffff"];
+    ctx.strokeStyle = "#ffffff";
+    ctx.globalAlpha = 0.8;
+    ctx.lineWidth = Math.max(2, Math.round(L * 0.0032));
+    rectRedondo(ctx, m, m, L - 2 * m, L - 2 * m, L * 0.03);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+    for (const [x, largo, onda, ci] of [
+      [0.14, 0.3, 0.035, 0], [0.29, 0.24, 0.03, 2], [0.72, 0.27, 0.032, 3],
+      [0.87, 0.22, 0.028, 1], [0.5, 0.16, 0.026, 4],
+    ] as const) {
+      serpentina(ctx, L * x, L * 0.05, L * largo, L * onda, Math.max(2, L * 0.005), colores[ci]!);
+    }
+    // [x, y, ancho, alto, giro, color]
+    const papeles: [number, number, number, number, number, number][] = [
+      [0.09, 0.12, 0.018, 0.009, 0.5, 0], [0.19, 0.22, 0.016, 0.008, -0.7, 1],
+      [0.33, 0.09, 0.02, 0.009, 1.2, 2], [0.41, 0.2, 0.014, 0.007, 0.3, 3],
+      [0.56, 0.11, 0.018, 0.008, -1.1, 4], [0.64, 0.24, 0.015, 0.007, 0.8, 5],
+      [0.78, 0.13, 0.019, 0.009, -0.4, 0], [0.9, 0.26, 0.016, 0.008, 1.4, 2],
+      [0.25, 0.35, 0.013, 0.006, -0.9, 1], [0.7, 0.38, 0.014, 0.007, 0.6, 3],
+      [0.12, 0.46, 0.012, 0.006, 1.0, 4], [0.88, 0.48, 0.013, 0.006, -0.5, 0],
+      [0.46, 0.32, 0.012, 0.006, 0.2, 5], [0.6, 0.05, 0.015, 0.007, -1.3, 1],
+      [0.08, 0.62, 0.011, 0.005, 0.7, 2], [0.93, 0.66, 0.012, 0.006, -0.8, 4],
+    ];
+    for (const [x, y, w, h, giro, ci] of papeles) {
+      papelito(ctx, L * x, L * y, L * w, L * h, giro, colores[ci]!);
+    }
+    pieDeMarco(ctx, marco, {
+      margen: m,
+      familia: "ui-sans-serif, system-ui, sans-serif",
+      estilo: "700",
+      tamNombre: 0.078,
+      colorNombre: "#ffffff",
+      tamFecha: 0.025,
+      colorFecha: "#ffe08a",
+      familiaFecha: "ui-sans-serif, system-ui, sans-serif",
+      linea: "#ffffff",
+      adorno: (cx, cy) => papelito(ctx, cx, cy, L * 0.016, L * 0.008, 0.6, "#ff6b9d"),
+      velo: 0.62,
+    });
+  } else if (marco.tipo === "foquitos") {
+    // Terraza de noche: dos guirnaldas colgadas arriba.
+    const m = Math.round(L * 0.045);
+    const r = L * 0.017;
+    ctx.strokeStyle = "rgba(255,225,180,0.55)";
+    ctx.lineWidth = Math.max(1, Math.round(L * 0.002));
+    ctx.strokeRect(m, m, L - 2 * m, L - 2 * m);
+    // Las dos de arriba COMPARTEN el punto del centro; si se solapan, se cruzan en X.
+    guirnalda(ctx, -L * 0.02, L * 0.07, L * 0.5, L * 0.045, L * 0.08, 5, r);
+    guirnalda(ctx, L * 0.5, L * 0.045, L * 1.02, L * 0.085, L * 0.085, 5, r);
+    guirnalda(ctx, L * 0.05, L * 0.185, L * 0.95, L * 0.175, L * 0.06, 7, r * 0.78);
+    pieDeMarco(ctx, marco, {
+      margen: m,
+      familia: SERIF,
+      tamNombre: 0.082,
+      colorNombre: "#fff4e0",
+      tamFecha: 0.026,
+      colorFecha: "#ffd79a",
+      linea: "#e8b877",
+      adorno: (cx, cy) => {
+        ctx.save();
+        ctx.shadowColor = "rgba(255,196,110,0.9)";
+        ctx.shadowBlur = L * 0.02;
+        ctx.fillStyle = "#ffd79a";
+        ctx.beginPath();
+        ctx.arc(cx, cy, L * 0.008, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      },
+      velo: 0.6,
     });
   } else if (marco.tipo === "polaroid") {
     const area = areaFoto(marco);

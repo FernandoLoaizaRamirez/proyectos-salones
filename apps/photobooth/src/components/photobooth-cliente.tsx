@@ -292,14 +292,19 @@ export function PhotoboothCliente() {
 
           {/* Selector de marco */}
           <div className="mt-4">
-            <div className="mb-2 text-sm font-medium">Elige un marco</div>
-            <div className="flex flex-wrap gap-2">
+            <div className="mb-2 flex items-baseline justify-between gap-2">
+              <span className="text-sm font-medium">Elige un marco</span>
+              <span className="text-xs text-muted-foreground">desliza para ver más</span>
+            </div>
+            {/* Una sola fila que se desliza: con 16 marcos, en rejilla ocupaban
+                media pantalla y empujaban los botones de compartir fuera. */}
+            <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {marcos.map((m) => (
                 <button
                   key={m.id}
                   onClick={() => setMarcoId(m.id)}
                   className={cn(
-                    "rounded-full border px-4 py-2 text-sm font-medium transition-colors",
+                    "shrink-0 whitespace-nowrap rounded-full border px-4 py-2 text-sm font-medium transition-colors",
                     m.id === marcoId
                       ? "border-primary bg-primary/10 text-primary"
                       : "border-border text-muted-foreground hover:text-foreground",

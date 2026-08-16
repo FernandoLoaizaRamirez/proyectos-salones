@@ -24,6 +24,7 @@ import {
   ArrowLeft,
   Check,
   Copy,
+  DoorOpen,
   Loader2,
   Mail,
   MessageCircle,
@@ -31,11 +32,23 @@ import {
   Download,
   SearchX,
   Share2,
+  Ticket,
   Trash2,
 } from "lucide-react";
 import { Button, Card, cn, Confirmar, aCSV, descargarCSV, type ColumnaCSV } from "@salones/ui";
-import { EstadoRSVP } from "@salones/core";
-import { obtenerSync } from "@salones/sync";
+import {
+  COLECCION_ACOMODO,
+  COLECCION_MESAS,
+  EstadoRSVP,
+  idPaseDeInvitado,
+  mesaDe,
+  normalizarAcomodoCrudo,
+  normalizarMesasCrudas,
+  normalizarNombre,
+  type InvitadoMesa,
+  type MesaEvento,
+} from "@salones/core";
+import { esAnfitrion, obtenerSync } from "@salones/sync";
 import { obtenerSupabase } from "@/lib/supabase";
 import {
   COLECCION_RESPUESTAS,
@@ -52,7 +65,14 @@ import {
   listarInvitados,
   type Invitado,
 } from "@/lib/invitados";
-import { baseDeApp, enlaceInvitacionPersonal } from "@/lib/pantallas";
+import { baseDeApp, enlaceInvitacionPersonal, enlacePase } from "@/lib/pantallas";
+
+/**
+ * La colección que lee la app de la puerta (apps/pases-qr define la suya
+ * igual). Está en la lista blanca reescribible de la migración 0016: la
+ * puerta trabaja con pase de invitado y necesita poder actualizar sus filas.
+ */
+const COLECCION_PASES = "pases";
 
 type Estado = (typeof EstadoRSVP)[keyof typeof EstadoRSVP];
 
@@ -86,6 +106,15 @@ export default function Confirmaciones({ params }: { params: Promise<{ codigo: s
   const [guardando, setGuardando] = React.useState(false);
   /** De quién se acaba de copiar la invitación personal (para el ✓ de 2 seg). */
   const [copiadoInv, setCopiadoInv] = React.useState("");
+  /** De quién se acaba de copiar el pase de la puerta (mismo ✓ de 2 seg). */
+  const [copiadoPase, setCopiadoPase] = React.useState("");
+  /** El acomodo real (lo escribe apps/mesas): para poner su mesa en cada pase. */
+  const [mesas, setMesas] = React.useState<MesaEvento[]>([]);
+  const [acomodo, setAcomodo] = React.useState<InvitadoMesa[]>([]);
+  /** Estado del botón "Mandar la lista a la puerta". */
+  const [puerta, setPuerta] = React.useState<
+    { fase: "quieta" } | { fase: "mandando" } | { fase: "lista"; pases: number } | { fase: "error" }
+  >({ fase: "quieta" });
 
   // Ficha del evento + lista de invitados (ambas exigen sesión; la RLS del salón
   // decide qué se ve).
@@ -112,6 +141,27 @@ export default function Confirmaciones({ params }: { params: Promise<{ codigo: s
   React.useEffect(() => {
     if (!evento) return;
     return obtenerSync().suscribir<RespuestaItem>(codigo, COLECCION_RESPUESTAS, setRespuestas);
+  }, [evento, codigo]);
+
+  // El acomodo de mesas, UNA sola lectura (no en vivo): las mesas no cambian
+  // mientras se reparten pases, y suscribirse a dos colecciones más solo para
+  // esto sería sondear de balde. Si el acomodo cambió, recargar la página basta.
+  React.useEffect(() => {
+    if (!evento) return;
+    let vivo = true;
+    const sync = obtenerSync();
+    void Promise.all([sync.listar(codigo, COLECCION_MESAS), sync.listar(codigo, COLECCION_ACOMODO)])
+      .then(([m, a]) => {
+        if (!vivo) return;
+        setMesas(normalizarMesasCrudas(m));
+        setAcomodo(normalizarAcomodoCrudo(a));
+      })
+      .catch(() => {
+        /* sin acomodo los pases salen sin mesa; no es un error que enseñar */
+      });
+    return () => {
+      vivo = false;
+    };
   }, [evento, codigo]);
 
   const recargarInvitados = async () => {
@@ -260,6 +310,123 @@ export default function Confirmaciones({ params }: { params: Promise<{ codigo: s
     void obtenerSync().eliminar(codigo, COLECCION_RESPUESTAS, id);
   };
 
+  /* --------------------------- El pase de la puerta --------------------- */
+
+  /**
+   * La mesa del invitado según el acomodo REAL (las colecciones que escribe
+   * apps/mesas). Esta lista y la del acomodo se capturan por separado, así que
+   * lo único que las une es el NOMBRE: solo se acepta una coincidencia
+   * INEQUÍVOCA — una sola coincidencia por subcadena o, si hay varias, una
+   * sola exacta. En la duda, sin mesa: mejor un pase sin mesa que mandar al
+   * invitado a la mesa de otro.
+   */
+  const mesaDeInvitado = React.useCallback(
+    (nombre: string): string => {
+      const q = normalizarNombre(nombre);
+      if (!q) return "";
+      const parecidos = acomodo.filter((i) => normalizarNombre(i.nombre).includes(q));
+      let elegido: InvitadoMesa | null = parecidos.length === 1 ? (parecidos[0] ?? null) : null;
+      if (!elegido) {
+        const exactos = parecidos.filter((i) => normalizarNombre(i.nombre) === q);
+        if (exactos.length === 1) elegido = exactos[0] ?? null;
+      }
+      if (!elegido) return "";
+      return mesaDe(elegido, mesas)?.nombre ?? "";
+    },
+    [acomodo, mesas],
+  );
+
+  /**
+   * El PASE es otro enlace distinto a la invitación: el boleto con QR que se
+   * escanea en la puerta. Sale de ESTA misma lista (con su mesa del acomodo
+   * real, si ya se hizo) para no capturar a los invitados dos veces.
+   */
+  const paseDe = (inv: Invitado) =>
+    enlacePase(codigo, {
+      id: inv.id,
+      nombre: inv.nombre,
+      cupos: inv.cupos,
+      mesa: mesaDeInvitado(inv.nombre) || undefined,
+    });
+
+  const compartirPase = (inv: Invitado) => {
+    const url = paseDe(inv);
+    if (!url) return;
+    const msg = `Su pase para la entrada:\n${url}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, "_blank", "noopener,noreferrer");
+  };
+
+  /** Para quien prefiere pegarlo a mano, igual que con la invitación. */
+  const copiarPase = async (inv: Invitado) => {
+    const url = paseDe(inv);
+    if (!url) return;
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopiadoPase(inv.id);
+      setTimeout(() => setCopiadoPase(""), 2000);
+    } catch {
+      /* sin portapapeles */
+    }
+  };
+
+  /*
+   * Manda la lista COMPLETA a la app de la puerta: un renglón en la colección
+   * "pases" por invitado. Guardar es un upsert, así que re-mandar actualiza
+   * nombres y mesas sin duplicar a nadie.
+   *
+   * POR QUÉ EL PREFIJO PS- (idPaseDeInvitado): en la tabla `items` el id es
+   * llave primaria de TODA la tabla, y el UUID del invitado YA es el id de su
+   * renglón en "respuestas" — sin prefijo, cada pase pisaría su confirmación
+   * en silencio.
+   *
+   * POR QUÉ tipo "General" siempre: la lista del panel no captura VIP a
+   * propósito (un campo más por invitado que casi nadie usa); los VIP se
+   * marcan en la app de la puerta. Los pases capturados a mano allá (ids SR-)
+   * no se tocan nunca; los de esta lista (PS-) sí se reescriben enteros en
+   * cada re-mandada, así que la marca VIP conviene ponerla sobre pases SR-.
+   */
+  const mandarAPuerta = async () => {
+    setPuerta({ fase: "mandando" });
+    const sync = obtenerSync();
+    try {
+      for (const inv of invitados) {
+        await sync.guardar(codigo, COLECCION_PASES, {
+          id: idPaseDeInvitado(inv.id),
+          nombre: inv.nombre,
+          mesa: mesaDeInvitado(inv.nombre),
+          personas: inv.cupos,
+          tipo: "General",
+        });
+      }
+    } catch {
+      setPuerta({ fase: "error" });
+      return;
+    }
+
+    // Los pases PS- de invitados que YA no están en la lista se retiran, para
+    // que la puerta no deje entrar a un borrado. Borrar exige la llave de
+    // anfitrión: si este dispositivo no la tiene, se quedan y no pasa nada.
+    if (esAnfitrion(codigo)) {
+      try {
+        const vigentes = new Set(invitados.map((i) => idPaseDeInvitado(i.id)));
+        const pases = await sync.listar(codigo, COLECCION_PASES);
+        for (const p of pases) {
+          if (p.id.startsWith("PS-") && !vigentes.has(p.id)) {
+            try {
+              await sync.eliminar(codigo, COLECCION_PASES, p.id);
+            } catch {
+              /* sin llave el servidor lo rechaza, y no pasa nada */
+            }
+          }
+        }
+      } catch {
+        /* si ni listar se pudo, la lista ya quedó mandada: no es un error */
+      }
+    }
+
+    setPuerta({ fase: "lista", pases: invitados.length });
+  };
+
   /* ------------------------------ Pantalla ----------------------------- */
 
   if (cargando) {
@@ -355,14 +522,44 @@ export default function Confirmaciones({ params }: { params: Promise<{ codigo: s
             Quién viene, quién falta y cuántos son. Las respuestas llegan solas.
           </p>
         </div>
-        <Button
-          variant="outline"
-          onClick={exportarCSV}
-          disabled={filasCSV.length === 0}
-          title="Se abre en Excel o Google Sheets"
-        >
-          <Download className="size-4" /> Exportar la lista
-        </Button>
+        <div className="flex flex-col items-end gap-1.5">
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button
+              variant="outline"
+              onClick={exportarCSV}
+              disabled={filasCSV.length === 0}
+              title="Se abre en Excel o Google Sheets"
+            >
+              <Download className="size-4" /> Exportar la lista
+            </Button>
+            <Button
+              onClick={() => void mandarAPuerta()}
+              disabled={puerta.fase === "mandando" || invitados.length === 0}
+              title="Copia esta lista a la app de la puerta, con la mesa de cada quien"
+            >
+              {puerta.fase === "mandando" ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <DoorOpen className="size-4" />
+              )}
+              {puerta.fase === "mandando" ? "Mandando…" : "Mandar la lista a la puerta"}
+            </Button>
+          </div>
+          <p className="max-w-sm text-right text-xs text-muted-foreground">
+            La puerta escanea contra esta lista. Los pases VIP y los capturados a mano en la app de
+            la puerta se conservan.
+          </p>
+          {puerta.fase === "lista" ? (
+            <p className="text-xs font-medium text-green-600">
+              Lista en la puerta ({puerta.pases} {puerta.pases === 1 ? "pase" : "pases"})
+            </p>
+          ) : null}
+          {puerta.fase === "error" ? (
+            <p className="text-xs text-red-600 dark:text-red-400">
+              No se pudo mandar la lista a la puerta. Revisa tu conexión y vuelve a intentarlo.
+            </p>
+          ) : null}
+        </div>
       </div>
 
       <div className="mt-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -476,6 +673,7 @@ export default function Confirmaciones({ params }: { params: Promise<{ codigo: s
               {invitados.map((inv) => {
                 const estado = estadoDe(inv.id);
                 const confirmo = estado === EstadoRSVP.Confirmado;
+                const mesaPase = mesaDeInvitado(inv.nombre);
                 return (
                   <Card key={inv.id} className="p-4">
                     <div className="flex flex-wrap items-center justify-between gap-3">
@@ -586,6 +784,37 @@ export default function Confirmaciones({ params }: { params: Promise<{ codigo: s
                           <Trash2 className="size-4" />
                         </button>
                       </div>
+                    </div>
+                    {/* Segunda línea: el PASE de la puerta. La fila de arriba ya
+                        va apretada, y el pase es otro enlace distinto a la
+                        invitación: el boleto con QR que se escanea al llegar,
+                        con su mesa del acomodo real si ya se hizo. */}
+                    <div className="mt-2 flex flex-wrap items-center justify-end gap-1.5 border-t border-border pt-2">
+                      {mesaPase ? (
+                        <span className="mr-auto text-xs text-muted-foreground">
+                          Su pase lleva la mesa {mesaPase}
+                        </span>
+                      ) : null}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => compartirPase(inv)}
+                        title={`El pase de entrada de ${inv.nombre}: el boleto con QR que se escanea en la puerta`}
+                      >
+                        <Ticket className="size-4" /> Pase
+                      </Button>
+                      <button
+                        onClick={() => void copiarPase(inv)}
+                        aria-label={`Copiar el pase de entrada de ${inv.nombre}`}
+                        title="Copiar su enlace del pase"
+                        className="grid size-9 place-items-center rounded-[var(--radius)] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                      >
+                        {copiadoPase === inv.id ? (
+                          <Check className="size-4 text-green-600" />
+                        ) : (
+                          <Copy className="size-4" />
+                        )}
+                      </button>
                     </div>
                   </Card>
                 );

@@ -14,7 +14,12 @@
  */
 import type { ComponentType } from "react";
 import { BookHeart, CalendarCheck, Camera, Gamepad2, ListMusic } from "lucide-react";
-import { FEATURES_CONOCIDAS as F, codificarInvitadoEnlace } from "@salones/core";
+import {
+  FEATURES_CONOCIDAS as F,
+  codificarInvitadoEnlace,
+  codificarPaseEnlace,
+  type PaseEnlace,
+} from "@salones/core";
 import { productos } from "@/lib/catalogo";
 
 export type PantallaAnfitrion = {
@@ -166,6 +171,18 @@ export function enlaceInvitacionPersonal(
 ): string {
   const base = baseDeApp("invitaciones");
   return base ? `${base}/?e=${encodeURIComponent(codigo)}#${codificarInvitadoEnlace(inv)}` : "";
+}
+
+/**
+ * El PASE de la puerta de un invitado: el boleto con QR que se le manda a cada
+ * uno y que se escanea al llegar. Vive en la app de la puerta (`pases-qr`).
+ * Igual que en la invitación personal, sus datos —nombre, cupos y su mesa, si
+ * el acomodo ya se hizo— van en el fragmento (`#`), que NUNCA viaja al
+ * servidor: el pase se arma en el teléfono del invitado.
+ */
+export function enlacePase(codigo: string, pase: PaseEnlace): string {
+  const base = baseDeApp("pases-qr");
+  return base ? `${base}/pase?e=${encodeURIComponent(codigo)}#${codificarPaseEnlace(pase)}` : "";
 }
 
 /**

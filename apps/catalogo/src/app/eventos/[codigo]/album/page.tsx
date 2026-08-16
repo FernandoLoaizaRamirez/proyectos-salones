@@ -23,7 +23,11 @@ import {
   ChevronRight,
   Copy,
   Download,
+  Eye,
+  EyeOff,
   Loader2,
+  Lock,
+  LockOpen,
   MessageCircle,
   Monitor,
   Play,
@@ -34,7 +38,15 @@ import {
   X,
 } from "lucide-react";
 import { Button, Card, EmptyState, Confirmar } from "@salones/ui";
-import { obtenerSync, resolverMedios } from "@salones/sync";
+import {
+  albumEsPrivado,
+  albumEstaCerrado,
+  cambiarAlbumCerrado,
+  cambiarAlbumPrivado,
+  obtenerSync,
+  recordarClaveAnfitrion,
+  resolverMedios,
+} from "@salones/sync";
 import { obtenerSupabase } from "@/lib/supabase";
 import { obtenerEvento, type EventoFila } from "@/lib/eventos";
 import { COLECCION_FOTOS, descargarAlbum, enlaceSubir, esVideo, porFecha, type Foto } from "@/lib/album";
@@ -59,6 +71,18 @@ export default function AlbumDelEvento({ params }: { params: Promise<{ codigo: s
   /** Bandera para poder cancelar una descarga larga a media faena. */
   const descargandoRef = React.useRef(false);
   /** Dirección guardada → dirección firmada con la que se ve y se descarga. */
+  /* ---- Ajustes del álbum (migraciones 0021 y 0022) -------------------------
+   * Los dos interruptores viven también en el panel del anfitrión de la app
+   * `album-fotos`. Aquí hacen falta porque el salón gestiona VARIAS bodas y no
+   * va a ir abriendo el enlace privado de cada una para cambiar un ajuste.
+   *
+   * Los dos arrancan en el lado permisivo (abierto y público), que es como se ha
+   * comportado siempre: si la consulta fallara, es mejor enseñar mal un ajuste
+   * que hacerle creer al salón que cerró un álbum que sigue abierto. */
+  const [cerrado, setCerrado] = React.useState(false);
+  const [privado, setPrivado] = React.useState(false);
+  const [guardandoAjuste, setGuardandoAjuste] = React.useState(false);
+  const [avisoAjuste, setAvisoAjuste] = React.useState("");
   const [vistas, setVistas] = React.useState<Record<string, string>>({});
   const ver = React.useCallback((u: string) => vistas[u] ?? u, [vistas]);
 
@@ -86,6 +110,45 @@ export default function AlbumDelEvento({ params }: { params: Promise<{ codigo: s
       setFotos([...items].sort(porFecha)),
     );
   }, [evento, codigo]);
+
+  // Cambiar estos ajustes exige el PASE DE ANFITRIÓN, y este panel entra con
+  // sesión de staff, no con el enlace privado. Se le presta la llave del evento
+  // a este navegador —igual que hacen la ficha del evento y la invitación— para
+  // que `@salones/sync` pueda pedir ese pase.
+  React.useEffect(() => {
+    if (!evento) return;
+    if (evento.clave_anfitrion) recordarClaveAnfitrion(codigo, evento.clave_anfitrion);
+    let vivo = true;
+    void albumEstaCerrado(codigo).then((c) => vivo && setCerrado(c));
+    void albumEsPrivado(codigo).then((p) => vivo && setPrivado(p));
+    return () => {
+      vivo = false;
+    };
+  }, [evento, codigo]);
+
+  /**
+   * Guarda uno de los dos ajustes. Solo se pinta el cambio si el servidor dijo
+   * que sí: enseñar un álbum "cerrado" que en realidad sigue abierto es peor que
+   * no tener el interruptor.
+   */
+  const guardarAjuste = React.useCallback(
+    async (cual: "cerrado" | "privado", valor: boolean) => {
+      setGuardandoAjuste(true);
+      setAvisoAjuste("");
+      const ok =
+        cual === "cerrado"
+          ? await cambiarAlbumCerrado(codigo, valor)
+          : await cambiarAlbumPrivado(codigo, valor);
+      setGuardandoAjuste(false);
+      if (!ok) {
+        setAvisoAjuste("No pudimos guardar el cambio. Vuelve a entrar e inténtalo.");
+        return;
+      }
+      if (cual === "cerrado") setCerrado(valor);
+      else setPrivado(valor);
+    },
+    [codigo],
+  );
 
   // Desde la migración 0013 el almacén es privado: lo que guarda la base es una
   // REFERENCIA, y para ver o descargar una foto hay que cambiarla por una
@@ -293,6 +356,72 @@ export default function AlbumDelEvento({ params }: { params: Promise<{ codigo: s
       ) : null}
 
       {aviso ? <p className="mt-4 text-sm text-muted-foreground">{aviso}</p> : null}
+
+      {/* Ajustes del álbum (migraciones 0021 y 0022) */}
+      <Card className="mt-8 p-5">
+        <h2 className="text-sm font-semibold">Ajustes del álbum</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Los dos se pueden cambiar en cualquier momento, antes o después del evento.
+        </p>
+
+        <div className="mt-4 grid gap-3 md:grid-cols-2">
+          {/* Abierto / cerrado */}
+          <div className="rounded-[var(--radius)] border border-border p-4">
+            <h3 className="flex items-center gap-2 text-sm font-medium">
+              {cerrado ? (
+                <Lock className="size-4 text-amber-600 dark:text-amber-500" />
+              ) : (
+                <LockOpen className="size-4 text-primary" />
+              )}
+              {cerrado ? "Cerrado: no entran fotos nuevas" : "Abierto: los invitados pueden subir"}
+            </h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {cerrado
+                ? "Se sigue viendo y descargando con normalidad. Desde el panel puedes seguir agregando fotos."
+                : "Ciérralo cuando termine el evento: el QR sigue circulando después, y cada foto nueva gasta espacio."}
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-3"
+              disabled={guardandoAjuste}
+              onClick={() => void guardarAjuste("cerrado", !cerrado)}
+            >
+              {cerrado ? <LockOpen className="size-4" /> : <Lock className="size-4" />}
+              {cerrado ? "Volver a abrirlo" : "Cerrar el álbum"}
+            </Button>
+          </div>
+
+          {/* Público / privado */}
+          <div className="rounded-[var(--radius)] border border-border p-4">
+            <h3 className="flex items-center gap-2 text-sm font-medium">
+              {privado ? (
+                <EyeOff className="size-4 text-amber-600 dark:text-amber-500" />
+              ) : (
+                <Eye className="size-4 text-primary" />
+              )}
+              {privado ? "Cada quien ve solo lo suyo" : "Todos ven las fotos de todos"}
+            </h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {privado
+                ? "Los invitados suben igual, pero cada uno solo ve sus propias fotos. Desde aquí se ven todas."
+                : "El álbum compartido de siempre: cualquiera con el enlace ve y se descarga las fotos de todos."}
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-3"
+              disabled={guardandoAjuste}
+              onClick={() => void guardarAjuste("privado", !privado)}
+            >
+              {privado ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
+              {privado ? "Que todos lo vean" : "Que cada quien vea lo suyo"}
+            </Button>
+          </div>
+        </div>
+
+        {avisoAjuste ? <p className="mt-3 text-sm text-destructive">{avisoAjuste}</p> : null}
+      </Card>
 
       <div className="mt-8">
         {fotos.length === 0 ? (

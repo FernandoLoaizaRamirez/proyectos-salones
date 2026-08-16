@@ -113,6 +113,29 @@ describe("El cliente", () => {
     expect(panel).toMatch(/if \(ok\) setPrivado\(!privado\)/);
   });
 
+  it("el PANEL DEL SALON tiene los dos interruptores, y con que autenticarse", () => {
+    // El salon gestiona varias bodas: no va a abrir el enlace privado de cada
+    // una para cambiar un ajuste. Pero este panel entra con sesion de staff, no
+    // con ese enlace, asi que sin prestarle la llave del evento al navegador los
+    // dos botones no tendrian pase de anfitrion que presentar y fallarian.
+    const panel = leer("apps", "catalogo", "src", "app", "eventos", "[codigo]", "album", "page.tsx");
+    expect(panel).toMatch(/cambiarAlbumCerrado\(codigo, valor\)/);
+    expect(panel).toMatch(/cambiarAlbumPrivado\(codigo, valor\)/);
+    expect(panel).toMatch(/recordarClaveAnfitrion\(codigo, evento\.clave_anfitrion\)/);
+    // Y la ficha del evento tiene que TRAER esa llave, o lo anterior es papel
+    // mojado: `obtenerEvento` usa las columnas con `clave_anfitrion`.
+    expect(leer("apps", "catalogo", "src", "lib", "eventos.ts")).toMatch(
+      /COLUMNAS_FICHA = `\$\{COLUMNAS\},clave_anfitrion`/,
+    );
+  });
+
+  it("el panel solo pinta el cambio si el servidor lo guardo", () => {
+    // Enseñar un album "cerrado" que en realidad sigue abierto es peor que no
+    // tener el interruptor.
+    const panel = leer("apps", "catalogo", "src", "app", "eventos", "[codigo]", "album", "page.tsx");
+    expect(panel).toMatch(/if \(!ok\) \{[\s\S]{0,160}return;/);
+  });
+
   for (const [cual, ruta] of [
     ["app suelta", join("apps", "album-fotos", "src", "components", "album.tsx")],
     ["portal", join("apps", "portal", "src", "modulos", "album", "album-modulo.tsx")],

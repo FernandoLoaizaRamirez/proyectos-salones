@@ -148,8 +148,15 @@ if (carpetaApp === "/" || !existsSync(join(RAIZ, carpetaApp))) {
   construir(`no ubiqué la carpeta de la app (cwd: ${process.cwd()})`);
 }
 
-// `VERCEL_GIT_PREVIOUS_SHA` = el commit de la última construcción BUENA de ESTA
-// app. En el primer despliegue viene vacío: entonces no hay con qué comparar.
+// `VERCEL_GIT_PREVIOUS_SHA` = el commit del despliegue anterior de ESTA app.
+// En el primer despliegue viene vacío: entonces no hay con qué comparar.
+//
+// ⚠️ OJO, comprobado el 16 ago 2026: apunta al último INTENTO, no a la última
+// construcción BUENA. Tras el tope del 14-15 ago ("rate limited", nada se
+// construyó), un commit vacío comparó contra el intento rechazado, vio cero
+// cambios y saltó las 14 apps — dejándolas viejas en producción. La salida es
+// empujar un commit que toque este mismo archivo (o `scripts/`): la regla de
+// arriba de "no nos fiamos del portero cambiado" reconstruye todo.
 const anterior = process.env.VERCEL_GIT_PREVIOUS_SHA;
 const actual = process.env.VERCEL_GIT_COMMIT_SHA || "HEAD";
 if (!anterior) construir("primera construcción de esta app (no hay con qué comparar)");

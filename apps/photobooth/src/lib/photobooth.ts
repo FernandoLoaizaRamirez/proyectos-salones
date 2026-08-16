@@ -819,11 +819,11 @@ function pieDeMarco(
 ) {
   const c = ctx as Ctx2D;
   const L = LADO;
-  const alto = Math.round(L * 0.42);
-  const opacidad = o.velo ?? 0.6;
+  const alto = Math.round(L * 0.34);
+  const opacidad = (o.velo ?? 0.6) * 0.72;
   const g = ctx.createLinearGradient(0, L - alto, 0, L);
   g.addColorStop(0, "rgba(6,10,20,0)");
-  g.addColorStop(0.55, `rgba(6,10,20,${opacidad * 0.45})`);
+  g.addColorStop(0.55, `rgba(6,10,20,${opacidad * 0.4})`);
   g.addColorStop(1, `rgba(6,10,20,${opacidad})`);
   ctx.fillStyle = g;
   ctx.fillRect(0, L - alto, L, alto);
@@ -834,6 +834,12 @@ function pieDeMarco(
   if (o.resplandor) {
     ctx.shadowColor = o.resplandor;
     ctx.shadowBlur = L * 0.03;
+  } else {
+    // Halo oscuro pegado a las letras. Es lo que las hace legibles sobre una
+    // foto clara, y permite que el velo de abajo sea flojo: si la legibilidad
+    // dependiera del velo, habría que oscurecer media foto.
+    ctx.shadowColor = "rgba(0,0,0,0.5)";
+    ctx.shadowBlur = L * 0.015;
   }
 
   if (marco.etiqueta) {

@@ -44,7 +44,11 @@ export type TipoMarco =
   | "brillos"
   | "neon"
   | "confeti"
-  | "foquitos";
+  | "foquitos"
+  | "editorial"
+  | "galeria"
+  | "cine"
+  | "filigrana";
 
 export type Marco = {
   id: string;
@@ -56,6 +60,8 @@ export type Marco = {
   etiqueta?: string;
   /** Texto secundario (fecha, lugar, hashtag). */
   sub?: string;
+  /** Cintillo menudo de arriba (hoy solo lo usa el editorial). */
+  kicker?: string;
 };
 
 /** Los textos que cada evento escribe sobre sus marcos. */
@@ -199,6 +205,39 @@ export function crearMarcos(t: TextosMarcos): Marco[] {
       etiqueta: t.nombre,
       sub: t.fecha,
     },
+    {
+      id: "editorial",
+      nombre: "Editorial",
+      tipo: "editorial",
+      acento: "#ffffff",
+      etiqueta: t.nombre,
+      sub: t.fecha,
+      kicker: `#${t.hashtag}`,
+    },
+    {
+      id: "galeria",
+      nombre: "Galería",
+      tipo: "galeria",
+      acento: "#4a4238",
+      etiqueta: t.nombre,
+      sub: t.fecha,
+    },
+    {
+      id: "cine",
+      nombre: "Cine",
+      tipo: "cine",
+      acento: "#e8e4dc",
+      etiqueta: t.nombre,
+      sub: t.fecha,
+    },
+    {
+      id: "filigrana",
+      nombre: "Filigrana",
+      tipo: "filigrana",
+      acento: "#dcc188",
+      etiqueta: t.nombre,
+      sub: t.fecha,
+    },
   ];
 }
 
@@ -216,7 +255,20 @@ function areaFoto(marco: Marco): { x: number; y: number; w: number; h: number } 
     const w = LADO - m * 2;
     return { x: m, y: m, w, h: w }; // foto cuadrada; abajo queda el margen para el texto
   }
+  if (marco.tipo === "galeria") {
+    // Ventana del passe-partout: la foto va DENTRO, con más margen abajo
+    // (así se montan los cuadros: el pie siempre pesa más que la cabeza).
+    const m = Math.round(LADO * 0.09);
+    return { x: m, y: m, w: LADO - m * 2, h: Math.round(LADO * 0.66) };
+  }
   return { x: 0, y: 0, w: LADO, h: LADO };
+}
+
+/** Color del lienzo por debajo de la foto (se ve donde la foto no llega). */
+function fondoDelLienzo(marco: Marco): string {
+  if (marco.tipo === "polaroid") return "#ffffff";
+  if (marco.tipo === "galeria") return "#f4f0e8"; // cartón marfil del marco
+  return "#000000";
 }
 
 /** Dibuja una imagen recortada para CUBRIR el área destino (sin deformar). */
@@ -563,6 +615,54 @@ function ramaOlivo(
   ctx.restore();
 }
 
+/* ---- Elegantes ---- */
+
+/**
+ * Voluta: el rizo de la filigrana. Sale del punto, se abre en C y se enrosca
+ * hacia dentro, con dos hojitas colgando. `esc` es su tamaño; `sx`/`sy` la
+ * mandan hacia el lado que toque (para las cuatro esquinas).
+ */
+function voluta(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  esc: number,
+  sx: number,
+  sy: number,
+  color: Pintura,
+  grosor: number,
+  /** Gira el rizo 90°: el mismo trazo, pero corriendo por el borde vertical. */
+  vertical = false,
+) {
+  // (u, v): u avanza a lo largo del borde, v se mete hacia dentro del cuadro.
+  const px = (u: number, v: number) => x + sx * (vertical ? v : u) * esc;
+  const py = (u: number, v: number) => y + sy * (vertical ? u : v) * esc;
+  const curva = (a: number[], b: number[], c: number[], d: number[]) => {
+    ctx.moveTo(px(a[0]!, a[1]!), py(a[0]!, a[1]!));
+    ctx.bezierCurveTo(
+      px(b[0]!, b[1]!), py(b[0]!, b[1]!),
+      px(c[0]!, c[1]!), py(c[0]!, c[1]!),
+      px(d[0]!, d[1]!), py(d[0]!, d[1]!),
+    );
+  };
+  ctx.strokeStyle = color;
+  ctx.lineCap = "round";
+  ctx.lineWidth = grosor;
+  ctx.beginPath();
+  // Curva grande, del borde hacia dentro.
+  curva([0, 0], [0.52, 0.02], [0.86, 0.2], [0.9, 0.52]);
+  ctx.stroke();
+  ctx.beginPath();
+  // El caracol en que termina.
+  curva([0.9, 0.52], [0.93, 0.78], [0.72, 0.9], [0.6, 0.76]);
+  curva([0.6, 0.76], [0.5, 0.64], [0.62, 0.5], [0.73, 0.56]);
+  ctx.stroke();
+  ctx.beginPath();
+  // Hoja que se descuelga.
+  curva([0.36, 0.06], [0.42, 0.3], [0.3, 0.42], [0.16, 0.34]);
+  ctx.stroke();
+}
+
 /* ---- Fiesta: XV años, cumpleaños y noche ---- */
 
 /** Corona de tres picos, con perlas en las puntas y gemas en la banda. */
@@ -807,6 +907,8 @@ function pieDeMarco(
     tamNombre: number;
     colorNombre: Pintura;
     versalitas?: boolean;
+    /** Separación entre letras del nombre (fracción del lado). */
+    espacioNombre?: number;
     tamFecha: number;
     colorFecha: Pintura;
     familiaFecha?: string;
@@ -857,8 +959,10 @@ function pieDeMarco(
       );
       c.letterSpacing = "0px";
     } else {
+      if (o.espacioNombre) c.letterSpacing = `${Math.round(L * o.espacioNombre)}px`;
       fuenteQueQuepa(ctx, marco.etiqueta, maxW, Math.round(L * o.tamNombre), o.familia, o.estilo);
       ctx.fillText(marco.etiqueta, L / 2, L * 0.775);
+      c.letterSpacing = "0px";
     }
   }
   if (o.linea) {
@@ -1265,6 +1369,167 @@ function dibujarMarco(ctx: CanvasRenderingContext2D, marco: Marco) {
       },
       velo: 0.58,
     });
+  } else if (marco.tipo === "editorial") {
+    // Portada de revista: nada de adornos, solo tipografía y aire.
+    const c = ctx as Ctx2D;
+    const m = Math.round(L * 0.062);
+    ctx.strokeStyle = "rgba(255,255,255,0.6)";
+    ctx.lineWidth = Math.max(1, Math.round(L * 0.0015));
+    ctx.strokeRect(m, m, L - 2 * m, L - 2 * m);
+    // Cintillo de arriba: un filete con el lugar en versalitas menudas.
+    ctx.save();
+    ctx.shadowColor = "rgba(0,0,0,0.45)";
+    ctx.shadowBlur = L * 0.012;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    const alto = L * 0.115;
+    const cintillo = (marco.kicker ?? "PHOTOBOOTH").toUpperCase();
+    c.letterSpacing = `${Math.round(L * 0.014)}px`;
+    ctx.fillStyle = "rgba(255,255,255,0.92)";
+    fuenteQueQuepa(ctx, cintillo, L * 0.5, Math.round(L * 0.019), SERIF);
+    ctx.fillText(cintillo, L / 2, alto);
+    // Los filetes arrancan JUSTO donde acaba el texto: si fueran fijos, un
+    // hashtag largo se les montaría encima.
+    const mitad = ctx.measureText(cintillo).width / 2 + L * 0.025;
+    c.letterSpacing = "0px";
+    ctx.strokeStyle = "rgba(255,255,255,0.55)";
+    ctx.lineWidth = Math.max(1, Math.round(L * 0.0012));
+    for (const lado of [-1, 1]) {
+      const desde = L / 2 + lado * mitad;
+      const hasta = L / 2 + lado * (L / 2 - m - L * 0.03);
+      if (Math.abs(hasta - desde) > L * 0.02) {
+        ctx.beginPath();
+        ctx.moveTo(desde, alto);
+        ctx.lineTo(hasta, alto);
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+    ctx.textBaseline = "alphabetic";
+    pieDeMarco(ctx, marco, {
+      margen: m,
+      familia: SERIF,
+      tamNombre: 0.088,
+      colorNombre: "#ffffff",
+      espacioNombre: 0.004,
+      tamFecha: 0.022,
+      colorFecha: "rgba(255,255,255,0.9)",
+      linea: "rgba(255,255,255,0.75)",
+      velo: 0.5,
+    });
+  } else if (marco.tipo === "galeria") {
+    // Passe-partout: la foto va en una ventana y el cartón marfil la enmarca.
+    // Aquí el texto NO va sobre la foto sino sobre el cartón, así que se
+    // dibuja a mano (en oscuro) en vez de con el pie de siempre.
+    const c = ctx as Ctx2D;
+    const a = areaFoto(marco);
+    // Bisel: una línea que hunde la ventana y otra que la levanta.
+    ctx.strokeStyle = "rgba(90,80,66,0.45)";
+    ctx.lineWidth = Math.max(1.5, Math.round(L * 0.0022));
+    ctx.strokeRect(a.x - 1, a.y - 1, a.w + 2, a.h + 2);
+    ctx.strokeStyle = "rgba(255,255,255,0.85)";
+    ctx.lineWidth = Math.max(1, Math.round(L * 0.0014));
+    ctx.strokeRect(a.x - Math.round(L * 0.005), a.y - Math.round(L * 0.005), a.w + Math.round(L * 0.01), a.h + Math.round(L * 0.01));
+    // Filete fino por dentro del borde del cartón.
+    ctx.strokeStyle = "rgba(120,105,84,0.35)";
+    ctx.lineWidth = Math.max(1, Math.round(L * 0.0012));
+    const mm = Math.round(L * 0.038);
+    ctx.strokeRect(mm, mm, L - 2 * mm, L - 2 * mm);
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    const base = a.y + a.h;
+    if (marco.etiqueta) {
+      ctx.fillStyle = "#4a4238";
+      c.letterSpacing = `${Math.round(L * 0.005)}px`;
+      textoVersalitas(ctx, marco.etiqueta, L / 2, base + L * 0.115, L * 0.78, Math.round(L * 0.062), SERIF);
+      c.letterSpacing = "0px";
+    }
+    if (marco.sub) {
+      ctx.fillStyle = "#8b8071";
+      c.letterSpacing = `${Math.round(L * 0.012)}px`;
+      fuenteQueQuepa(ctx, marco.sub, L * 0.78, Math.round(L * 0.022), SERIF);
+      ctx.fillText(marco.sub, L / 2, base + L * 0.185);
+      c.letterSpacing = "0px";
+    }
+    ctx.textBaseline = "alphabetic";
+  } else if (marco.tipo === "cine") {
+    // Letterbox: dos barras negras y el nombre en la de abajo.
+    const c = ctx as Ctx2D;
+    const barra = Math.round(L * 0.135);
+    ctx.fillStyle = "#07070a";
+    ctx.fillRect(0, 0, L, barra);
+    ctx.fillRect(0, L - barra, L, barra);
+    ctx.strokeStyle = "rgba(232,228,220,0.5)";
+    ctx.lineWidth = Math.max(1, Math.round(L * 0.0012));
+    ctx.beginPath();
+    ctx.moveTo(0, barra);
+    ctx.lineTo(L, barra);
+    ctx.moveTo(0, L - barra);
+    ctx.lineTo(L, L - barra);
+    ctx.stroke();
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    if (marco.etiqueta) {
+      ctx.fillStyle = "#f2efe8";
+      c.letterSpacing = `${Math.round(L * 0.012)}px`;
+      fuenteQueQuepa(
+        ctx,
+        marco.etiqueta.toUpperCase(),
+        L * 0.84,
+        Math.round(L * 0.042),
+        "ui-sans-serif, system-ui, sans-serif",
+        "300",
+      );
+      ctx.fillText(marco.etiqueta.toUpperCase(), L / 2, L - barra * 0.56);
+      c.letterSpacing = "0px";
+    }
+    if (marco.sub) {
+      ctx.fillStyle = "rgba(232,228,220,0.62)";
+      c.letterSpacing = `${Math.round(L * 0.01)}px`;
+      fuenteQueQuepa(ctx, marco.sub, L * 0.84, Math.round(L * 0.018), "ui-sans-serif, system-ui, sans-serif");
+      ctx.fillText(marco.sub, L / 2, barra * 0.5);
+      c.letterSpacing = "0px";
+    }
+    ctx.textBaseline = "alphabetic";
+  } else if (marco.tipo === "filigrana") {
+    // Filigrana: doble filete con rizos en las cuatro esquinas.
+    const m = Math.round(L * 0.052);
+    const m2 = m + Math.round(L * 0.016);
+    const oro = oroClaro(ctx, 0, 0, L, L);
+    ctx.strokeStyle = oro;
+    ctx.lineWidth = Math.max(2, Math.round(L * 0.0032));
+    ctx.strokeRect(m, m, L - 2 * m, L - 2 * m);
+    ctx.lineWidth = Math.max(1, Math.round(L * 0.0013));
+    ctx.strokeRect(m2, m2, L - 2 * m2, L - 2 * m2);
+    const esc = L * 0.12;
+    const grosor = Math.max(1.5, Math.round(L * 0.0022));
+    const d = L * 0.085;
+    for (const [sx, sy] of [
+      [1, 1],
+      [-1, 1],
+      [1, -1],
+      [-1, -1],
+    ] as const) {
+      const x = sx > 0 ? d : L - d;
+      const y = sy > 0 ? d : L - d;
+      // Dos rizos por esquina: uno corre por el borde de arriba y otro por el
+      // de al lado, espejados en la diagonal.
+      voluta(ctx, x, y, esc, sx, sy, oro, grosor);
+      voluta(ctx, x, y, esc * 0.78, sx, sy, oro, grosor * 0.8, true);
+      rombo(ctx, x, y, L * 0.007, "#f2e2b4");
+    }
+    pieDeMarco(ctx, marco, {
+      margen: m,
+      familia: SERIF,
+      tamNombre: 0.082,
+      colorNombre: "#fdf4dd",
+      espacioNombre: 0.003,
+      tamFecha: 0.024,
+      colorFecha: "#e6cd92",
+      linea: "#dcc188",
+      adorno: (cx, cy) => rombo(ctx, cx, cy, L * 0.009, "#e6cd92"),
+      velo: 0.58,
+    });
   } else if (marco.tipo === "corona") {
     // XV años: doble filete oro rosa, corona arriba y brillos alrededor.
     const m = Math.round(L * 0.05);
@@ -1528,10 +1793,19 @@ export function componer(fotoBase: string, marco: Marco): Promise<string> {
         return;
       }
       // Fondo (blanco para la instantánea, negro para el resto).
-      ctx.fillStyle = marco.tipo === "polaroid" ? "#ffffff" : "#000000";
+      ctx.fillStyle = fondoDelLienzo(marco);
       ctx.fillRect(0, 0, LADO, LADO);
       const area = areaFoto(marco);
+      // RECORTE a la ventana: `dibujarCover` agranda la foto hasta cubrirla, y
+      // lo que sobra se saldría por los lados. Sin esto, la galería pinta la
+      // foto encima de su propio cartón — y la instantánea, encima de su borde
+      // blanco en cuanto la foto no es cuadrada (subida desde el carrete).
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(area.x, area.y, area.w, area.h);
+      ctx.clip();
       dibujarCover(ctx, img, img.naturalWidth, img.naturalHeight, area.x, area.y, area.w, area.h);
+      ctx.restore();
       dibujarMarco(ctx, marco);
       resolve(canvas.toDataURL("image/png"));
     };

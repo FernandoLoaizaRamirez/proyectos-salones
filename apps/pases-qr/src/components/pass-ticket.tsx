@@ -3,10 +3,37 @@
 import { QRCodeSVG } from "qrcode.react";
 import { contenidoQR, evento, type Invitado } from "@/lib/evento";
 
+/** Lo que el boleto pinta del evento (el nombre arriba y la fecha del pie). */
+type TextosTicket = { nombre: string; fechaCorta: string };
+
+/**
+ * La etiqueta de la mesa. Aquí la mesa siempre fue un número ("4"), pero con
+ * el acomodo real puede llegar el NOMBRE de la mesa ("Mesa principal",
+ * "Familia de la novia"): si ya empieza con la palabra "mesa" no se le
+ * antepone otra, para no imprimir "Mesa Mesa principal". Vacía = sin etiqueta
+ * (esa parte del renglón simplemente no se pinta).
+ */
+function etiquetaMesa(mesa: string): string {
+  const limpia = mesa.trim();
+  if (!limpia) return "";
+  return /^mesa\b/i.test(limpia) ? limpia : `Mesa ${limpia}`;
+}
+
 /** Pase con estilo de boleto premium (lo que recibe cada invitado). */
-export function PassTicket({ inv, size = "md" }: { inv: Invitado; size?: "sm" | "md" }) {
+export function PassTicket({
+  inv,
+  size = "md",
+  // Por omisión, los textos de la muestra: quien ya pintaba el boleto sin
+  // pasar nada sigue viendo exactamente lo mismo.
+  textos = { nombre: evento.nombre, fechaCorta: evento.fechaCorta },
+}: {
+  inv: Invitado;
+  size?: "sm" | "md";
+  textos?: TextosTicket;
+}) {
   const vip = inv.tipo === "VIP";
   const qrSize = size === "sm" ? 76 : 172;
+  const mesa = etiquetaMesa(inv.mesa);
   return (
     <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#252a37] via-[#171a22] to-[#0d0f14] text-white shadow-xl ring-1 ring-white/10">
       {/* Barra de acento superior */}
@@ -21,7 +48,7 @@ export function PassTicket({ inv, size = "md" }: { inv: Invitado; size?: "sm" | 
       <div className={size === "sm" ? "px-5 pt-4" : "px-7 pt-6"}>
         <div className="flex items-center justify-between gap-3">
           <span className="truncate text-[0.62rem] uppercase tracking-[0.22em] text-white/55">
-            {evento.nombre}
+            {textos.nombre}
           </span>
           {vip ? (
             <span className="shrink-0 rounded-full bg-amber-400/15 px-2 py-0.5 text-[0.6rem] font-semibold uppercase tracking-wider text-amber-300 ring-1 ring-amber-300/40">
@@ -37,7 +64,8 @@ export function PassTicket({ inv, size = "md" }: { inv: Invitado; size?: "sm" | 
           {inv.nombre}
         </h3>
         <p className="mt-1 text-sm text-white/55">
-          Mesa {inv.mesa} · {inv.personas} {inv.personas === 1 ? "persona" : "personas"}
+          {mesa ? `${mesa} · ` : ""}
+          {inv.personas} {inv.personas === 1 ? "persona" : "personas"}
         </p>
       </div>
 
@@ -61,7 +89,8 @@ export function PassTicket({ inv, size = "md" }: { inv: Invitado; size?: "sm" | 
           />
         </div>
         <p className="mt-3 text-[0.68rem] uppercase tracking-[0.18em] text-white/40">
-          Pase {inv.id} · {evento.fechaCorta}
+          Pase {inv.id}
+          {textos.fechaCorta ? ` · ${textos.fechaCorta}` : ""}
         </p>
         {size !== "sm" ? (
           <p className="mt-1 text-xs text-white/55">Presenta este código en la entrada</p>

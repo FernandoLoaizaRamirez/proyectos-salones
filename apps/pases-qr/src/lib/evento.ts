@@ -8,6 +8,7 @@
  * quedaba sin batería se perdía quién había entrado, y dos personas escaneando
  * en dos puertas veían listas distintas.
  */
+import { codificarPaseEnlace, decodificarPaseEnlace, idPaseDeInvitado } from "@salones/core";
 
 /**
  * Las dos colecciones del evento.
@@ -39,6 +40,14 @@ export type Acceso = {
   ts: number;
 };
 
+/**
+ * Los textos de la MUESTRA, el respaldo de todo lo demás.
+ *
+ * Ya no son "el evento": desde que la app sabe de qué evento es (ver
+ * ./evento-real), un evento real saca su nombre y su fecha de la colección
+ * `invitacion` que captura el salón. Esto queda para la vitrina del catálogo
+ * y para cualquier boda que todavía no capture su invitación.
+ */
 export const evento = {
   nombre: "Boda Ana & Rodrigo",
   fecha: "Sábado 20 de marzo de 2027",
@@ -76,9 +85,18 @@ export const invitadosIniciales: Invitado[] = [
   { id: "SR-2168", nombre: "Regina y José", mesa: "7", personas: 2, tipo: "General" },
 ];
 
-/** Texto que se guarda dentro del código QR del pase. */
+/**
+ * Texto que se guarda dentro del código QR del pase.
+ *
+ * El id pasa por `idPaseDeInvitado` (@salones/core): para los pases creados
+ * aquí (`SR-…`) no cambia NADA — se respetan tal cual y los QR ya impresos
+ * siguen valiendo. Para un pase armado desde el panel del salón, cuyo id es el
+ * UUID del invitado, el QR lleva `PS-<uuid>`: el id de su FILA en la colección
+ * "pases" (el UUID a pelo ya es su renglón en "respuestas", y la llave
+ * primaria de `items` es global — ver la nota de las colecciones de arriba).
+ */
 export function contenidoQR(inv: Invitado): string {
-  return `PASE-SR:${inv.id}`;
+  return `PASE-SR:${idPaseDeInvitado(inv.id)}`;
 }
 
 /** Extrae el id del pase a partir del texto leído por el escáner. */
@@ -111,20 +129,41 @@ export function nuevoId(existentes: Invitado[]): string {
   return id;
 }
 
-/** Empaqueta un invitado para compartir su pase por un enlace (sin servidor). */
+/**
+ * Empaqueta un invitado para compartir su pase por un enlace (sin servidor).
+ *
+ * Delega en el codec compartido de @salones/core para que el panel del salón
+ * y esta app hablen EXACTAMENTE el mismo idioma sin copiarse el formato. Solo
+ * cambia el vocabulario en el camino: las `personas` de la puerta son los
+ * `cupos` del enlace personal (el codec emite los dos nombres, así el mismo
+ * enlace sirve aquí, en el portal y en el photobooth).
+ */
 export function codificarPase(inv: Invitado): string {
-  return btoa(encodeURIComponent(JSON.stringify(inv)));
+  return codificarPaseEnlace({
+    id: inv.id,
+    nombre: inv.nombre,
+    cupos: inv.personas,
+    mesa: inv.mesa,
+    tipo: inv.tipo,
+  });
 }
 
-/** Recupera el invitado desde el enlace del pase. */
+/**
+ * Recupera el invitado desde el enlace del pase.
+ *
+ * Entiende tanto los enlaces nuevos (con `cupos`) como los VIEJOS ya
+ * repartidos por WhatsApp (que solo traen `personas`): el codec de core acepta
+ * los dos, y aquí nada más se traduce al vocabulario local — sin mesa vale por
+ * "", sin tipo vale por "General", para que la puerta trate igual a todos.
+ */
 export function decodificarPase(datos: string): Invitado | null {
-  try {
-    const obj = JSON.parse(decodeURIComponent(atob(datos)));
-    if (obj && typeof obj.id === "string" && typeof obj.nombre === "string") {
-      return obj as Invitado;
-    }
-    return null;
-  } catch {
-    return null;
-  }
+  const pase = decodificarPaseEnlace(datos);
+  if (!pase) return null;
+  return {
+    id: pase.id,
+    nombre: pase.nombre,
+    mesa: pase.mesa ?? "",
+    personas: pase.cupos,
+    tipo: pase.tipo ?? "General",
+  };
 }

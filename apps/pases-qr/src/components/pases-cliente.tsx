@@ -6,7 +6,6 @@ import { Button, Card, cn, Confirmar, leerLocal } from "@salones/ui";
 import { obtenerSync, eventoActual } from "@salones/sync";
 import {
   invitadosIniciales,
-  evento,
   idDesdeQR,
   nuevoId,
   codificarPase,
@@ -17,6 +16,7 @@ import {
   type Invitado,
   type Tipo,
 } from "@/lib/evento";
+import { useEventoReal } from "@/lib/evento-real";
 import { PassTicket } from "./pass-ticket";
 import { Escaner } from "./escaner";
 
@@ -69,6 +69,9 @@ function esListaDeInvitados(data: unknown): data is Invitado[] {
 
 export function PasesCliente() {
   const [tab, setTab] = React.useState<Tab>("invitados");
+  // El evento real (si lo hay): sus textos pintan los boletos y el mensaje de
+  // WhatsApp; en la vitrina siguen siendo los de la muestra, como siempre.
+  const { codigo: codigoEvento, textos } = useEventoReal();
   const [invitados, setInvitados] = React.useState<Invitado[]>([]);
   const [ingresados, setIngresados] = React.useState<Record<string, number>>({});
 
@@ -308,9 +311,18 @@ export function PasesCliente() {
     }
   };
 
+  /**
+   * En un evento real el enlace del pase lleva su código (`?e=`): así el
+   * boleto que se abre lee los textos y la mesa de ESA boda, y puede tender su
+   * puente al portal. En la demo va sin código, igual que siempre.
+   */
   const compartir = (inv: Invitado) => {
-    const url = `${window.location.origin}/pase#${codificarPase(inv)}`;
-    const msg = `¡Hola! Aquí está tu pase para ${evento.nombre} (${evento.fecha}). Ábrelo y muéstralo en la entrada:\n${url}`;
+    const codigo = eventoActual();
+    const conEvento = codigo !== "demo" ? `?e=${encodeURIComponent(codigo)}` : "";
+    const url = `${window.location.origin}/pase${conEvento}#${codificarPase(inv)}`;
+    const msg = `¡Hola! Aquí está tu pase para ${textos.nombre}${
+      textos.fecha ? ` (${textos.fecha})` : ""
+    }. Ábrelo y muéstralo en la entrada:\n${url}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, "_blank", "noopener,noreferrer");
   };
 
@@ -469,6 +481,12 @@ export function PasesCliente() {
             <p className="mt-1 text-sm text-muted-foreground">
               Al guardar se crea su pase con QR automáticamente.
             </p>
+            {codigoEvento !== "demo" ? (
+              <p className="mt-2 text-xs text-muted-foreground">
+                Con el servicio del evento, la lista también se puede mandar desde el panel del
+                salón (Confirmaciones).
+              </p>
+            ) : null}
             <form onSubmit={(e) => void guardar(e)} className="mt-5 space-y-4">
               <div>
                 <label className="mb-1.5 block text-sm font-medium">Nombre</label>
@@ -650,7 +668,7 @@ export function PasesCliente() {
             <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {invitados.map((inv) => (
                 <button key={inv.id} onClick={() => setPaseVer(inv)} className="text-left">
-                  <PassTicket inv={inv} size="sm" />
+                  <PassTicket inv={inv} size="sm" textos={textos} />
                 </button>
               ))}
             </div>
@@ -805,7 +823,7 @@ export function PasesCliente() {
           className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-black/60 p-6 backdrop-blur-sm"
         >
           <div onClick={(e) => e.stopPropagation()} className="w-full max-w-sm">
-            <PassTicket inv={paseVer} />
+            <PassTicket inv={paseVer} textos={textos} />
             <div className="mt-4 flex gap-2">
               <Button className="flex-1" onClick={() => compartir(paseVer)}>
                 <MessageCircle className="size-4" /> Enviar por WhatsApp

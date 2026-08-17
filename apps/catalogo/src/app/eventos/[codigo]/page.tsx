@@ -25,6 +25,8 @@ import {
   Mail,
   MessageCircle,
   KeyRound,
+  Package,
+  PackageCheck,
   RefreshCw,
   SearchX,
   Share2,
@@ -53,6 +55,14 @@ import {
   enlacePortal,
   esInterna,
 } from "@/lib/pantallas";
+import { leerIdentidad } from "@/lib/sesion";
+import {
+  apagarPaqueteTodo,
+  encenderPaqueteTodo,
+  estadoPaqueteTodo,
+  leerOverridesEvento,
+  type EstadoPaquete,
+} from "@/lib/paquete-evento";
 
 /** Cada cuánto se vuelven a leer los contadores (ms). */
 const REFRESCO_MS = 20000;
@@ -69,6 +79,16 @@ export default function PanelEvento({ params }: { params: Promise<{ codigo: stri
   const [copiado, setCopiado] = React.useState("");
   /** ¿Este navegador ya tiene la llave de anfitrión de ESTE evento? */
   const [moderacionActiva, setModeracionActiva] = React.useState(false);
+  /* ---- Paquete del evento (event_overrides) --------------------------------
+   * Cómo están hoy las cuatro experiencias del "Paquete Todo Incluido" en el
+   * portal de ESTE evento. `null` mientras se consulta: no se enseña ni
+   * encendido ni apagado hasta que la base conteste, porque de eso depende lo
+   * que el salón le promete a su cliente. */
+  const [estadoPaquete, setEstadoPaquete] = React.useState<EstadoPaquete | null>(null);
+  const [guardandoPaquete, setGuardandoPaquete] = React.useState(false);
+  const [avisoPaquete, setAvisoPaquete] = React.useState("");
+  /** Solo el dueño o un admin del salón escriben overrides (RLS de la 0008). */
+  const [puedeCambiarPaquete, setPuedeCambiarPaquete] = React.useState(false);
 
   const portal = enlacePortal(codigo);
 
@@ -85,10 +105,45 @@ export default function PanelEvento({ params }: { params: Promise<{ codigo: stri
         return;
       }
       setModeracionActiva(claveAnfitrion(codigo) !== null);
-      setEvento(await obtenerEvento(supabase, codigo));
+      const rol = leerIdentidad(data.session.user)?.rol;
+      setPuedeCambiarPaquete(rol === "owner" || rol === "admin");
+      const ficha = await obtenerEvento(supabase, codigo);
+      setEvento(ficha);
       setCargando(false);
+      // El paquete se pide DESPUÉS de la ficha porque se guarda por el id (uuid)
+      // del evento, no por su código.
+      if (ficha) setEstadoPaquete(estadoPaqueteTodo(await leerOverridesEvento(supabase, ficha.id)));
     });
   }, [router, codigo]);
+
+  /**
+   * Enciende o apaga el paquete y vuelve a leer cómo quedó.
+   *
+   * Se relee SIEMPRE, salga bien o mal: es la única forma de que la pantalla
+   * diga lo que de verdad hay en la base. Si se pintara lo que pedimos, un
+   * cambio a medias (o uno que la RLS negó en silencio) se vería como hecho.
+   */
+  const cambiarPaquete = React.useCallback(
+    async (encender: boolean) => {
+      const supabase = obtenerSupabase();
+      if (!supabase || !evento) return;
+      setGuardandoPaquete(true);
+      setAvisoPaquete("");
+      const ok = encender
+        ? await encenderPaqueteTodo(supabase, evento.id)
+        : await apagarPaqueteTodo(supabase, evento.id);
+      setEstadoPaquete(estadoPaqueteTodo(await leerOverridesEvento(supabase, evento.id)));
+      setGuardandoPaquete(false);
+      if (!ok) {
+        setAvisoPaquete(
+          puedeCambiarPaquete
+            ? "No pudimos guardar el cambio. Revisa tu conexión y vuelve a intentarlo."
+            : "Solo el dueño o un admin del salón pueden cambiar el paquete.",
+        );
+      }
+    },
+    [evento, puedeCambiarPaquete],
+  );
 
   // Cómo va: se mide al entrar y cada tantos segundos (y con el botón).
   const medir = React.useCallback(async () => {
@@ -284,6 +339,93 @@ export default function PanelEvento({ params }: { params: Promise<{ codigo: stri
             <Link href={`/eventos/${encodeURIComponent(codigo)}/invitacion`} className="mt-4 inline-block">
               <Button size="sm">Editar la invitación</Button>
             </Link>
+          </div>
+        </div>
+      </Card>
+
+      {/* ── Paquete del evento ────────────────────────────────────────────
+          Va junto a la invitación (las dos son CONFIGURACIÓN del evento) y no
+          arriba del enlace del portal: lo primero que el salón viene a buscar
+          aquí sigue siendo el enlace para sus invitados.
+
+          Este interruptor existe porque los cobros en línea están apagados: el
+          paquete se cierra y se cobra por fuera, así que las cuatro
+          experiencias se encienden a mano, evento por evento. El día que se
+          encienda la venta en línea, esto lo hará el webhook y la tarjeta se
+          quedará como el "por si acaso" del salón. */}
+      <Card className="mt-8 p-6">
+        <div className="flex items-start gap-4">
+          <span className="grid size-11 shrink-0 place-items-center rounded-[var(--radius)] bg-primary/10 text-primary">
+            <PackageCheck className="size-5" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <h2 className="font-semibold">Paquete del evento</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Lo que este evento tiene contratado. Se enciende y se apaga cuando quieras, antes o
+              después de la fiesta.
+            </p>
+
+            <div className="mt-4 rounded-[var(--radius)] border border-border p-4">
+              <h3 className="flex items-center gap-2 text-sm font-medium">
+                {estadoPaquete === "encendido" ? (
+                  <PackageCheck className="size-4 text-primary" />
+                ) : (
+                  <Package className="size-4 text-muted-foreground" />
+                )}
+                Paquete Todo Incluido
+              </h3>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Enciende invitación, Mi mesa, photobooth y brindis en el portal de este evento.
+              </p>
+
+              {estadoPaquete === null ? (
+                <p className="mt-2 text-xs text-muted-foreground">Viendo cómo está…</p>
+              ) : estadoPaquete === "parcial" ? (
+                <p className="mt-2 text-xs text-amber-600 dark:text-amber-500">
+                  Encendido a medias — vuelve a encenderlo para completarlo
+                </p>
+              ) : (
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {estadoPaquete === "encendido"
+                    ? "Encendido: tus invitados ya ven las cuatro en el portal."
+                    : "Apagado: el portal no las enseña en este evento."}
+                </p>
+              )}
+
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-3"
+                disabled={estadoPaquete === null || guardandoPaquete}
+                onClick={() => void cambiarPaquete(estadoPaquete !== "encendido")}
+              >
+                {guardandoPaquete ? (
+                  <>
+                    <Loader2 className="size-4 animate-spin" /> Guardando…
+                  </>
+                ) : estadoPaquete === "encendido" ? (
+                  <>
+                    <Package className="size-4" /> Apagar el paquete
+                  </>
+                ) : (
+                  <>
+                    <PackageCheck className="size-4" /> Encender el paquete
+                  </>
+                )}
+              </Button>
+            </div>
+
+            {/* Rojo de Tailwind y no `text-destructive`: ese color NO existe en
+                el tema (tokens.css no lo define), así que la clase no pinta nada
+                y el aviso saldría del color del texto normal — un error que no
+                se ve como error. */}
+            {avisoPaquete ? (
+              <p className="mt-3 text-sm text-red-600 dark:text-red-400">{avisoPaquete}</p>
+            ) : null}
+
+            <p className="mt-3 text-xs text-muted-foreground">
+              El portal del invitado tarda hasta un minuto en reflejarlo.
+            </p>
           </div>
         </div>
       </Card>

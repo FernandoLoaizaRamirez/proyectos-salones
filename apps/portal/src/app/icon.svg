@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!--
+    Favicon del portal del invitado. NO lleva marca de salón a propósito: el
+    portal es multi-cliente y el mismo despliegue sirve a todos los eventos, así
+    que un logo concreto aquí sería mentira para los demás. El brindis (copas)
+    es lo único que significa lo mismo en cualquier fiesta.
+  -->
+  <rect width="64" height="64" rx="10" fill="#111118"/>
+  <g fill="none" stroke="#c9a96e" stroke-width="2.6" stroke-linecap="round">
+    <path d="M20 16h10l-5 12z"/>
+    <path d="M25 28v16"/>
+    <path d="M19 46h12"/>
+    <path d="M34 16h10l-5 12z"/>
+    <path d="M39 28v16"/>
+    <path d="M33 46h12"/>
+  </g>
+</svg>

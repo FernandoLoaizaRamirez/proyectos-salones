@@ -59,7 +59,15 @@ body {
 /* Utilidades de apoyo para el estilo editorial elegante. */
 .eyebrow {
   font-family: var(--font-sans);
-  font-size: 0.72rem;
+  /*
+   * 0.75rem = 12px, el mínimo que se lee en un celular. Estaba en 0.72rem
+   * (11.52px) y se colaba por debajo del piso que ya se fijó para el resto de
+   * las apps: el barrido de móvil pasó por invitaciones, mesas y rsvp, pero
+   * este sitio se quedó fuera. Son 19 secciones con esta clase, incluidos los
+   * antetítulos de TODA la página; en pantalla la diferencia no se nota, en un
+   * teléfono a la luz del día sí.
+   */
+  font-size: 0.75rem;
   letter-spacing: 0.28em;
   text-transform: uppercase;
   color: var(--gold);

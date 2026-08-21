@@ -193,3 +193,18 @@ export const testimonios: Testimonio[] = [
     evento: "Evento corporativo · Terraza",
   },
 ];
+
+/**
+ * LA PUERTA DEL INVITADO — los textos del bloque que lleva al portal del evento.
+ *
+ * Vive aquí, con el resto del contenido, porque es lo primero que un salón real
+ * va a querer cambiar: el tono con el que le habla a sus invitados es parte de
+ * su marca. Cambiar de cliente sigue siendo editar UN archivo.
+ */
+export const puertaInvitado = {
+  eyebrow: "Para invitados",
+  titulo: "¿Vienes a un evento?",
+  texto:
+    "Si te invitaron a una celebración en el recinto, aquí está todo lo tuyo: en qué mesa te toca, las fotos de la noche, la música que suena y el mensaje que quieras dejar. Escribe el código de tu invitación.",
+  ejemplo: "Ej. boda-ana-rodrigo",
+};

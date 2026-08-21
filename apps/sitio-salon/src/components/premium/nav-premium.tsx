@@ -11,6 +11,7 @@ const enlaces = [
   { href: "#galeria", label: "Galería" },
   { href: "#paquetes", label: "Paquetes" },
   { href: "#contacto", label: "Contacto" },
+  { href: "#invitados", label: "Invitados" },
 ];
 
 /** Barra de navegación de la versión inmersiva: vidrio oscuro + acentos dorados. */
@@ -37,7 +38,7 @@ export function NavPremium() {
           <span className="font-display text-xl italic leading-none text-cream">{salon.nombre}</span>
         </a>
 
-        <nav className="hidden items-center gap-8 md:flex">
+        <nav className="hidden items-center gap-6 md:flex lg:gap-8">
           {enlaces.map((e) => (
             <a
               key={e.href}

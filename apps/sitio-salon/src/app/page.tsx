@@ -8,6 +8,7 @@ import { Galeria } from "@/components/galeria";
 import { Paquetes } from "@/components/paquetes";
 import { Testimonios } from "@/components/testimonios";
 import { Contacto } from "@/components/contacto";
+import { PuertaInvitado } from "@/components/puerta-invitado";
 import { Footer } from "@/components/footer";
 import { WhatsappFab } from "@/components/whatsapp-fab";
 import { VersionSwitch } from "@/components/version-switch";
@@ -26,6 +27,7 @@ export default function Page() {
         <Paquetes />
         <Testimonios />
         <Contacto />
+        <PuertaInvitado />
       </main>
       <Footer />
       <WhatsappFab />

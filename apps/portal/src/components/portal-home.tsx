@@ -15,6 +15,7 @@ import { ArrowUpRight, PartyPopper, SearchX } from "lucide-react";
 import { MODULOS, enlaceModulo, esInterno } from "@/lib/modulos";
 import { CapturaPerfil } from "@/components/captura-perfil";
 import { HeroEvento } from "@/components/hero-evento";
+import { MarcaSalon } from "@/components/marca-salon";
 import { usePerfil } from "@/lib/perfil";
 import type { ConfigEvento } from "@/lib/config-evento";
 
@@ -55,14 +56,16 @@ export function PortalHome({ config }: { config: ConfigEvento }) {
       <main className="mx-auto max-w-3xl px-6 py-14">
         {/* El enlace personal (#) se captura llegue por la puerta que llegue. */}
         <CapturaPerfil evento={config.codigo} />
+
+        {/* La casa de quien organiza va PRIMERO: el invitado tiene que ver de
+            quien es la fiesta antes que de quien es el software. */}
+        <MarcaSalon branding={branding} salon={config.salon} />
+
         <div className="flex items-center gap-2 text-sm font-medium text-primary">
           <PartyPopper className="size-4" />
           Portal del evento
         </div>
         <h1 className="mt-1 text-3xl font-semibold tracking-tight">{config.nombre}</h1>
-        {config.salon ? (
-          <p className="mt-1 text-sm text-muted-foreground">En {config.salon}</p>
-        ) : null}
 
         {/* El saludo personal y los datos reales del evento (cuenta regresiva). */}
         <HeroEvento evento={config.codigo} />
@@ -78,9 +81,15 @@ export function PortalHome({ config }: { config: ConfigEvento }) {
               const interno = esInterno(m);
               const contenido = (
                 <div className="flex items-center gap-4">
-                  <span
-                    className={`inline-flex size-11 shrink-0 items-center justify-center rounded-[var(--radius)] bg-gradient-to-br ${m.acento} text-white`}
-                  >
+                  {/*
+                   * El icono va en el color del SALON, no en un degradado propio.
+                   * Antes cada modulo traia el suyo (from-amber-500, from-teal-500,
+                   * from-fuchsia-500...): nueve degradados distintos en una sola
+                   * pantalla, encima del color de la marca. Se veia a plantilla,
+                   * justo lo contrario de lo que se vende. Lo que distingue a cada
+                   * experiencia es su ICONO y su NOMBRE; el color es de la casa.
+                   */}
+                  <span className="inline-flex size-11 shrink-0 items-center justify-center rounded-[var(--radius)] bg-primary/10 text-primary ring-1 ring-primary/15 transition group-hover:bg-primary/15">
                     <m.icono className="size-5" />
                   </span>
                   <div className="min-w-0 flex-1">

@@ -11,6 +11,10 @@ const enlaces = [
   { href: "#galeria", label: "Galería" },
   { href: "#paquetes", label: "Paquetes" },
   { href: "#contacto", label: "Contacto" },
+  // El invitado no es el mismo publico que el novio que viene a cotizar, pero
+  // llega a esta misma web el dia del evento: sin esta entrada tendria que
+  // recorrer todo el argumento de venta para encontrar su mesa.
+  { href: "#invitados", label: "Invitados" },
 ];
 
 export function Nav() {
@@ -43,7 +47,7 @@ export function Nav() {
           </span>
         </a>
 
-        <nav className="hidden items-center gap-8 md:flex">
+        <nav className="hidden items-center gap-6 md:flex lg:gap-8">
           {enlaces.map((e) => (
             <a
               key={e.href}

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!--
+    Favicon del sitio: el mismo monograma de la barra de navegación, pero en
+    positivo (vino sólido de fondo) para que se distinga en una pestaña de
+    16 píxeles. La fuente es serif del sistema a propósito: un favicon no puede
+    depender de una fuente web, no le da tiempo a cargar.
+  -->
+  <rect width="64" height="64" rx="10" fill="#7a2e3b"/>
+  <circle cx="32" cy="32" r="26" fill="none" stroke="#c9a96e" stroke-width="1.2" opacity="0.55"/>
+  <circle cx="32" cy="32" r="21" fill="none" stroke="#c9a96e" stroke-width="0.7" opacity="0.4"/>
+  <text x="32" y="41" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif"
+        font-size="24" font-style="italic" fill="#c9a96e">SR</text>
+</svg>

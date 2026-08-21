@@ -147,7 +147,7 @@ export function HeroPremium() {
         ))}
       </div>
 
-      <div className="pointer-events-none absolute bottom-8 left-1/2 z-10 -translate-x-1/2 text-[0.7rem] tracking-[0.3em] text-cream/70">
+      <div className="pointer-events-none absolute bottom-8 left-1/2 z-10 -translate-x-1/2 text-xs tracking-[0.3em] text-cream/70">
         <span className="inline-block rotate-180 animate-pulse [writing-mode:vertical-rl]">
           DESLIZA
         </span>

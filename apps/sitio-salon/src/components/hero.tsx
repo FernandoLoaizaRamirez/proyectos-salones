@@ -42,7 +42,7 @@ export function Hero() {
         </div>
       </div>
 
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 text-[0.7rem] tracking-[0.3em] text-cream/70">
+      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 text-xs tracking-[0.3em] text-cream/70">
         <span className="inline-block rotate-180 [writing-mode:vertical-rl]">DESLIZA</span>
       </div>
     </section>

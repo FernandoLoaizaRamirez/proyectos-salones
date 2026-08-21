@@ -155,7 +155,11 @@ export function DjCliente() {
           lista.map((c, i) => {
             const plataforma = plataformaDeLink(c.link);
             return (
-              <Card key={c.id} className="flex items-center gap-3 p-3">
+              /* En celular la fila se parte en dos renglones: la canción arriba
+                 y los botones abajo. Con todo en una línea, entre el número,
+                 los votos y los botones al título le quedaban 30 px y el DJ
+                 leía "P…" en vez del nombre de la canción. */
+              <Card key={c.id} className="flex flex-wrap items-center gap-3 p-3">
                 {filtro === "cola" ? (
                   <div className="grid size-8 shrink-0 place-items-center text-sm font-semibold text-muted-foreground">
                     {i + 1}
@@ -171,7 +175,7 @@ export function DjCliente() {
                   {c.votos}
                 </div>
 
-                <div className="min-w-0 flex-1">
+                <div className="min-w-0 flex-1 basis-40">
                   <div className="flex items-center gap-2">
                     <span className="truncate font-medium">{c.titulo}</span>
                     {c.estado === EstadoCancion.Puesta ? (
@@ -201,7 +205,7 @@ export function DjCliente() {
                   </div>
                 </div>
 
-                <div className="flex shrink-0 items-center gap-1">
+                <div className="ml-auto flex shrink-0 items-center gap-1">
                   {c.estado === EstadoCancion.Pendiente ? (
                     <>
                       <Button size="sm" onClick={() => setEstado(c.id, EstadoCancion.Puesta)}>

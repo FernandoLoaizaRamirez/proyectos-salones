@@ -473,17 +473,28 @@ export function AcomodoCliente() {
         setSobre(null);
       }}
       className={cn(
-        "group flex items-center gap-2 rounded-[var(--radius)] border border-border bg-background px-2.5 py-2 text-sm transition-shadow",
+        /*
+         * En celular la ficha va en DOS renglones: el nombre arriba, con todo
+         * el ancho, y los controles abajo. Antes iba todo en una fila y, entre
+         * el menú de mesa y los dos botones (todos `shrink-0`), al nombre le
+         * quedaban 30 px: la lista de invitados era una hilera de fichas
+         * anónimas, sin un solo nombre legible. De tablet para arriba se queda
+         * en una sola fila, como siempre.
+         */
+        "group flex flex-col gap-2 rounded-[var(--radius)] border border-border bg-background px-2.5 py-2 text-sm transition-shadow sm:flex-row sm:items-center",
         "cursor-grab active:cursor-grabbing hover:shadow-sm",
         arrastrando === inv.id && "opacity-40",
       )}
     >
-      <GripVertical className="size-4 shrink-0 text-muted-foreground" />
-      <span className="min-w-0 flex-1 truncate font-medium">{inv.nombre}</span>
-      <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
-        <Users className="size-3" />
-        {inv.asientos}
-      </span>
+      <div className="flex min-w-0 items-center gap-2 sm:flex-1">
+        <GripVertical className="size-4 shrink-0 text-muted-foreground" />
+        <span className="min-w-0 flex-1 truncate font-medium">{inv.nombre}</span>
+        <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+          <Users className="size-3" />
+          {inv.asientos}
+        </span>
+      </div>
+      <div className="flex items-center gap-2">
       {/*
        * Alternativa al arrastre (móvil/táctil): mover con un menú.
        *
@@ -494,7 +505,7 @@ export function AcomodoCliente() {
        */}
       <select
         aria-label={`Mover a ${inv.nombre}`}
-        className="min-h-9 max-w-[7.5rem] shrink-0 rounded-[var(--radius)] border border-border bg-background py-1 pl-1.5 pr-0.5 text-xs text-muted-foreground"
+        className="min-h-9 min-w-0 flex-1 rounded-[var(--radius)] border border-border bg-background py-1 pl-1.5 pr-0.5 text-xs text-muted-foreground sm:max-w-[7.5rem] sm:flex-none"
         value={inv.mesaId ?? ""}
         onChange={(e) => moverInvitado(inv.id, e.target.value || null)}
       >
@@ -521,6 +532,7 @@ export function AcomodoCliente() {
           <Trash2 className="size-3.5" />
         </button>
       )}
+      </div>
     </div>
   );
 
@@ -823,12 +835,16 @@ export function AcomodoCliente() {
 
       {/* Modal de compartir */}
       {compartir ? (
+        /* `overflow-y-auto` + `my-auto`: con una boda de verdad este diálogo
+           mide más que la pantalla del celular y NO se podía recorrer, así que
+           el botón de "Enviar por WhatsApp" quedaba abajo, fuera, inalcanzable
+           — justo al terminar de acomodar la boda. */
         <div
-          className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4"
+          className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-black/50 p-4"
           onClick={() => setCompartir(false)}
         >
           <Card
-            className="w-full max-w-md p-6"
+            className="my-auto w-full max-w-md p-6"
             onClick={(e: React.MouseEvent) => e.stopPropagation()}
           >
             <div className="flex items-start justify-between">
@@ -858,7 +874,11 @@ export function AcomodoCliente() {
                 </div>
               )}
               <div className="w-full">
-                <p className="mb-3 break-all rounded-[var(--radius)] bg-muted px-3 py-2 text-xs text-muted-foreground">
+                {/* El enlace lleva el acomodo entero dentro y puede pasar de
+                    mil caracteres: impreso completo tapaba media pantalla con
+                    una pared de letras. Se muestra recortado (nadie lo lee,
+                    solo lo copia) y se puede desplegar si alguien lo quiere. */}
+                <p className="mb-3 max-h-16 overflow-y-auto break-all rounded-[var(--radius)] bg-muted px-3 py-2 text-xs text-muted-foreground">
                   {urlCompartir}
                 </p>
                 <div className="flex flex-col gap-2">

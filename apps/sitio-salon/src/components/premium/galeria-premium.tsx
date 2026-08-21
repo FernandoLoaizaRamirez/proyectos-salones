@@ -76,10 +76,14 @@ export function GaleriaPremium() {
                 className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-110"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-[#0b0705]/80 via-transparent to-transparent opacity-70 transition-opacity duration-300 group-hover:opacity-90" />
-              <span className="absolute right-3 top-3 grid size-9 place-items-center rounded-full border border-gold/50 bg-[#100b08]/40 text-gold opacity-0 backdrop-blur-sm transition-all duration-300 group-hover:opacity-100">
+              {/* Visible de entrada en celular: en una pantalla táctil no
+                  existe el `hover`, así que las seis fotos salían mudas y sin
+                  el `+` que invita a ampliarlas. El efecto se guarda para el
+                  ratón. */}
+              <span className="absolute right-3 top-3 grid size-9 place-items-center rounded-full border border-gold/50 bg-[#100b08]/40 text-gold opacity-100 backdrop-blur-sm transition-all duration-300 md:opacity-0 md:group-hover:opacity-100">
                 <Plus className="size-4" />
               </span>
-              <span className="absolute inset-x-0 bottom-0 translate-y-2 p-4 text-left font-display text-lg italic text-cream opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
+              <span className="absolute inset-x-0 bottom-0 p-4 text-left font-display text-lg italic text-cream opacity-100 transition-all duration-300 md:translate-y-2 md:opacity-0 md:group-hover:translate-y-0 md:group-hover:opacity-100">
                 {g.caption}
               </span>
             </button>

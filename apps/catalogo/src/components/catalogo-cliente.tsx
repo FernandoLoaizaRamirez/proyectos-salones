@@ -304,21 +304,29 @@ export function CatalogoCliente() {
         {/* Chips de navegación entre etapas: pegados bajo el header mientras
             recorres las tarjetas. top-[61px] = header real (py-3 + botón h-9 +
             borde). Un solo renglón siempre: en celular se desliza de lado, para
-            que la pila pegajosa no crezca y tape los títulos al saltar. */}
-        <nav
-          aria-label="Etapas de la fiesta"
-          className="sticky top-[61px] z-20 -mx-6 mb-8 flex justify-start gap-2 overflow-x-auto bg-background/90 px-6 py-2 backdrop-blur [scrollbar-width:none] sm:justify-center [&::-webkit-scrollbar]:hidden"
-        >
-          {etapas.map((e) => (
-            <a
-              key={e.id}
-              href={`#${e.id}`}
-              className="shrink-0 whitespace-nowrap rounded-full border border-border bg-card px-3.5 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-            >
-              {e.titulo}
-            </a>
-          ))}
-        </nav>
+            que la pila pegajosa no crezca y tape los títulos al saltar. El velo
+            de la derecha (solo en celular) es la señal de que hay más: sin él,
+            el tercer chip se veía cortado a la mitad y parecía un error. */}
+        <div className="sticky top-[61px] z-20 -mx-6 mb-8">
+          <nav
+            aria-label="Etapas de la fiesta"
+            className="flex justify-start gap-2 overflow-x-auto bg-background/90 px-6 py-2 backdrop-blur [scrollbar-width:none] sm:justify-center [&::-webkit-scrollbar]:hidden"
+          >
+            {etapas.map((e) => (
+              <a
+                key={e.id}
+                href={`#${e.id}`}
+                className="shrink-0 whitespace-nowrap rounded-full border border-border bg-card px-3.5 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+              >
+                {e.titulo}
+              </a>
+            ))}
+          </nav>
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-background to-transparent sm:hidden"
+          />
+        </div>
 
         {etapas.map((etapa) => (
           <div key={etapa.id} id={etapa.id} className="mt-12 scroll-mt-32 first:mt-0">

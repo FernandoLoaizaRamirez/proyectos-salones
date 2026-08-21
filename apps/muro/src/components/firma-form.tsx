@@ -143,7 +143,10 @@ export function FirmaForm() {
 
   if (enviado) {
     return (
-      <Card className="w-full max-w-md p-8 text-center">
+      /* `min-w-0`: hijo de un `grid place-items-center`. Sin esto, al enviar el
+         mensaje la página se ensanchaba de golpe y todo se veía chiquito y mal
+         cosido justo en la pantalla de "¡Gracias!". */
+      <Card className="w-full min-w-0 max-w-md p-8 text-center">
         <div className="mx-auto grid size-14 place-items-center rounded-full bg-green-500/15 text-green-600">
           <Check className="size-7" />
         </div>

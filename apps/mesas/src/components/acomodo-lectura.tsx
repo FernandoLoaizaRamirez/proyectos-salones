@@ -125,7 +125,11 @@ export function AcomodoLectura() {
           ) : null}
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {/* `grid-cols-[minmax(0,1fr)]` en la base, el mismo parche que ya lleva
+            el tablero editable: sin él, una mesa con nombre largo ensancha la
+            página y el celular encoge todo el acomodo que se le mandó a los
+            invitados. */}
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {mesas.map((mesa) => {
             const usados = asientosUsados(mesa.id, invitados);
             const gente = invitadosDeMesa(mesa.id, invitados);

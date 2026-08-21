@@ -109,11 +109,15 @@ export function ModoPantalla({
                 className="max-h-[46vh] w-full rounded-2xl object-cover shadow-lg md:w-2/5"
               />
             ) : null}
-            <div className={actual.foto ? "md:flex-1" : "mx-auto max-w-3xl"}>
-              <p className="text-2xl font-medium leading-snug sm:text-3xl md:text-[2.2rem]">
+            {/* `min-w-0` + `break-words`: si un invitado pega una liga o
+                escribe una palabra kilométrica, sin esto el mensaje se salía
+                por la derecha y se proyectaba cortado a media palabra delante
+                de toda la fiesta. */}
+            <div className={actual.foto ? "min-w-0 md:flex-1" : "mx-auto min-w-0 max-w-3xl"}>
+              <p className="break-words text-2xl font-medium leading-snug sm:text-3xl md:text-[2.2rem]">
                 “{actual.texto}”
               </p>
-              <p className="mt-6 text-xl font-semibold text-primary sm:text-2xl">
+              <p className="mt-6 break-words text-xl font-semibold text-primary sm:text-2xl">
                 — {actual.nombre}
               </p>
               <p className="mt-1 text-sm text-muted-foreground">{tiempoRelativo(actual.fecha)}</p>

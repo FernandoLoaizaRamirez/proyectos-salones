@@ -125,8 +125,12 @@ export function HeroPremium() {
         </div>
       </div>
 
-      {/* Indicadores del carrusel con barra de avance */}
-      <div className="absolute bottom-20 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2.5">
+      {/* Indicadores del carrusel con barra de avance.
+          `bottom-32` (antes `bottom-20`): el rótulo DESLIZA de abajo va escrito
+          en vertical y mide 73 px de alto, así que trepaba hasta aquí y la
+          barrita dorada le pasaba por encima de las letras — en la portada de
+          la versión de lujo, que es la primera pantalla que ve el cliente. */}
+      <div className="absolute bottom-32 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2.5">
         {slides.map((_, i) => (
           <button
             key={i}

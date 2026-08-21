@@ -472,8 +472,13 @@ export function PasesCliente() {
 
       {/* ---------- INVITADOS (organizador) ---------- */}
       {tab === "invitados" ? (
+        /* Los dos hijos llevan `min-w-0`: en celular esta rejilla es de una
+           sola columna y un hijo de grid no se encoge por debajo de su
+           contenido. Con un nombre largo ("Familia Hernández de la Torre y
+           Villaseñor") la página se ensanchaba y el celular la encogía; de
+           paso, el `truncate` del nombre por fin recorta como debe. */
         <div className="grid gap-8 lg:grid-cols-[minmax(0,20rem)_minmax(0,1fr)] lg:items-start">
-          <div ref={formRef}>
+          <div ref={formRef} className="min-w-0">
             <Card className="p-6">
             <h2 className="text-lg font-semibold">
               {editId ? "Editar invitado" : "Agregar invitado"}
@@ -565,7 +570,7 @@ export function PasesCliente() {
             </Card>
           </div>
 
-          <div>
+          <div className="min-w-0">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <p className="text-sm text-muted-foreground">
                 <span className="font-semibold text-foreground">{invitados.length}</span> invitados ·{" "}
@@ -682,10 +687,19 @@ export function PasesCliente() {
           <Escaner onDetectar={onDetectar} />
 
           {resultado ? (
+            /* En el celular el veredicto va FIJO sobre la pantalla: la cámara
+               ocupa casi todo el alto y el aviso quedaba abajo, fuera de la
+               vista. Quien está en la puerta no puede andar deslizando después
+               de cada escaneo con la fila esperando. En pantalla grande se
+               queda donde siempre. El fondo sólido es para que se lea encima
+               de lo que haya debajo. */
             <div
               key={`${resultado.titulo}-${resultado.hora ?? ""}`}
+              className="fixed inset-x-4 bottom-4 z-40 rounded-[var(--radius)] bg-card shadow-2xl sm:static sm:inset-auto sm:mt-4 sm:bg-transparent sm:shadow-none"
+            >
+            <div
               className={cn(
-                "mt-4 flex items-center gap-4 rounded-[var(--radius)] border-2 p-5 shadow-lg",
+                "flex items-center gap-4 rounded-[var(--radius)] border-2 p-5 shadow-lg",
                 resultado.estado === "ok"
                   ? "border-green-500/60 bg-green-500/10"
                   : resultado.estado === "repetido"
@@ -731,6 +745,7 @@ export function PasesCliente() {
                   </p>
                 ) : null}
               </div>
+            </div>
             </div>
           ) : null}
 

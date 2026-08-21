@@ -244,6 +244,14 @@ export function Rsvp({
                 />
               </div>
 
+              {/* El aviso va ENCIMA del botón, no debajo: la tarjeta mide casi
+                  lo que la pantalla del celular, así que puesto al final caía
+                  fuera y quien tocaba "Enviar confirmación" sin elegir Sí/No
+                  veía que "no pasaba nada" y se iba sin confirmar. */}
+              <p id="rsvpMsg" role="status" aria-live="polite">
+                {aviso}
+              </p>
+
               <div className="acciones">
                 <button
                   className="btn solido"
@@ -260,10 +268,6 @@ export function Rsvp({
                   </button>
                 ) : null}
               </div>
-
-              <p id="rsvpMsg" role="status" aria-live="polite">
-                {aviso}
-              </p>
             </>
           )}
         </div>

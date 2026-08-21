@@ -58,7 +58,10 @@ export function PedirCliente() {
   };
 
   return (
-    <div className="w-full max-w-lg space-y-8">
+    /* `min-w-0`: hijo de un `grid place-items-center`. Con una canción de
+       nombre largo, el celular ensanchaba la pantalla del invitado y la
+       encogía: la letra salía chiquita y el lado derecho se salía. */
+    <div className="w-full min-w-0 max-w-lg space-y-8">
       <div className="text-center">
         <p className="text-sm font-medium text-primary">Playlist colaborativa</p>
         <h1 className="mt-1 text-2xl font-semibold tracking-tight">{evento.nombre}</h1>

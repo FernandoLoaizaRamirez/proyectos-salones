@@ -271,7 +271,7 @@ export default function Page() {
                       {" "}
                       <Link
                         href={f.enlace.href}
-                        className="underline underline-offset-2 hover:text-foreground"
+                        className="inline-block py-1 underline underline-offset-2 hover:text-foreground"
                       >
                         {f.enlace.texto}
                       </Link>
@@ -307,16 +307,28 @@ export default function Page() {
            * enlaces internos (no la dirección absoluta de `NEXT_PUBLIC_LEGAL_URL`)
            * porque estas páginas viven en esta misma app.
            */}
+          {/* `inline-block py-1.5`: con la letra chica del pie estos enlaces
+              medían 16 px de alto y en el celular no se podían atinar con el
+              dedo. El relleno los lleva a 28 px sin cambiar cómo se ven. */}
           <p className="mt-6 text-xs">
-            <Link href="/legal/privacidad" className="underline underline-offset-2 hover:text-foreground">
+            <Link
+              href="/legal/privacidad"
+              className="inline-block py-1.5 underline underline-offset-2 hover:text-foreground"
+            >
               Aviso de privacidad
             </Link>
             {" · "}
-            <Link href="/legal/imagen" className="underline underline-offset-2 hover:text-foreground">
+            <Link
+              href="/legal/imagen"
+              className="inline-block py-1.5 underline underline-offset-2 hover:text-foreground"
+            >
               Uso de tu imagen
             </Link>
             {" · "}
-            <Link href="/legal/terminos" className="underline underline-offset-2 hover:text-foreground">
+            <Link
+              href="/legal/terminos"
+              className="inline-block py-1.5 underline underline-offset-2 hover:text-foreground"
+            >
               Términos del servicio
             </Link>
           </p>

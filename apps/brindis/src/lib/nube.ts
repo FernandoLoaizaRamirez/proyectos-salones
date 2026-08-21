@@ -17,7 +17,7 @@
  *
  * Ver docs/SERVICIO-GESTIONADO.md y packages/sync/src/index.ts.
  */
-import { obtenerSync } from "@salones/sync";
+import { obtenerSync, mensajeDeSubida } from "@salones/sync";
 import { extensionDe } from "@/lib/brindis";
 
 /** Colección donde se anotan los brindis de un evento (tabla `items`). */
@@ -104,7 +104,22 @@ export async function subirBrindis(
     });
     return { ok: true };
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "No se pudo subir el video." };
+    /*
+     * Al invitado NUNCA se le enseña el código interno del fallo: antes grababa
+     * su brindis, le daba a "Enviar a los novios" y le salía literalmente
+     * "(video-no-incluido)". El texto genérico de `mensajeDeSubida` para ese
+     * caso habla de fotos, que aquí no viene a cuento, así que el brindis pone
+     * el suyo.
+     */
+    const codigo = e instanceof Error ? e.message : "";
+    if (codigo === "video-no-incluido") {
+      return {
+        ok: false,
+        error:
+          "Este evento no tiene contratada la galería de videos, así que tu brindis no se guarda aquí. Descárgalo y mándaselo a los novios por WhatsApp: llega igual.",
+      };
+    }
+    return { ok: false, error: mensajeDeSubida(e) };
   }
 }
 

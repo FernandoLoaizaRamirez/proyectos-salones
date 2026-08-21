@@ -215,7 +215,15 @@ export function PhotoboothCliente() {
   };
 
   return (
-    <div className="w-full max-w-md">
+    /*
+     * `min-w-0`: este bloque se monta dentro de un `grid place-items-center`, y
+     * un hijo de grid se niega por defecto a encogerse por debajo de su
+     * contenido más ancho. La fila de marcos mide 2000 px de contenido, así que
+     * al elegir marco el celular ensanchaba TODA la página a 477 px: la foto se
+     * salía de la pantalla, "Descargar" y el nombre del evento quedaban
+     * cortados. Es el mismo mal que ya se curó en el encabezado.
+     */
+    <div className="w-full min-w-0 max-w-md">
       {error ? (
         <div className="mb-4 rounded-[var(--radius)] border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-sm text-amber-700 dark:text-amber-400">
           {error}
@@ -408,8 +416,15 @@ export function CompartirBooth() {
 
   return (
     <>
-      <Button variant="outline" size="sm" onClick={() => setAbierto(true)}>
-        <QrCode className="size-4" /> Compartir booth
+      {/* En el celular solo el icono: con el texto completo, este botón y el de
+          tema se comían el ancho y el nombre del evento quedaba en "An…". */}
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => setAbierto(true)}
+        aria-label="Compartir el booth con un código QR"
+      >
+        <QrCode className="size-4" /> <span className="hidden sm:inline">Compartir booth</span>
       </Button>
       {abierto ? (
         <div

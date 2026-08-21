@@ -144,7 +144,11 @@ export function MiMesaCliente() {
   }
 
   return (
-    <div className="w-full max-w-lg">
+    /* `min-w-0`: este bloque cuelga de un `grid place-items-center`, y un hijo
+       de grid se niega a encogerse por debajo de su contenido más ancho. Con un
+       nombre de mesa largo el celular ensanchaba la página entera y la encogía:
+       el buscador se salía y el nombre de la mesa quedaba partido. */
+    <div className="w-full min-w-0 max-w-lg">
       <div className="text-center">
         <p className="text-sm font-medium text-primary">¿En qué mesa me toca?</p>
         <h1 className="mt-1 text-3xl font-semibold tracking-tight">{acomodo.evento.nombre}</h1>
@@ -289,11 +293,18 @@ export function MiMesaCliente() {
 
       {/* Modal de compartir */}
       {compartir ? (
+        /* `overflow-y-auto` + `my-auto`: con un acomodo real el enlace es
+           larguísimo y el diálogo pasaba de alto de pantalla sin poder
+           recorrerse, dejando "Copiar enlace" y "Enviar por WhatsApp" fuera.
+           En un celular bajito (iPhone SE) pasaba hasta con la demo. */
         <div
-          className="fixed inset-0 z-40 grid place-items-center bg-black/50 p-4"
+          className="fixed inset-0 z-40 grid place-items-center overflow-y-auto bg-black/50 p-4"
           onClick={() => setCompartir(false)}
         >
-          <Card className="w-full max-w-md p-6" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+          <Card
+            className="my-auto w-full max-w-md p-6"
+            onClick={(e: React.MouseEvent) => e.stopPropagation()}
+          >
             <div className="flex items-start justify-between">
               <div>
                 <h2 className="flex items-center gap-2 text-lg font-semibold">
@@ -320,8 +331,11 @@ export function MiMesaCliente() {
                   escanear).
                 </div>
               )}
-              <div className="w-full">
-                <p className="mb-3 break-all rounded-[var(--radius)] bg-muted px-3 py-2 text-xs text-muted-foreground">
+              <div className="w-full min-w-0">
+                {/* El acomodo entero viaja dentro del enlace: con 110 invitados
+                    son 7,600 caracteres, una pared de letras de 3 metros. Se
+                    muestra recortado; quien quiera verlo lo desliza. */}
+                <p className="mb-3 max-h-16 overflow-y-auto break-all rounded-[var(--radius)] bg-muted px-3 py-2 text-xs text-muted-foreground">
                   {urlCompartir}
                 </p>
                 <div className="flex flex-col gap-2">

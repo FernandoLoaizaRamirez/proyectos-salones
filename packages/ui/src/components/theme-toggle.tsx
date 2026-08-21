@@ -22,7 +22,10 @@ export function ThemeToggle() {
       onClick={() => setTheme(esOscuro ? "light" : "dark")}
     >
       {esOscuro ? <Sun className="size-4" /> : <Moon className="size-4" />}
-      <span>{esOscuro ? "Claro" : "Oscuro"}</span>
+      {/* El texto se esconde en el celular: en 390 px este botón le robaba el
+          ancho al título del evento, que acababa cortado. El `aria-label` de
+          arriba mantiene el nombre para quien usa lector de pantalla. */}
+      <span className="hidden sm:inline">{esOscuro ? "Claro" : "Oscuro"}</span>
     </Button>
   );
 }

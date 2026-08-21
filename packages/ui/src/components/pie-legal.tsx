@@ -41,7 +41,10 @@ export function PieLegal({
       href={`${base}${ruta}`}
       target="_blank"
       rel="noopener noreferrer"
-      className="underline underline-offset-2 hover:text-foreground"
+      /* `inline-block py-1.5`: con la letra chica del pie, estos enlaces medían
+         16 px de alto y en un celular casi no se podían atinar con el dedo. El
+         relleno vertical los lleva a 28 px sin cambiar cómo se ven. */
+      className="inline-block py-1.5 underline underline-offset-2 hover:text-foreground"
     >
       {texto}
     </a>

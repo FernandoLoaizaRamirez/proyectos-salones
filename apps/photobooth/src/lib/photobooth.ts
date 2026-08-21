@@ -251,9 +251,14 @@ export const marcos: Marco[] = crearMarcos({
 /** Zona donde va la foto dentro del lienzo (el marco "Instantánea" la reduce). */
 function areaFoto(marco: Marco): { x: number; y: number; w: number; h: number } {
   if (marco.tipo === "polaroid") {
+    // La banda de abajo es la firma de una instantánea: ahí van el nombre y la
+    // fecha. Antes la foto era CUADRADA (962×962) y solo dejaba 59 px libres,
+    // así que los nombres de los novios se pintaban en y=1099 —fuera del
+    // lienzo de 1080— y salían cortados a la mitad en el PNG que el invitado
+    // descarga. Ahora la banda mide 18 % del lienzo y el texto cabe entero.
     const m = Math.round(LADO * 0.055);
-    const w = LADO - m * 2;
-    return { x: m, y: m, w, h: w }; // foto cuadrada; abajo queda el margen para el texto
+    const banda = Math.round(LADO * 0.18);
+    return { x: m, y: m, w: LADO - m * 2, h: LADO - m - banda };
   }
   if (marco.tipo === "galeria") {
     // Ventana del passe-partout: la foto va DENTRO, con más margen abajo
@@ -1762,15 +1767,17 @@ function dibujarMarco(ctx: CanvasRenderingContext2D, marco: Marco) {
     ctx.strokeStyle = "rgba(0,0,0,0.08)";
     ctx.lineWidth = 2;
     ctx.strokeRect(area.x, area.y, area.w, area.h);
+    // Ambas líneas caen DENTRO de la banda blanca (la foto termina en 886 y el
+    // lienzo en 1080): nombre en 956 y fecha en 1004.
     if (marco.etiqueta) {
       ctx.fillStyle = "#1b1b1b";
       ctx.font = "600 52px ui-sans-serif, system-ui, sans-serif";
-      ctx.fillText(marco.etiqueta, L / 2, area.y + area.h + 78);
+      ctx.fillText(marco.etiqueta, L / 2, area.y + area.h + 70);
     }
     if (marco.sub) {
       ctx.fillStyle = "#8a8a8a";
       ctx.font = "400 32px ui-sans-serif, system-ui, sans-serif";
-      ctx.fillText(marco.sub, L / 2, area.y + area.h + 122);
+      ctx.fillText(marco.sub, L / 2, area.y + area.h + 118);
     }
   }
   ctx.restore();

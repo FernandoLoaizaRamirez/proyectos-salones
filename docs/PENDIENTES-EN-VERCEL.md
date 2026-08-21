@@ -8,7 +8,7 @@ están hechos y verificados en vivo**; queda 1.
 | 1 | Variables del **brindis** | ✅ HECHO y verificado (9 peticiones al servidor) |
 | 2 | Crear el **portal** | ✅ HECHO y verificado (`proyectos-salones-portal.vercel.app`) |
 | 3 | `NEXT_PUBLIC_PORTAL_URL` en el **catálogo** | ✅ HECHO y verificado |
-| 4 | `NEXT_PUBLIC_SITIO_SALON_URL` en el **portal** | ⏳ PENDIENTE (21 ago 2026) |
+| 4 | `NEXT_PUBLIC_SITIO_SALON_URL` en el **portal** | ✅ HECHO y verificado en vivo (21 ago 2026) |
 
 Las dos variables públicas usadas arriba (no marcar "Sensitive"):
 
@@ -79,24 +79,38 @@ eso, los pasos 1 y 2 salieron limpios.
 
 ---
 
-## ⏳ 4. `NEXT_PUBLIC_SITIO_SALON_URL` en el portal — PENDIENTE (21 ago 2026)
+## ✅ 4. `NEXT_PUBLIC_SITIO_SALON_URL` en el portal — HECHO (21 ago 2026)
 
 Desde el commit `af7ee5f`, la cabecera del portal enseña la marca del salón y
 **enlaza de vuelta a su web** (`apps/portal/src/components/marca-salon.tsx`).
-Sin esta variable la marca se pinta igual, pero **no enlaza a ningún lado**: el
-invitado sigue sin camino de regreso.
 
-| Proyecto de Vercel | Nombre | Valor | ¿Sensitive? |
-|---|---|---|---|
-| `proyectos-salones-portal` | `NEXT_PUBLIC_SITIO_SALON_URL` | `https://salones-teal.vercel.app` | NO |
+| Proyecto de Vercel | Nombre | Valor | Entornos | ¿Sensitive? |
+|---|---|---|---|---|
+| `proyectos-salones-portal` | `NEXT_PUBLIC_SITIO_SALON_URL` | `https://salones-teal.vercel.app` | Production and Preview | NO |
 
-> 🪤 Acordarse de la trampa de arriba: **añadir la variable y darle Redeploy al
-> mismo commit NO sirve** — el portero ve cero archivos cambiados y cancela. Hay
-> que empujar un commit que toque `apps/portal/` o `scripts/`.
+Añadida por el panel y **redesplegada** (`Bhv6i7jwH4TYMWTV2MLQwJ6tSZk6`, Ready en
+37 s). Verificado en vivo sobre `proyectos-salones-portal.vercel.app/?e=demo`: la
+marca es un `<a>` que apunta a `https://salones-teal.vercel.app`, el color del
+salón da **6.79:1** de contraste y quedan **0** degradados arcoíris.
 
-**El camino definitivo es otro.** Esta variable es una tirita: vale mientras haya
-UN salón. En cuanto haya dos clientes, cada evento necesita apuntar a la web de
-SU salón, y eso ya está previsto en el código: `BrandingSalon.sitioUrl`
-(`packages/ui/src/branding.ts`) manda sobre la variable de entorno. Falta la
-columna en `tenant_branding` y devolverla en la Edge Function `evento-config`,
-al lado de `logoUrl`.
+> 🪤 **La trampa vieja del Redeploy YA NO APLICA — corregir la nota de arriba.**
+> Hasta el 16 ago, darle *Redeploy* al mismo commit se cancelaba: el portero veía
+> cero archivos cambiados y saltaba. El commit `c16f7f2` invirtió esa regla
+> (cero archivos = CONSTRUIR, porque "no me consta que haya algo que hacer" no es
+> "no hay nada que hacer"). Comprobado a mano antes de darle:
+>
+> ```
+> VERCEL_GIT_PREVIOUS_SHA=af7ee5f VERCEL_GIT_COMMIT_SHA=af7ee5f node scripts/vercel-construir-si-cambio.mjs
+> ✓ CONSTRUIR — no veo ningún archivo cambiado: puede que la app en vivo esté atrasada
+> ```
+>
+> **Consecuencia práctica: para recoger una variable nueva ya NO hace falta
+> empujar un commit vacío.** Basta con *Redeploy* dejando "Use existing Build
+> Cache" DESMARCADO. Cuesta 1 construcción en vez de las ~13 que gasta un commit
+> que toque `scripts/` o un paquete compartido.
+
+**El camino definitivo sigue pendiente.** Esta variable vale mientras haya UN
+salón. Con dos clientes, cada evento necesita apuntar a la web de SU salón, y eso
+ya está previsto: `BrandingSalon.sitioUrl` (`packages/ui/src/branding.ts`) manda
+sobre la variable de entorno. Falta la columna en `tenant_branding` y devolverla
+en la Edge Function `evento-config`, al lado de `logoUrl`.

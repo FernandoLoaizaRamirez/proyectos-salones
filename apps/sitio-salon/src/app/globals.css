@@ -158,6 +158,53 @@ body {
   background: rgba(216, 184, 119, 0.28);
 }
 
+/* ============================================================
+   LA PUERTA DEL INVITADO — su propia pareja de fondo y texto.
+   ============================================================
+   No puede pintarse con `primary` como el resto: es UN componente para las DOS
+   versiones, y cada tema le da a `primary` un papel distinto. En la clásica es
+   el vino (fondo de gala, perfecto); en la premium es el ORO, y la sección
+   salía como un bloque de oro macizo a todo lo ancho — legible, pero gritando
+   mucho más que sus vecinas, que son oscuras con detalles dorados.
+
+   Así que la sección declara SU pareja. La clásica no cambia: sigue siendo la
+   franja de vino. La premium se calla: fondo oscuro como la casa, y el oro
+   reservado para lo que se toca (el botón) y los filos.
+
+   Las variantes con transparencia se derivan de `--puerta-sobre` UNA sola vez.
+   Como `.premium .puerta` redefine `--puerta-sobre` en el MISMO elemento, las
+   derivadas se recalculan solas: no hay que repetir la lista por tema.
+   ============================================================ */
+.puerta {
+  --puerta-fondo: var(--primary);
+  --puerta-sobre: var(--primary-fg);
+  /* El botón invierte la pareja: en la clásica es crema con letra vino. */
+  --puerta-realce: var(--primary-fg);
+  --puerta-realce-fg: var(--primary);
+  --puerta-filo: transparent;
+}
+.premium .puerta {
+  /* `--card` (#191210) y no `--bg` (#100b08): un punto más claro que la página,
+     lo justo para que la sección se lea como un bloque y no como un hueco. */
+  --puerta-fondo: var(--card);
+  --puerta-sobre: var(--fg);
+  --puerta-realce: var(--gold);
+  --puerta-realce-fg: #17110d;
+  /* Los filos dorados hacen el trabajo que antes hacía el fondo entero. */
+  --puerta-filo: color-mix(in srgb, var(--gold) 22%, transparent);
+}
+.puerta {
+  --puerta-sobre-80: color-mix(in srgb, var(--puerta-sobre) 80%, transparent);
+  --puerta-sobre-75: color-mix(in srgb, var(--puerta-sobre) 75%, transparent);
+  --puerta-sobre-50: color-mix(in srgb, var(--puerta-sobre) 50%, transparent);
+  --puerta-sobre-40: color-mix(in srgb, var(--puerta-sobre) 40%, transparent);
+  --puerta-sobre-30: color-mix(in srgb, var(--puerta-sobre) 30%, transparent);
+  --puerta-sobre-10: color-mix(in srgb, var(--puerta-sobre) 10%, transparent);
+  background-color: var(--puerta-fondo);
+  color: var(--puerta-sobre);
+  border-block: 1px solid var(--puerta-filo);
+}
+
 /* Ken Burns: zoom lento e infinito para las fotos de la portada. */
 @keyframes kenburns {
   from {

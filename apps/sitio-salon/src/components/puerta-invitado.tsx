@@ -20,14 +20,17 @@ import { salon, puertaInvitado } from "@/lib/salon";
  * novio que sí viene a cotizar. Ellos usan ese espacio para dar indicaciones de
  * estacionamiento. Nosotros ponemos ahí las nueve experiencias del evento.
  *
- * POR QUÉ NO USA `bg-wine`: este componente es UNO SOLO para las dos versiones
- * del sitio, y el tema premium redefine los mismos tokens con otros papeles.
- * Ahí `--wine` NO es el vino oscuro: es #e0a0ad, un rosa claro que sobre negro
- * funciona como acento de texto. Con `bg-wine text-cream` la sección salía rosa
- * pálido con letras crema encima — 1.13 de contraste, medido, ilegible. Por eso
- * todo aquí se pinta con `primary` / `primary-foreground`, que en las DOS
- * versiones están definidos como pareja de fondo y texto: vino sobre crema en la
- * clásica, oro sobre casi negro en la premium.
+ * DE DÓNDE SALEN SUS COLORES: de `.puerta`, en globals.css — no de los tokens
+ * generales. Este componente es UNO SOLO para las dos versiones del sitio, y
+ * cada tema le da a los mismos tokens un papel distinto, así que ninguno sirve
+ * para las dos. `--wine` en la premium no es el vino: es #e0a0ad, un rosa claro
+ * que allí hace de texto sobre negro (con `bg-wine text-cream` la sección salía
+ * rosa pálido con letras crema: 1.13 de contraste, medido, ilegible). Y
+ * `--primary` tampoco: en la premium es el ORO, y la sección quedaba como un
+ * bloque de oro macizo, gritando mucho más que sus vecinas.
+ *
+ * Por eso `.puerta` declara su propia pareja fondo/texto por tema: franja de
+ * vino en la clásica, fondo oscuro con filos y botón dorados en la premium.
  *
  * POR QUÉ VA AL FINAL: la página se lee de arriba abajo como un argumento de
  * venta (espacios → eventos → cifras → galería → paquetes → testimonios →
@@ -61,7 +64,7 @@ export function PuertaInvitado() {
   };
 
   return (
-    <section id="invitados" className="bg-primary text-primary-foreground">
+    <section id="invitados" className="puerta">
       <div className="mx-auto max-w-3xl px-6 py-24 text-center md:py-28">
         <Reveal>
           {/*
@@ -71,17 +74,17 @@ export function PuertaInvitado() {
            * que el antetítulo salía oro sobre oro — contraste 1.00, medido:
            * invisible. Aquí el color tiene que seguir al fondo, no al tema.
            */}
-          <span className="flex items-center justify-center gap-3 font-sans text-xs uppercase tracking-[0.28em] text-primary-foreground/75">
-            <span className="h-px w-8 bg-primary-foreground/40" />
+          <span className="flex items-center justify-center gap-3 font-sans text-xs uppercase tracking-[0.28em] text-[var(--puerta-sobre-75)]">
+            <span className="h-px w-8 bg-[var(--puerta-sobre-40)]" />
             {puertaInvitado.eyebrow}
-            <span className="h-px w-8 bg-primary-foreground/40" />
+            <span className="h-px w-8 bg-[var(--puerta-sobre-40)]" />
           </span>
 
           <h2 className="mt-6 text-balance font-display text-4xl leading-tight md:text-5xl">
             {puertaInvitado.titulo}
           </h2>
 
-          <p className="mx-auto mt-5 max-w-xl text-primary-foreground/80">{puertaInvitado.texto}</p>
+          <p className="mx-auto mt-5 max-w-xl text-[var(--puerta-sobre-80)]">{puertaInvitado.texto}</p>
 
           <form
             onSubmit={entrar}
@@ -101,33 +104,33 @@ export function PuertaInvitado() {
               autoCapitalize="none"
               spellCheck={false}
               aria-describedby={error ? "pi-error" : undefined}
-              className="flex-1 rounded-full border border-primary-foreground/30 bg-primary-foreground/10 px-5 py-3 text-center text-sm text-primary-foreground placeholder:text-primary-foreground/50 outline-none focus:border-primary-foreground/70 focus:ring-2 focus:ring-primary-foreground/30 sm:text-left"
+              className="flex-1 rounded-full border border-[var(--puerta-sobre-30)] bg-[var(--puerta-sobre-10)] px-5 py-3 text-center text-sm text-[var(--puerta-sobre)] placeholder:text-[var(--puerta-sobre-50)] outline-none focus:border-[var(--puerta-realce)] focus:ring-2 focus:ring-[var(--puerta-sobre-30)] sm:text-left"
             />
             <button
               type="submit"
-              className="flex items-center justify-center gap-2 rounded-full bg-primary-foreground px-6 py-3 text-sm font-medium text-primary transition-opacity hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-primary-foreground/60 focus:ring-offset-2 focus:ring-offset-primary"
+              className="flex items-center justify-center gap-2 rounded-full bg-[var(--puerta-realce)] px-6 py-3 text-sm font-medium text-[var(--puerta-realce-fg)] transition-opacity hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-[var(--puerta-sobre-50)] focus:ring-offset-2 focus:ring-offset-[var(--puerta-fondo)]"
             >
               Entrar <ArrowRight className="size-4" />
             </button>
           </form>
 
           {error ? (
-            <p id="pi-error" role="alert" className="mt-3 text-sm font-medium text-primary-foreground">
+            <p id="pi-error" role="alert" className="mt-3 text-sm font-medium text-[var(--puerta-realce)]">
               {error}
             </p>
           ) : null}
 
-          <p className="mt-8 text-sm text-primary-foreground/75">
+          <p className="mt-8 text-sm text-[var(--puerta-sobre-75)]">
             ¿No tienes código?{" "}
             <a
               href={`${PORTAL_BASE}/?e=demo`}
-              className="underline decoration-primary-foreground/50 underline-offset-4 transition-opacity hover:opacity-80"
+              className="underline decoration-[var(--puerta-sobre-50)] underline-offset-4 transition-opacity hover:opacity-80"
             >
               Mira cómo se ve por dentro
             </a>
           </p>
 
-          <p className="mt-2 text-xs text-primary-foreground/80">
+          <p className="mt-2 text-xs text-[var(--puerta-sobre-80)]">
             Las experiencias que verás dependen de lo que haya contratado quien organiza tu evento en{" "}
             {salon.nombre}.
           </p>

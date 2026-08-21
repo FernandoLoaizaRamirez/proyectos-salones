@@ -8,6 +8,7 @@ están hechos y verificados en vivo**; queda 1.
 | 1 | Variables del **brindis** | ✅ HECHO y verificado (9 peticiones al servidor) |
 | 2 | Crear el **portal** | ✅ HECHO y verificado (`proyectos-salones-portal.vercel.app`) |
 | 3 | `NEXT_PUBLIC_PORTAL_URL` en el **catálogo** | ✅ HECHO y verificado |
+| 4 | `NEXT_PUBLIC_SITIO_SALON_URL` en el **portal** | ⏳ PENDIENTE (21 ago 2026) |
 
 Las dos variables públicas usadas arriba (no marcar "Sensitive"):
 
@@ -75,3 +76,27 @@ el campo y las teclas se fueron como atajos, abriendo la pantalla de 2FA de la
 cuenta (se salió con Escape, sin cambiar nada). La solución fue usar **pegar por
 referencia del campo** (`form_input`) y verificar con captura tras cada paso. Con
 eso, los pasos 1 y 2 salieron limpios.
+
+---
+
+## ⏳ 4. `NEXT_PUBLIC_SITIO_SALON_URL` en el portal — PENDIENTE (21 ago 2026)
+
+Desde el commit `af7ee5f`, la cabecera del portal enseña la marca del salón y
+**enlaza de vuelta a su web** (`apps/portal/src/components/marca-salon.tsx`).
+Sin esta variable la marca se pinta igual, pero **no enlaza a ningún lado**: el
+invitado sigue sin camino de regreso.
+
+| Proyecto de Vercel | Nombre | Valor | ¿Sensitive? |
+|---|---|---|---|
+| `proyectos-salones-portal` | `NEXT_PUBLIC_SITIO_SALON_URL` | `https://salones-teal.vercel.app` | NO |
+
+> 🪤 Acordarse de la trampa de arriba: **añadir la variable y darle Redeploy al
+> mismo commit NO sirve** — el portero ve cero archivos cambiados y cancela. Hay
+> que empujar un commit que toque `apps/portal/` o `scripts/`.
+
+**El camino definitivo es otro.** Esta variable es una tirita: vale mientras haya
+UN salón. En cuanto haya dos clientes, cada evento necesita apuntar a la web de
+SU salón, y eso ya está previsto en el código: `BrandingSalon.sitioUrl`
+(`packages/ui/src/branding.ts`) manda sobre la variable de entorno. Falta la
+columna en `tenant_branding` y devolverla en la Edge Function `evento-config`,
+al lado de `logoUrl`.

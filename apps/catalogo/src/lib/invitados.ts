@@ -22,6 +22,14 @@ export type Invitado = {
   nombre: string;
   /** Cuántas personas cubre la invitación. */
   cupos: number;
+  /**
+   * Su WhatsApp, ya normalizado (solo dígitos, con lada). Vacío si no se sabe.
+   *
+   * La columna existe desde la 0002 y llevaba dos años sin que nadie la
+   * llenara: por eso el botón de WhatsApp abría el mensaje sin destinatario y
+   * el salón tenía que buscar el contacto a mano, invitado por invitado.
+   */
+  telefono: string;
 };
 
 /**
@@ -43,13 +51,20 @@ function esColumnaDesconocida(error: { code?: string; message?: string } | null)
 }
 
 /** Fila cruda de `guests` (se pide `*` para tolerar que falte `cupos`). */
-type FilaGuest = { id: string; nombre: string; cupos?: number | null; creado?: string };
+type FilaGuest = {
+  id: string;
+  nombre: string;
+  cupos?: number | null;
+  telefono?: string | null;
+  creado?: string;
+};
 
 function aInvitado(fila: FilaGuest): Invitado {
   return {
     id: fila.id,
     nombre: fila.nombre,
     cupos: typeof fila.cupos === "number" && fila.cupos > 0 ? fila.cupos : 1,
+    telefono: typeof fila.telefono === "string" ? fila.telefono : "",
   };
 }
 
@@ -73,11 +88,12 @@ export async function crearInvitado(
   eventoId: string,
   nombre: string,
   cupos: number,
+  telefono = "",
 ): Promise<Invitado | null> {
   // La fila se arma como diccionario (y no como objeto literal) para poder
   // incluir `cupos` solo cuando la columna existe.
   const intento = async (conCupos: boolean) => {
-    const fila: Record<string, unknown> = { event_id: eventoId, nombre };
+    const fila: Record<string, unknown> = { event_id: eventoId, nombre, telefono };
     if (conCupos) fila.cupos = cupos;
     return supabase.from("guests").insert(fila).select("*").maybeSingle();
   };
@@ -92,15 +108,16 @@ export async function crearInvitado(
   return aInvitado(data as FilaGuest);
 }
 
-/** Cambia el nombre o los cupos de un invitado. */
+/** Cambia el nombre, los cupos o el teléfono de un invitado. */
 export async function actualizarInvitado(
   supabase: SupabaseClient,
   id: string,
   nombre: string,
   cupos: number,
+  telefono = "",
 ): Promise<boolean> {
   const intento = async (conCupos: boolean) => {
-    const cambios: Record<string, unknown> = { nombre };
+    const cambios: Record<string, unknown> = { nombre, telefono };
     if (conCupos) cambios.cupos = cupos;
     return supabase.from("guests").update(cambios).eq("id", id);
   };
@@ -111,6 +128,47 @@ export async function actualizarInvitado(
     ({ error } = await intento(false));
   }
   return !error;
+}
+
+/**
+ * Da de alta MUCHOS invitados de un golpe: la lista pegada desde el Excel del
+ * salón. Devuelve cuántos entraron.
+ *
+ * Va en UNA sola petición y no en un `for` de altas sueltas, por dos razones:
+ * 120 invitados serían 120 viajes contra la base desde el navegador del salón
+ * —lento y con medio alta a la mitad si se cae el wifi—, y así o entra la lista
+ * completa o no entra nada, que es más fácil de explicar y de repetir.
+ */
+export async function crearInvitados(
+  supabase: SupabaseClient,
+  eventoId: string,
+  filas: { nombre: string; cupos: number; telefono: string }[],
+): Promise<number> {
+  if (!filas.length) return 0;
+
+  const intento = async (conCupos: boolean) =>
+    supabase
+      .from("guests")
+      .insert(
+        filas.map((f) => {
+          const fila: Record<string, unknown> = {
+            event_id: eventoId,
+            nombre: f.nombre,
+            telefono: f.telefono,
+          };
+          if (conCupos) fila.cupos = f.cupos;
+          return fila;
+        }),
+      )
+      .select("id");
+
+  let { data, error } = await intento(hayCupos);
+  if (error && hayCupos && esColumnaDesconocida(error)) {
+    // La 0011 no está aplicada: se guardan sin cupos (ver `hayCupos` arriba).
+    hayCupos = false;
+    ({ data, error } = await intento(false));
+  }
+  return error ? 0 : (data ?? []).length;
 }
 
 /** Borra un invitado de la lista (su respuesta se borra aparte, en el sync). */

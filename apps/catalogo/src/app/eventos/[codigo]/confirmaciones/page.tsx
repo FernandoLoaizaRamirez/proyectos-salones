@@ -23,6 +23,7 @@ import Link from "next/link";
 import {
   ArrowLeft,
   Check,
+  ClipboardList,
   Copy,
   DoorOpen,
   Loader2,
@@ -60,11 +61,21 @@ import {
   actualizarInvitado,
   borrarInvitado,
   crearInvitado,
+  crearInvitados,
   cuposDisponibles,
   enlaceInvitado,
   listarInvitados,
   type Invitado,
 } from "@/lib/invitados";
+import {
+  CUPOS_MAX,
+  enlaceWhatsApp,
+  leerLista,
+  normalizarTelefono,
+  resumenLista,
+  telefonoBonito,
+  type ListaLeida,
+} from "@/lib/lista-invitados";
 import { baseDeApp, enlaceInvitacionPersonal, enlacePase } from "@/lib/pantallas";
 
 /**
@@ -100,10 +111,16 @@ export default function Confirmaciones({ params }: { params: Promise<{ codigo: s
   const [evento, setEvento] = React.useState<EventoFila | null>(null);
   const [invitados, setInvitados] = React.useState<Invitado[]>([]);
   const [respuestas, setRespuestas] = React.useState<RespuestaItem[]>([]);
-  const [form, setForm] = React.useState({ nombre: "", cupos: "2" });
+  const [form, setForm] = React.useState({ nombre: "", cupos: "2", telefono: "" });
   const [editId, setEditId] = React.useState<string | null>(null);
   const [error, setError] = React.useState("");
   const [guardando, setGuardando] = React.useState(false);
+  /** El bloque de "pegar la lista": abierto, lo pegado, y en qué acabó. */
+  const [pegarAbierto, setPegarAbierto] = React.useState(false);
+  const [pegado, setPegado] = React.useState("");
+  const [cuposPegado, setCuposPegado] = React.useState("2");
+  const [pegando, setPegando] = React.useState(false);
+  const [pegadoHecho, setPegadoHecho] = React.useState("");
   /** De quién se acaba de copiar la invitación personal (para el ✓ de 2 seg). */
   const [copiadoInv, setCopiadoInv] = React.useState("");
   /** De quién se acaba de copiar el pase de la puerta (mismo ✓ de 2 seg). */
@@ -213,9 +230,13 @@ export default function Confirmaciones({ params }: { params: Promise<{ codigo: s
     setError("");
     setGuardando(true);
     const cupos = Math.max(1, parseInt(form.cupos, 10) || 1);
+    // Se guarda ya normalizado (solo dígitos, con lada): así el botón de
+    // WhatsApp puede abrir el chat sin volver a interpretarlo, y un teléfono
+    // que no se entiende se guarda vacío en vez de mandar a un extraño.
+    const telefono = normalizarTelefono(form.telefono);
     const ok = editId
-      ? await actualizarInvitado(supabase, editId, nombre, cupos)
-      : Boolean(await crearInvitado(supabase, evento.id, nombre, cupos));
+      ? await actualizarInvitado(supabase, editId, nombre, cupos, telefono)
+      : Boolean(await crearInvitado(supabase, evento.id, nombre, cupos, telefono));
     setGuardando(false);
     if (!ok) {
       setError(
@@ -223,15 +244,60 @@ export default function Confirmaciones({ params }: { params: Promise<{ codigo: s
       );
       return;
     }
-    setForm({ nombre: "", cupos: "2" });
+    setForm({ nombre: "", cupos: "2", telefono: "" });
     setEditId(null);
     await recargarInvitados();
   };
 
   const editar = (inv: Invitado) => {
     setEditId(inv.id);
-    setForm({ nombre: inv.nombre, cupos: String(inv.cupos) });
+    setForm({ nombre: inv.nombre, cupos: String(inv.cupos), telefono: inv.telefono });
   };
+
+  /**
+   * PEGAR LA LISTA COMPLETA. Lo que el salón ya tiene en su Excel entra de un
+   * golpe, en vez de capturarse 120 veces a mano.
+   *
+   * Lo que ya estaba NO se toca: `leerLista` compara contra los nombres de la
+   * lista actual y aparta los repetidos. Pegar la misma lista dos veces —que es
+   * lo que pasa siempre— no duplica a nadie.
+   */
+  const agregarPegados = async () => {
+    const supabase = obtenerSupabase();
+    if (!supabase || !evento) return;
+    const lectura = leerLista(
+      pegado,
+      Math.max(1, parseInt(cuposPegado, 10) || 1),
+      invitados.map((i) => i.nombre),
+    );
+    if (!lectura.filas.length) {
+      setPegadoHecho(`No se agregó a nadie. ${resumenLista(lectura)}.`);
+      return;
+    }
+    setPegando(true);
+    const cuantos = await crearInvitados(supabase, evento.id, lectura.filas);
+    setPegando(false);
+    if (!cuantos) {
+      setPegadoHecho("No se pudo guardar la lista. Vuelve a intentarlo.");
+      return;
+    }
+    setPegadoHecho(`Se agregaron ${cuantos}. ${resumenLista(lectura)}.`);
+    setPegado("");
+    await recargarInvitados();
+  };
+
+  /** Lo que se enseña ANTES de agregar, para que nadie pegue a ciegas. */
+  const vistaPrevia: ListaLeida | null = React.useMemo(
+    () =>
+      pegado.trim()
+        ? leerLista(
+            pegado,
+            Math.max(1, parseInt(cuposPegado, 10) || 1),
+            invitados.map((i) => i.nombre),
+          )
+        : null,
+    [pegado, cuposPegado, invitados],
+  );
 
   /** Lo que espera confirmación: un invitado de la lista, o una respuesta suelta. */
   const [porQuitar, setPorQuitar] = React.useState<
@@ -272,11 +338,17 @@ export default function Confirmaciones({ params }: { params: Promise<{ codigo: s
     });
   };
 
+  /*
+   * Los tres botones de WhatsApp abren el chat DEL INVITADO cuando su teléfono
+   * está capturado, y el selector de contactos de siempre cuando no. Ese es
+   * todo el cambio que convierte esto en un CRM: sin teléfono, mandar 120
+   * invitaciones son 120 búsquedas a mano en la libreta.
+   */
   const compartir = (inv: Invitado) => {
     const url = enlaceInvitado(inv, codigo, baseDeApp("rsvp"));
     if (!url) return;
     const msg = `¡Hola! Nos encantaría contar contigo en ${evento?.nombre ?? "nuestro evento"}. Confirma tu asistencia aquí:\n${url}`;
-    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, "_blank", "noopener,noreferrer");
+    window.open(enlaceWhatsApp(inv.telefono, msg), "_blank", "noopener,noreferrer");
   };
 
   /*
@@ -290,7 +362,7 @@ export default function Confirmaciones({ params }: { params: Promise<{ codigo: s
     const url = enlaceInvitacionPersonal(codigo, inv);
     if (!url) return;
     const msg = `Con mucho cariño, esta es su invitación:\n${url}`;
-    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, "_blank", "noopener,noreferrer");
+    window.open(enlaceWhatsApp(inv.telefono, msg), "_blank", "noopener,noreferrer");
   };
 
   /** Para quien prefiere pegarla a mano (en un chat ya abierto, por ejemplo). */
@@ -353,7 +425,7 @@ export default function Confirmaciones({ params }: { params: Promise<{ codigo: s
     const url = paseDe(inv);
     if (!url) return;
     const msg = `Su pase para la entrada:\n${url}`;
-    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, "_blank", "noopener,noreferrer");
+    window.open(enlaceWhatsApp(inv.telefono, msg), "_blank", "noopener,noreferrer");
   };
 
   /** Para quien prefiere pegarlo a mano, igual que con la invitación. */
@@ -468,6 +540,7 @@ export default function Confirmaciones({ params }: { params: Promise<{ codigo: s
   const filasCSV = [
     ...invitados.map((i) => ({
       nombre: i.nombre,
+      telefono: telefonoBonito(i.telefono),
       estado: estadoDe(i.id),
       personas: estadoDe(i.id) === EstadoRSVP.Confirmado ? (estados.get(i.id)?.personas ?? 0) : 0,
       cupos: i.cupos,
@@ -475,6 +548,8 @@ export default function Confirmaciones({ params }: { params: Promise<{ codigo: s
     })),
     ...sueltas.map((r) => ({
       nombre: (typeof r.nombre === "string" && r.nombre) || "Sin nombre",
+      // Quien contestó por el enlace general nunca dio su teléfono.
+      telefono: "",
       estado: r.estado as Estado,
       personas:
         r.estado === EstadoRSVP.Confirmado && typeof r.personas === "number" ? r.personas : 0,
@@ -492,6 +567,7 @@ export default function Confirmaciones({ params }: { params: Promise<{ codigo: s
   const exportarCSV = () => {
     const columnas: ColumnaCSV<(typeof filasCSV)[number]>[] = [
       { titulo: "Invitado", valor: (f) => f.nombre },
+      { titulo: "WhatsApp", valor: (f) => f.telefono },
       { titulo: "Estado", valor: (f) => ETIQUETA[f.estado] ?? f.estado },
       { titulo: "Personas confirmadas", valor: (f) => f.personas },
       { titulo: "Cupos de la invitación", valor: (f) => (f.cupos > 0 ? f.cupos : "") },
@@ -501,7 +577,8 @@ export default function Confirmaciones({ params }: { params: Promise<{ codigo: s
     const csv = [
       aCSV(filasCSV, columnas),
       // Una última línea con el total: es el número que de verdad se consulta.
-      `TOTAL DE PERSONAS CONFIRMADAS;;${total};;`,
+      // Los puntos y coma cuadran el total con la columna "Personas".
+      `TOTAL DE PERSONAS CONFIRMADAS;;;${total};;`,
     ].join("\r\n");
     descargarCSV(`confirmaciones-${evento.codigo}`, csv);
   };
@@ -602,6 +679,34 @@ export default function Confirmaciones({ params }: { params: Promise<{ codigo: s
               />
             </div>
             <div>
+              <label className="mb-1.5 block text-sm font-medium" htmlFor="inv-tel">
+                WhatsApp <span className="font-normal text-muted-foreground">(opcional)</span>
+              </label>
+              <input
+                id="inv-tel"
+                type="tel"
+                inputMode="tel"
+                className={campo}
+                value={form.telefono}
+                onChange={(e) => setForm({ ...form, telefono: e.target.value })}
+                placeholder="667 123 4567"
+                maxLength={20}
+              />
+              <p className="mt-1.5 text-xs text-muted-foreground">
+                {form.telefono.trim() ? (
+                  normalizarTelefono(form.telefono) ? (
+                    <>Se le escribirá a {telefonoBonito(normalizarTelefono(form.telefono))}.</>
+                  ) : (
+                    <span className="text-amber-600 dark:text-amber-400">
+                      Ese número no se entiende: se guardará sin teléfono.
+                    </span>
+                  )
+                ) : (
+                  <>Con teléfono, los botones de WhatsApp abren su chat directo.</>
+                )}
+              </p>
+            </div>
+            <div>
               <label className="mb-1.5 block text-sm font-medium" htmlFor="inv-cupos">
                 Cupos (personas máximo)
               </label>
@@ -642,7 +747,7 @@ export default function Confirmaciones({ params }: { params: Promise<{ codigo: s
                   variant="outline"
                   onClick={() => {
                     setEditId(null);
-                    setForm({ nombre: "", cupos: "2" });
+                    setForm({ nombre: "", cupos: "2", telefono: "" });
                   }}
                 >
                   Cancelar
@@ -650,6 +755,89 @@ export default function Confirmaciones({ params }: { params: Promise<{ codigo: s
               ) : null}
             </div>
           </form>
+
+          {/* ---- Pegar la lista completa ------------------------------------
+              Va debajo del alta de uno en uno y no arriba: el salón que llega
+              por primera vez entiende "Agregar invitado" sin leer nada, y el
+              que ya tiene su Excel encuentra esto en el mismo sitio. */}
+          {!editId ? (
+            <div className="mt-6 border-t border-border pt-5">
+              <button
+                type="button"
+                onClick={() => setPegarAbierto((v) => !v)}
+                className="flex w-full items-center justify-between text-sm font-medium transition-colors hover:text-primary"
+              >
+                <span className="inline-flex items-center gap-2">
+                  <ClipboardList className="size-4" /> Pegar la lista completa
+                </span>
+                <span className="text-muted-foreground">{pegarAbierto ? "−" : "+"}</span>
+              </button>
+
+              {pegarAbierto ? (
+                <div className="mt-4 space-y-3">
+                  <p className="text-xs text-muted-foreground">
+                    Un invitado por renglón: <b>nombre, teléfono, cupos</b>. El teléfono y los cupos
+                    son opcionales. Se puede pegar tal cual desde Excel; los que ya estén en la
+                    lista no se repiten.
+                  </p>
+                  <textarea
+                    className={cn(campo, "min-h-32 font-mono text-xs")}
+                    value={pegado}
+                    onChange={(e) => {
+                      setPegado(e.target.value);
+                      setPegadoHecho("");
+                    }}
+                    placeholder={"Familia Ramírez, 6671234567, 4\nAna Sofía Ríos, 6679876543\nTío Beto"}
+                  />
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium" htmlFor="peg-cupos">
+                      Cupos para los renglones que no lo digan
+                    </label>
+                    <select
+                      id="peg-cupos"
+                      className={campo}
+                      value={cuposPegado}
+                      onChange={(e) => setCuposPegado(e.target.value)}
+                    >
+                      {Array.from({ length: CUPOS_MAX }, (_, i) => String(i + 1)).map((n) => (
+                        <option key={n} value={n}>
+                          {n}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Se enseña ANTES de agregar: nadie debería pegar a ciegas. */}
+                  {vistaPrevia ? (
+                    <p className="text-xs">
+                      <span className="font-medium">{resumenLista(vistaPrevia)}.</span>
+                      {vistaPrevia.rechazados.length ? (
+                        <span className="mt-1 block text-amber-600 dark:text-amber-400">
+                          Sin nombre y por eso fuera: {vistaPrevia.rechazados.slice(0, 3).join(" · ")}
+                          {vistaPrevia.rechazados.length > 3 ? "…" : ""}
+                        </span>
+                      ) : null}
+                    </p>
+                  ) : null}
+
+                  {pegadoHecho ? <p className="text-xs text-primary">{pegadoHecho}</p> : null}
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full"
+                    disabled={pegando || !vistaPrevia?.filas.length}
+                    onClick={() => void agregarPegados()}
+                  >
+                    {pegando ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
+                    {vistaPrevia?.filas.length
+                      ? `Agregar ${vistaPrevia.filas.length}`
+                      : "Agregar todos"}
+                  </Button>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
         </Card>
 
         {/* Lista de invitados */}
@@ -693,6 +881,17 @@ export default function Confirmaciones({ params }: { params: Promise<{ codigo: s
                           {confirmo
                             ? `${estados.get(inv.id)?.personas ?? 0} de ${inv.cupos} personas`
                             : `Hasta ${inv.cupos} ${inv.cupos === 1 ? "persona" : "personas"}`}
+                          {/* El teléfono se enseña para que se vea de un vistazo
+                              a quién le falta: sin él, WhatsApp abre el selector
+                              de contactos y hay que buscarlo a mano. */}
+                          {inv.telefono ? (
+                            <> · {telefonoBonito(inv.telefono)}</>
+                          ) : (
+                            <span className="text-amber-600/80 dark:text-amber-400/80">
+                              {" "}
+                              · sin WhatsApp
+                            </span>
+                          )}
                         </div>
                       </div>
                       <div className="flex flex-wrap items-center gap-1.5">

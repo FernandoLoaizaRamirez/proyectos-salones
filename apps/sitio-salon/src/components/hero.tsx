@@ -10,7 +10,7 @@ export function Hero() {
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={heroFoto}
-        alt={`Salón de gala de ${salon.nombre}`}
+        alt={`Ceremonia al aire libre en ${salon.nombre}`}
         className="absolute inset-0 -z-20 h-full w-full object-cover"
       />
       {/* Velo oscuro para que el texto se lea bien */}

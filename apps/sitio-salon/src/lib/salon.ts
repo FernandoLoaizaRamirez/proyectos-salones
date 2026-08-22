@@ -42,9 +42,17 @@ export type Espacio = {
  * archivo que dice cuál es (`espacio-*.jpg`) para que no se vuelvan a mezclar
  * con las de la galería, que ahí sí van los momentos.
  *
- * Las tres nuevas son de Pexels (licencia gratuita, uso comercial, sin
- * atribución obligatoria). Cuando Fernando tenga fotos del salón real, se
- * sustituyen respetando el mismo criterio: se ve el espacio.
+ * El 22 ago 2026 cayeron las dos que faltaban y la terraza mejoró: el Jardín
+ * era un kiosco a pleno mediodía cuando el texto promete atardecer y estrellas
+ * (ahora: mesa larga bajo los árboles con series de foquitos y luz dorada), la
+ * Terraza era un patiecito residencial donde no caben 120 personas (ahora: cena
+ * a la luz de velas con servilletas color vino, los colores de la casa), y la
+ * portada era un salón de hotel ajeno con alfombra azul y luces moradas (ahora:
+ * ceremonia real en una hacienda de piedra mexicana, `portada.jpg`).
+ *
+ * Todas son de Pexels (licencia gratuita, uso comercial, sin atribución
+ * obligatoria). Cuando Fernando tenga fotos del salón real, se sustituyen
+ * respetando el mismo criterio: se ve el espacio.
  */
 export const espacios: Espacio[] = [
   {
@@ -53,7 +61,7 @@ export const espacios: Espacio[] = [
     descripcion:
       "Un jardín arbolado con iluminación de temporada, ideal para ceremonias al atardecer y recepciones bajo las estrellas.",
     capacidad: "Hasta 400 invitados",
-    foto: "/img/u06.jpg",
+    foto: "/img/espacio-jardin.jpg",
   },
   {
     nombre: "Salón Imperial",
@@ -126,7 +134,7 @@ export const galeria: FotoGaleria[] = [
 ];
 
 /** Foto de portada (hero). */
-export const heroFoto = "/img/u16.jpg";
+export const heroFoto = "/img/portada.jpg";
 
 export type Estadistica = { valor: string; etiqueta: string };
 

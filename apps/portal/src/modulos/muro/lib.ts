@@ -32,6 +32,93 @@ export type Mensaje = {
 /** Colección compartida en el lugar central (la misma que usa `apps/muro`). */
 export const COLECCION_MENSAJES = "mensajes";
 
+/** Una hora en milisegundos, para armar fechas de ejemplo legibles. */
+const HORA = 3600 * 1000;
+
+/**
+ * Los 8 mensajes de ejemplo con los que abre la demo.
+ *
+ * COPIA EXACTA de `mensajesIniciales` de `apps/muro` —mismos ids, mismos textos
+ * y las mismas fotos—, y no por pereza: las dos apps escriben la MISMA colección
+ * ("mensajes") del mismo evento, así que si cada una sembrara su propia versión
+ * el visitante vería una boda distinta según por dónde entrara. Con textos e ids
+ * idénticos, siembre quien siembre primero, la historia que se cuenta es una
+ * sola: la boda de Ana & Rodrigo que ya sale en la invitación y en el acomodo.
+ *
+ * Las fechas se calculan sobre "ahora" para que el muro luzca recién firmado
+ * cuando el dueño del salón lo abre delante de su cliente.
+ *
+ * Las tres fotos (`/img/m1..m3.jpg`) se copiaron a `apps/portal/public/` a
+ * propósito, aunque el portal ya tuviera esos MISMOS bytes con otro nombre
+ * (a02/a05/a07 del álbum): la ruta la escribe quien siembre PRIMERO, y si el
+ * visitante empezó por la app suelta del muro, el portal se encontraría con
+ * "/img/m1.jpg" y enseñaría tres marcos rotos. Mismo nombre en las dos apps =
+ * la demo se ve bien entre por donde entre.
+ */
+export function mensajesIniciales(): Mensaje[] {
+  const ahora = Date.now();
+  return [
+    {
+      id: "MS-001",
+      nombre: "Valentina Montes",
+      texto:
+        "¡Qué felicidad verlos dar este paso! Les deseo una vida llena de amor, risas y aventuras juntos. 💍",
+      foto: "/img/m1.jpg",
+      fecha: ahora - 0.2 * HORA,
+    },
+    {
+      id: "MS-002",
+      nombre: "Familia Loaiza Ramírez",
+      texto:
+        "Gracias por dejarnos ser parte de este día tan especial. Que su amor crezca cada día más. ¡Los queremos!",
+      fecha: ahora - 0.6 * HORA,
+    },
+    {
+      id: "MS-003",
+      nombre: "Carlos y Diana",
+      texto:
+        "Por muchos años de complicidad, viajes y cafés por la mañana. ¡Felicidades, tortolitos!",
+      foto: "/img/m2.jpg",
+      fecha: ahora - 1.4 * HORA,
+    },
+    {
+      id: "MS-004",
+      nombre: "Abuela Carmen",
+      texto:
+        "Mi niña, hoy mi corazón está lleno. Que Dios los bendiga y los acompañe siempre. Con todo mi cariño.",
+      fecha: ahora - 2.1 * HORA,
+    },
+    {
+      id: "MS-005",
+      nombre: "Diego Salazar",
+      texto:
+        "¡Hasta que por fin! 😄 Los mejores deseos para mi hermano y su reina. Salud por ustedes.",
+      fecha: ahora - 3 * HORA,
+    },
+    {
+      id: "MS-006",
+      nombre: "Grupo Alvarado",
+      texto:
+        "Un brindis por el comienzo de su historia. Que nunca les falte música para bailar juntos.",
+      foto: "/img/m3.jpg",
+      fecha: ahora - 4.5 * HORA,
+    },
+    {
+      id: "MS-007",
+      nombre: "Regina y José",
+      texto: "Con cariño para los novios: que cada día se elijan una y otra vez. ¡Felicidades!",
+      fecha: ahora - 6 * HORA,
+    },
+    {
+      id: "MS-008",
+      nombre: "Miguel Ángel Torres",
+      texto:
+        "¡Enhorabuena! Gracias por una noche inolvidable. Se ven felices y se nota que es de verdad.",
+      fecha: ahora - 20 * HORA,
+    },
+  ];
+}
+
 /** Genera un id corto para un mensaje nuevo. */
 export function nuevoIdMensaje(): string {
   return "MS-" + Math.random().toString(36).slice(2, 8).toUpperCase();

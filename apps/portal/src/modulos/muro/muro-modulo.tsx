@@ -17,10 +17,14 @@ import {
   aTextoDeDatos,
   resolverMedios,
   mensajeDeSubida,
+  esVitrina,
+  esVitrinaPropia,
+  idDeEjemplo,
 } from "@salones/sync";
 import {
   COLECCION_MENSAJES,
   comprimirImagen,
+  mensajesIniciales,
   nuevoIdMensaje,
   tiempoRelativo,
   type Mensaje,
@@ -29,6 +33,9 @@ import { guardarPerfil, usePerfil } from "@/lib/perfil";
 
 const campo =
   "w-full rounded-[var(--radius)] border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/30";
+
+/** El muro se lee de arriba abajo: lo último que firmaron, primero. */
+const porFechaDesc = (a: Mensaje, b: Mensaje) => (b.fecha ?? 0) - (a.fecha ?? 0);
 
 export function MuroModulo({ evento, nombreEvento }: { evento: string; nombreEvento: string }) {
   const perfil = usePerfil(evento);
@@ -96,13 +103,100 @@ export function MuroModulo({ evento, nombreEvento }: { evento: string; nombreEve
   const [conectado, setConectado] = React.useState<boolean | null>(null);
   const fileRef = React.useRef<HTMLInputElement>(null);
 
+  /* Mientras no haya llegado el primer dato, un muro vacío no significa "nadie
+   * ha firmado": significa "todavía no sabemos". Se separan los dos estados
+   * porque delante de un dueño de salón la diferencia lo es todo — el mensaje
+   * de "sé el primero en firmar" no puede salir en el parpadeo de la carga. */
+  const [cargando, setCargando] = React.useState(true);
+  const [sembrando, setSembrando] = React.useState(false);
+
   // Muro en vivo: se suscribe a la colección del evento.
   React.useEffect(() => {
     setConectado(estaConectado());
-    const cancelar = obtenerSync().suscribir<Mensaje>(evento, COLECCION_MENSAJES, (items) => {
-      setMensajes([...items].sort((a, b) => (b.fecha ?? 0) - (a.fecha ?? 0)));
+    setCargando(true);
+    const sync = obtenerSync();
+    const cancelar = sync.suscribir<Mensaje>(evento, COLECCION_MENSAJES, (items) => {
+      setMensajes([...items].sort(porFechaDesc));
+      setCargando(false);
     });
-    return cancelar;
+
+    /* ---- La demo abre LLENA (22 ago 2026) ----------------------------------
+     * El portal enseñaba "Aún no hay mensajes. ¡Sé el primero en firmar!" en la
+     * demo, y un libro de firmas vacío parece un formulario de contacto: justo
+     * lo contrario de lo que se está vendiendo. Ahora se siembra igual que en la
+     * app suelta del muro y que en la playlist.
+     *
+     * Fuera de una VITRINA no se siembra JAMÁS, y dentro de ella solo:
+     *   · en modo LOCAL, donde nada sale de este teléfono;
+     *   · en la VITRINA PROPIA del visitante (`demo-…`), donde `idDeEjemplo` le
+     *     pega el sufijo de su vitrina a cada id y por eso no puede chocar con
+     *     los ejemplos de nadie (`items.id` es llave primaria GLOBAL).
+     * En el "demo" COMPARTIDO conectado no se siembra: allí los ids serían
+     * fijos y globales, y se pisarían entre visitantes.
+     *
+     * EL CANDADO DE `esVitrina` NO SOBRA (22 ago 2026). Es el mismo que ya
+     * llevan el acomodo (`modulos/mesas`) y el ranking de la trivia
+     * (`modulos/dinamicas/use-ranking.ts`), y está por un motivo muy concreto:
+     * `sync.nombre` NO depende del evento, depende de si el DESPLIEGUE encontró
+     * sus llaves. Sin este candado bastaba con que el portal se quedara sin
+     * ellas —le pasó en agosto a invitaciones y a photobooth— para que la boda
+     * de un cliente REAL abriera con ocho firmas de invitados que no existen,
+     * de "Abuela Carmen" y "Familia Loaiza Ramírez", con fotos de otra boda.
+     * Un muro vacío se ve roto y se arregla; un muro con firmas inventadas se
+     * ve auténtico, y eso ya no hay quien lo explique delante de la novia.
+     */
+    let vivo = true;
+    const hayQueSembrar =
+      esVitrina(evento) && (sync.nombre === "local" || esVitrinaPropia(evento));
+    setSembrando(hayQueSembrar);
+    if (hayQueSembrar) {
+      void sync
+        .listar<Mensaje>(evento, COLECCION_MENSAJES)
+        .then(async (items) => {
+          // Se pregunta con `listar` (la colección entera) y no con lo que trae
+          // el sondeo: si esta vitrina ya tiene mensajes —los de ejemplo o los
+          // que firmó de verdad quien la está enseñando— no se toca nada.
+          if (!vivo || items.length > 0) return;
+          const ejemplos = mensajesIniciales().map((m) => ({
+            ...m,
+            id: idDeEjemplo(m.id, evento),
+          }));
+          /* Se pintan los que DE VERDAD se guardaron, y no a ciegas: si el
+           * evento no tuviera permiso de escribir, un muro lleno de mensajes
+           * fantasma que desaparecen al recargar sería peor que el vacío.
+           * Adelantarlos evita que el muro se vea vacío los ~3 s que tarda el
+           * siguiente sondeo. */
+          const guardados = await Promise.all(
+            ejemplos.map((m) =>
+              sync.guardar(evento, COLECCION_MENSAJES, m).then(
+                () => m,
+                () => null,
+              ),
+            ),
+          );
+          if (!vivo) return;
+          const puestos = guardados.filter((m): m is Mensaje => m !== null);
+          if (puestos.length > 0) {
+            setMensajes((previos) => {
+              const ya = new Set(previos.map((m) => m.id));
+              return [...previos, ...puestos.filter((m) => !ya.has(m.id))].sort(porFechaDesc);
+            });
+          }
+        })
+        .finally(() => {
+          if (vivo) setSembrando(false);
+        })
+        /* Si `listar` no contesta (un bache de red), no pasa nada grave: el
+         * sondeo sigue vivo y traerá lo que haya. Pero sin este `catch` la
+         * promesa se cae sola y el navegador la anota como error no atendido,
+         * que en el diagnóstico se confundiría con un fallo de verdad. */
+        .catch(() => {});
+    }
+
+    return () => {
+      vivo = false;
+      cancelar();
+    };
   }, [evento]);
 
   const elegirFoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -310,9 +404,15 @@ export function MuroModulo({ evento, nombreEvento }: { evento: string; nombreEve
         </h3>
 
         {mensajes.length === 0 ? (
-          <p className="mt-3 text-sm text-muted-foreground">
-            Aún no hay mensajes. ¡Sé el primero en firmar!
-          </p>
+          cargando || sembrando ? (
+            <p className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="size-4 animate-spin" /> Trayendo los mensajes…
+            </p>
+          ) : (
+            <p className="mt-3 text-sm text-muted-foreground">
+              Aún no hay mensajes. ¡Sé el primero en firmar!
+            </p>
+          )
         ) : (
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             {mensajesVistos.map((m) => (

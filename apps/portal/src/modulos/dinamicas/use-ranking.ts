@@ -7,7 +7,7 @@
  * el tablero del anfitrión, que sigue en la app `dinamicas`). Mismo código.
  */
 import * as React from "react";
-import { obtenerSync, esVitrina, esVitrinaPropia } from "@salones/sync";
+import { obtenerSync, esVitrina, esVitrinaPropia, idDeEjemplo } from "@salones/sync";
 import { COLECCION_RANKING, nuevoIdJugador, rankingDemo, type Jugador } from "./lib";
 
 export function useRanking(evento: string) {
@@ -17,12 +17,25 @@ export function useRanking(evento: string) {
     const sync = obtenerSync();
     const cancelar = sync.suscribir<Jugador>(evento, COLECCION_RANKING, setRanking);
 
-    // Solo en la vitrina (evento "demo" sin servidor): si el tablero está vacío,
-    // se siembra con jugadores de ejemplo. Un evento REAL nunca los ve.
+    /*
+     * Solo en la vitrina: si el tablero está vacío, se siembra con jugadores de
+     * ejemplo. Un evento REAL nunca los ve.
+     *
+     * Los ids VAN CON EL SUFIJO DE LA VITRINA. Se sembraban tal cual —J-DEMO1…
+     * J-DEMO5— y `items.id` es llave primaria GLOBAL: dos visitantes con
+     * vitrinas distintas escribían las MISMAS cinco filas, así que el segundo
+     * pisaba el tablero del primero. Con el sufijo, cada quien tiene el suyo.
+     * Es el mismo patrón que ya usan el muro, la playlist y el acomodo de mesas.
+     */
     if (esVitrina(evento) && (sync.nombre === "local" || esVitrinaPropia(evento))) {
       void sync.listar<Jugador>(evento, COLECCION_RANKING).then((items) => {
         if (items.length === 0) {
-          for (const j of rankingDemo()) void sync.guardar(evento, COLECCION_RANKING, j);
+          for (const j of rankingDemo()) {
+            void sync.guardar(evento, COLECCION_RANKING, {
+              ...j,
+              id: idDeEjemplo(j.id, evento),
+            });
+          }
         }
       });
     }

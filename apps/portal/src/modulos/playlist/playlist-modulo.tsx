@@ -15,7 +15,7 @@
 import * as React from "react";
 import { Plus, ThumbsUp, Check, Music, ExternalLink, Loader2 } from "lucide-react";
 import { Button, Card, cn, guardarLocal, AvisoParticipacion } from "@salones/ui";
-import { obtenerSync } from "@salones/sync";
+import { obtenerSync, esVitrinaPropia, idDeEjemplo } from "@salones/sync";
 import {
   COLECCION_CANCIONES,
   EstadoCancion,
@@ -42,6 +42,10 @@ export function PlaylistModulo({
   const [canciones, setCanciones] = React.useState<Cancion[]>([]);
   const [misVotos, setMisVotos] = React.useState<string[]>([]);
   const [cargado, setCargado] = React.useState(false);
+  /* Mientras se siembra la vitrina, "0 en cola · Aún no hay canciones" sería
+   * mentira: hay canciones, están viajando. Delante del dueño de un salón esa
+   * diferencia lo es todo, así que los dos estados se separan. */
+  const [sembrando, setSembrando] = React.useState(false);
   const [form, setForm] = React.useState({ titulo: "", artista: "", link: "", nombre: "" });
 
   // El perfil llega tras el primer pintado; si "Tu nombre" sigue vacío, se
@@ -70,19 +74,74 @@ export function PlaylistModulo({
       setMisVotos([]);
     }
 
+    let vivo = true;
     const sync = obtenerSync();
     const cancelar = sync.suscribir<Cancion>(evento, COLECCION_CANCIONES, setCanciones);
     setCargado(true);
 
-    // Solo en la demostración local: si no hay nada, sembramos ejemplos.
-    if (sync.nombre === "local") {
-      void sync.listar<Cancion>(evento, COLECCION_CANCIONES).then((items) => {
-        if (items.length === 0) {
-          for (const c of cancionesDemo()) void sync.guardar(evento, COLECCION_CANCIONES, c);
-        }
-      });
+    /* ---- La demo abre CON SU RANKING (22 ago 2026) -------------------------
+     * La condición era `sync.nombre === "local"`, y en producción el portal
+     * NUNCA corre en local: la playlist de la demo abría en "0 en cola" (o con
+     * los dos restos de prueba que quedaron en el "demo" compartido). Lo que se
+     * vende es justo lo contrario: una lista peleada, con votos.
+     *
+     * Se siembra en los mismos dos sitios que el muro, las dinámicas y la app
+     * suelta de playlist:
+     *   · modo LOCAL, donde nada sale de este teléfono;
+     *   · la VITRINA PROPIA del visitante (`demo-…`), donde `idDeEjemplo` le
+     *     pega el sufijo de su vitrina a cada id — `items.id` es llave primaria
+     *     GLOBAL y sin sufijo las vitrinas se pisarían unas a otras.
+     * En el "demo" COMPARTIDO no se siembra (ahí los ids serían fijos para todo
+     * el mundo) y un evento REAL jamás nace con canciones inventadas.
+     */
+    const hayQueSembrar = sync.nombre === "local" || esVitrinaPropia(evento);
+    setSembrando(hayQueSembrar);
+    if (hayQueSembrar) {
+      void sync
+        .listar<Cancion>(evento, COLECCION_CANCIONES)
+        .then(async (items) => {
+          // Se pregunta por la colección ENTERA (`listar`) y no por lo que trae
+          // el sondeo: si esta vitrina ya tiene canciones —las de ejemplo, o las
+          // que pidió de verdad quien la está enseñando— no se toca nada.
+          if (!vivo || items.length > 0) return;
+          const ejemplos = cancionesDemo().map((c) => ({
+            ...c,
+            id: idDeEjemplo(c.id, evento),
+          }));
+          /* Se pintan las que DE VERDAD se guardaron, y no a ciegas: una lista
+           * de canciones fantasma que se esfuman al recargar —y con el botón de
+           * votar devolviendo error— sería peor que la lista vacía. Adelantarlas
+           * también ahorra los ~3 s de "0 en cola" hasta el siguiente sondeo. */
+          const guardadas = await Promise.all(
+            ejemplos.map((c) =>
+              sync.guardar(evento, COLECCION_CANCIONES, c).then(
+                () => c,
+                () => null,
+              ),
+            ),
+          );
+          if (!vivo) return;
+          const puestas = guardadas.filter((c): c is Cancion => c !== null);
+          if (puestas.length > 0) {
+            setCanciones((previas) => {
+              const ya = new Set(previas.map((c) => c.id));
+              return [...previas, ...puestas.filter((c) => !ya.has(c.id))];
+            });
+          }
+        })
+        // Si ni siquiera se pudo preguntar (sin cobertura al abrir la demo), la
+        // lista se queda como estaba y el sondeo la traerá cuando vuelva la red:
+        // lo que no puede pasar es que el aviso se quede girando para siempre.
+        .catch(() => {})
+        .finally(() => {
+          if (vivo) setSembrando(false);
+        });
     }
-    return cancelar;
+
+    return () => {
+      vivo = false;
+      cancelar();
+    };
   }, [evento]);
 
   React.useEffect(() => {
@@ -217,7 +276,11 @@ export function PlaylistModulo({
       <section>
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-lg font-semibold">Vota por tus favoritas</h2>
-          <span className="text-sm text-muted-foreground">{pendientes.length} en cola</span>
+          {/* "0 en cola" con la lista todavía en camino contradice al aviso de
+              abajo: mientras se siembra, mejor no decir nada. */}
+          {pendientes.length === 0 && sembrando ? null : (
+            <span className="text-sm text-muted-foreground">{pendientes.length} en cola</span>
+          )}
         </div>
 
         {errorVoto ? (
@@ -225,9 +288,15 @@ export function PlaylistModulo({
         ) : null}
 
         {!cargado ? null : pendientes.length === 0 ? (
-          <p className="rounded-[var(--radius)] border border-dashed border-border py-10 text-center text-sm text-muted-foreground">
-            Aún no hay canciones. ¡Sé el primero en pedir una!
-          </p>
+          sembrando ? (
+            <p className="flex items-center justify-center gap-2 rounded-[var(--radius)] border border-dashed border-border py-10 text-center text-sm text-muted-foreground">
+              <Loader2 className="size-4 animate-spin" /> Trayendo las canciones…
+            </p>
+          ) : (
+            <p className="rounded-[var(--radius)] border border-dashed border-border py-10 text-center text-sm text-muted-foreground">
+              Aún no hay canciones. ¡Sé el primero en pedir una!
+            </p>
+          )
         ) : (
           <div className="space-y-2">
             {pendientes.map((c) => {

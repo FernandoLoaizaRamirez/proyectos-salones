@@ -66,16 +66,30 @@ export function claveVotos(evento: string): string {
 }
 
 /**
- * Semilla de ejemplo, solo para la demostración local (para que la lista no se
- * vea vacía). Con el servicio gestionado NO se siembra: cada evento real empieza
- * con su propia lista.
+ * La lista con la que abre la demo, para que no se vea vacía.
+ *
+ * COPIA EXACTA de `cancionesIniciales` de `apps/playlist` —mismos ids, mismos
+ * títulos, mismos votos—, y no por pereza: las dos apps escriben la MISMA
+ * colección ("canciones") del MISMO evento, y el catálogo reparte el código de
+ * la vitrina a las dos. Siembra la que se abra primero; con ids distintos, la
+ * segunda encontraría la lista llena y el visitante vería una fiesta distinta
+ * según por qué puerta entrara (y si las dos sembraran a la vez, saldría
+ * "Bailando" dos veces con dos ids).
+ *
+ * Son OCHO, y el invitado solo ve SEIS: "Perfect" y "La Macarena" no salen
+ * aquí porque no están pendientes. Se siembran igual, porque son las que le dan
+ * al panel del DJ su columna de "puesta" y la de "descartada" en vez de dos
+ * huecos: la lista es una sola para todos.
+ *
+ * Las fechas se calculan sobre "ahora" para que la fiesta parezca en marcha
+ * cuando el dueño del salón abre la demo delante de su cliente.
  */
 export function cancionesDemo(): Cancion[] {
   const ahora = Date.now();
   const MIN = 60 * 1000;
   return [
     {
-      id: "SG-D001",
+      id: "SG-001",
       titulo: "La Incondicional",
       artista: "Luis Miguel",
       votos: 14,
@@ -84,7 +98,7 @@ export function cancionesDemo(): Cancion[] {
       fecha: ahora - 40 * MIN,
     },
     {
-      id: "SG-D002",
+      id: "SG-002",
       titulo: "Vivir Mi Vida",
       artista: "Marc Anthony",
       votos: 11,
@@ -93,7 +107,7 @@ export function cancionesDemo(): Cancion[] {
       fecha: ahora - 32 * MIN,
     },
     {
-      id: "SG-D003",
+      id: "SG-003",
       titulo: "September",
       artista: "Earth, Wind & Fire",
       link: "https://open.spotify.com/track/2grjqo0Frpf2okIBiifQKs",
@@ -103,7 +117,7 @@ export function cancionesDemo(): Cancion[] {
       fecha: ahora - 26 * MIN,
     },
     {
-      id: "SG-D004",
+      id: "SG-004",
       titulo: "Propuesta Indecente",
       artista: "Romeo Santos",
       votos: 8,
@@ -112,7 +126,16 @@ export function cancionesDemo(): Cancion[] {
       fecha: ahora - 21 * MIN,
     },
     {
-      id: "SG-D005",
+      id: "SG-005",
+      titulo: "Mi Gente",
+      artista: "J Balvin",
+      votos: 6,
+      estado: EstadoCancion.Pendiente,
+      pedidaPor: "Diego",
+      fecha: ahora - 15 * MIN,
+    },
+    {
+      id: "SG-006",
       titulo: "Bailando",
       artista: "Enrique Iglesias",
       link: "https://www.youtube.com/watch?v=NUsoVlDFqZg",
@@ -120,6 +143,26 @@ export function cancionesDemo(): Cancion[] {
       estado: EstadoCancion.Pendiente,
       pedidaPor: "Regina",
       fecha: ahora - 10 * MIN,
+    },
+    // Estas dos no salen en el portal (no están pendientes): son las que hacen
+    // que el panel del DJ de `apps/playlist` no abra con dos columnas vacías.
+    {
+      id: "SG-007",
+      titulo: "Perfect",
+      artista: "Ed Sheeran",
+      votos: 12,
+      estado: EstadoCancion.Puesta,
+      pedidaPor: "Los novios",
+      fecha: ahora - 55 * MIN,
+    },
+    {
+      id: "SG-008",
+      titulo: "La Macarena",
+      artista: "Los del Río",
+      votos: 2,
+      estado: EstadoCancion.Descartada,
+      pedidaPor: "Tío Marco",
+      fecha: ahora - 48 * MIN,
     },
   ];
 }

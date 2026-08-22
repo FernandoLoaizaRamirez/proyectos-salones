@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { obtenerSync, eventoActual } from "@salones/sync";
+import { obtenerSync, eventoActual, esVitrinaPropia, idDeEjemplo } from "@salones/sync";
 import {
   rankingInicial,
   nuevoId,
@@ -25,12 +25,20 @@ export function useRanking() {
     const cancelar = sync.suscribir<Jugador>(eventoId, COLECCION_RANKING, setRanking);
     setCargado(true);
 
-    // Solo en la demo local: si el ranking está vacío, lo sembramos con ejemplos.
-    if (sync.nombre === "local") {
+    /*
+     * La demo se llena sola: en modo local y tambien en la VITRINA PROPIA de
+     * este visitante (`demo-...`), donde los ejemplos llevan su sufijo y no
+     * pueden chocar con los de nadie. En el "demo" compartido NO se siembra:
+     * alli los ids serian fijos y globales.
+     */
+    if (sync.nombre === "local" || esVitrinaPropia(eventoId)) {
       sync.listar<Jugador>(eventoId, COLECCION_RANKING).then((items) => {
         if (items.length === 0) {
           for (const j of rankingInicial()) {
-            void sync.guardar(eventoId, COLECCION_RANKING, j);
+            void sync.guardar(eventoId, COLECCION_RANKING, {
+              ...j,
+              id: idDeEjemplo(j.id, eventoId),
+            });
           }
         }
       });

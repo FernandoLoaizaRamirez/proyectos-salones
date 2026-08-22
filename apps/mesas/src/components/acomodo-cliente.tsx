@@ -18,7 +18,7 @@ import {
   Pencil,
 } from "lucide-react";
 import { Button, Card, cn, Confirmar } from "@salones/ui";
-import { obtenerSync, eventoActual } from "@salones/sync";
+import { obtenerSync, eventoActual, esVitrinaPropia, idDeEjemplo } from "@salones/sync";
 import { QR } from "@/components/qr";
 import {
   mesasIniciales,
@@ -116,17 +116,34 @@ export function AcomodoCliente() {
       COLECCION_ACOMODO,
       deFuera<Invitado>((filas) => setInvitados([...filas].sort(porOrden))),
     );
-    // Solo en la demo local: los ejemplos NUNCA viajan al servidor. Sus ids son
-    // fijos y la llave primaria de `items` es global, así que dos eventos
-    // sembrados chocarían, y cada boda real nacería con la de Ana & Rodrigo.
-    if (sync.nombre === "local") {
+    /*
+     * El acomodo de ejemplo se siembra en modo local y en la VITRINA PROPIA de
+     * este visitante. Los ids llevan el sufijo de su vitrina (`idDeEjemplo`)
+     * porque la llave primaria de `items` es GLOBAL: sin eso, dos visitantes
+     * chocarían y una boda real podría nacer con la de Ana & Rodrigo. En el
+     * "demo" compartido de siempre no se siembra nada.
+     *
+     * Ojo con `mesaId`: cada invitado apunta a SU mesa, así que hay que
+     * renombrar la referencia igual que el id de la mesa, o los invitados se
+     * quedarían señalando mesas que en esta vitrina no existen.
+     */
+    if (sync.nombre === "local" || esVitrinaPropia(eventoId)) {
       void sync.listar<Mesa>(eventoId, COLECCION_MESAS).then((filas) => {
         if (filas.length > 0) return;
         mesasIniciales.forEach((m, i) => {
-          void sync.guardar(eventoId, COLECCION_MESAS, { ...m, orden: i });
+          void sync.guardar(eventoId, COLECCION_MESAS, {
+            ...m,
+            id: idDeEjemplo(m.id, eventoId),
+            orden: i,
+          });
         });
         invitadosIniciales.forEach((g, i) => {
-          void sync.guardar(eventoId, COLECCION_ACOMODO, { ...g, orden: i });
+          void sync.guardar(eventoId, COLECCION_ACOMODO, {
+            ...g,
+            id: idDeEjemplo(g.id, eventoId),
+            mesaId: g.mesaId === null ? null : idDeEjemplo(g.mesaId, eventoId),
+            orden: i,
+          });
         });
       });
     }
@@ -394,13 +411,14 @@ export function AcomodoCliente() {
   /**
    * Empezar de cero.
    *
-   * En la demo local vuelve al acomodo de ejemplo, como siempre. Con el evento
-   * conectado NO siembra nada: los ejemplos nunca van al servidor, así que lo
-   * deja VACÍO. Y borrar exige la llave de anfitrión: si no está, se avisa.
+   * En la demo (local o la vitrina propia de este visitante) vuelve al acomodo
+   * de ejemplo, como siempre. En una boda de verdad NO siembra nada: la deja
+   * VACÍA, que es lo que espera quien la está montando. Y borrar exige la llave
+   * de anfitrión: si no está, se avisa.
    */
   const reiniciar = () => {
     const sync = obtenerSync();
-    const local = sync.nombre === "local";
+    const local = sync.nombre === "local" || esVitrinaPropia(eventoActual());
     const mesasPrevias = mesas;
     const invPrevios = invitados;
 
@@ -426,8 +444,20 @@ export function AcomodoCliente() {
         return;
       }
       if (local) {
-        mesasIniciales.forEach((m, i) => void guardarEnEvento(COLECCION_MESAS, { ...m, orden: i }));
-        invitadosIniciales.forEach((g, i) => void guardarEnEvento(COLECCION_ACOMODO, { ...g, orden: i }));
+        const ev = eventoActual();
+        mesasIniciales.forEach(
+          (m, i) =>
+            void guardarEnEvento(COLECCION_MESAS, { ...m, id: idDeEjemplo(m.id, ev), orden: i }),
+        );
+        invitadosIniciales.forEach(
+          (g, i) =>
+            void guardarEnEvento(COLECCION_ACOMODO, {
+              ...g,
+              id: idDeEjemplo(g.id, ev),
+              mesaId: g.mesaId === null ? null : idDeEjemplo(g.mesaId, ev),
+              orden: i,
+            }),
+        );
         mostrarAviso("Volvimos al acomodo de ejemplo.");
       } else {
         mostrarAviso("El acomodo quedó vacío.");

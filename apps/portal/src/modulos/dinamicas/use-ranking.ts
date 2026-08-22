@@ -7,7 +7,7 @@
  * el tablero del anfitrión, que sigue en la app `dinamicas`). Mismo código.
  */
 import * as React from "react";
-import { obtenerSync } from "@salones/sync";
+import { obtenerSync, esVitrina, esVitrinaPropia } from "@salones/sync";
 import { COLECCION_RANKING, nuevoIdJugador, rankingDemo, type Jugador } from "./lib";
 
 export function useRanking(evento: string) {
@@ -19,7 +19,7 @@ export function useRanking(evento: string) {
 
     // Solo en la vitrina (evento "demo" sin servidor): si el tablero está vacío,
     // se siembra con jugadores de ejemplo. Un evento REAL nunca los ve.
-    if (evento === "demo" && sync.nombre === "local") {
+    if (esVitrina(evento) && (sync.nombre === "local" || esVitrinaPropia(evento))) {
       void sync.listar<Jugador>(evento, COLECCION_RANKING).then((items) => {
         if (items.length === 0) {
           for (const j of rankingDemo()) void sync.guardar(evento, COLECCION_RANKING, j);

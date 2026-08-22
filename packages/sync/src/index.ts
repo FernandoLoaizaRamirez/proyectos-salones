@@ -351,6 +351,10 @@ function crearProveedorServidor(url: string, anon: string): ProveedorSync {
   const obtenerPase = (evento: string) =>
     pedirPase(pases, evento, rpcPase, { p_codigo: evento }, "sin-pase");
 
+  // ¿La base ya admite una vitrina por visitante (migración 0022)? Se pregunta
+  // una vez, en segundo plano, y la respuesta se usa en la siguiente carga.
+  void detectarSoporteDeVitrina(rpcPase, auth);
+
   /**
    * Pase de ANFITRIÓN: solo se puede pedir si este dispositivo tiene la llave
    * privada del evento (el `&a=` de su enlace). Sin llave no se pide nada —
@@ -358,8 +362,9 @@ function crearProveedorServidor(url: string, anon: string): ProveedorSync {
    */
   async function obtenerPaseAnfitrion(evento: string): Promise<string | null> {
     const clave = claveAnfitrion(evento);
-    // "demo" es la vitrina pública: cualquiera modera la demostración.
-    if (!clave && evento !== "demo") return null;
+    // En una vitrina pública cualquiera modera: es contenido de mentira, y en
+    // la vitrina propia de un visitante ese "cualquiera" es él solo.
+    if (!clave && !esVitrina(evento)) return null;
     return pedirPase(
       pasesAnfitrion,
       evento,
@@ -1082,17 +1087,119 @@ export function estaConectado(): boolean {
 /**
  * Lee el código del evento desde el enlace (?e=...). Así cada evento real tiene
  * su propio espacio: el salón recibe enlaces como  /firmar?e=boda-garcia-x7k2
- * y su contenido no se mezcla con el de nadie más. Sin ?e= se usa el evento de
- * demostración ("demo"), que es el de las vitrinas públicas.
+ * y su contenido no se mezcla con el de nadie más.
  *
  * El código funciona como una "llave por enlace": al ser aleatorio y difícil de
  * adivinar, solo quien recibió el enlace/QR puede ver o escribir ese evento.
+ *
+ * SIN `?e=` — LA VITRINA DE CADA VISITANTE (21 ago 2026)
+ *   Antes todas las demostraciones caían en un mismo evento, "demo", y eso se
+ *   notaba al vender: las demos abrían VACÍAS (los ejemplos no se podían
+ *   sembrar sin chocar entre sí, porque `items.id` es llave primaria global),
+ *   lo que subía un visitante lo veían todos, y si alguien borraba algo se lo
+ *   borraba a los demás.
+ *
+ *   Ahora cada navegador estrena su PROPIA vitrina —`demo-k3f9x2`— y se la
+ *   queda. Su acomodo, sus canciones y sus fotos son suyos; si comparte el QR,
+ *   quien lo escanee cae en SU vitrina, que es justo lo que el salón quiere
+ *   enseñar cuando prueba la demo delante de un cliente.
  */
 export function eventoActual(porDefecto = "demo"): string {
   if (!hayNavegador()) return porDefecto;
   const e = new URLSearchParams(window.location.search).get("e");
   // Solo letras, números y guiones, para que el código viaje limpio en el enlace.
-  return e && /^[a-z0-9-]{1,60}$/i.test(e) ? e : porDefecto;
+  if (e && /^[a-z0-9-]{1,60}$/i.test(e)) return e;
+  return porDefecto === "demo" ? vitrinaPropia() : porDefecto;
+}
+
+/* ------------------------------------------------------------------ */
+/* La vitrina de este visitante                                        */
+/* ------------------------------------------------------------------ */
+
+const K_VITRINA = "salones:vitrina";
+/**
+ * Recuerda si el SERVIDOR ya admite vitrinas por visitante (migración 0022).
+ * Mientras no la hayan corrido, `emitir_pase("demo-…")` devuelve null y esos
+ * eventos no podrían escribir (401): por eso se sigue usando el "demo" de
+ * siempre hasta comprobar que la base está lista. Así este código se puede
+ * desplegar ANTES de la migración sin romper una sola demo.
+ */
+const K_SOPORTE = "salones:vitrina-admitida";
+
+/** Prefijo reservado para las vitrinas públicas. Debe coincidir con `es_vitrina` (SQL). */
+export const PREFIJO_VITRINA = "demo-";
+
+/** ¿Este evento es una vitrina pública (la compartida o la de un visitante)? */
+export function esVitrina(evento: string = eventoActual()): boolean {
+  return evento === "demo" || evento.startsWith(PREFIJO_VITRINA);
+}
+
+/**
+ * ¿Es la vitrina PROPIA de un visitante (no el "demo" compartido de siempre)?
+ * Es la única donde se siembran los ejemplos en el servidor: ahí los ids llevan
+ * su sufijo y no pueden chocar con los de nadie.
+ */
+export function esVitrinaPropia(evento: string = eventoActual()): boolean {
+  return evento.startsWith(PREFIJO_VITRINA);
+}
+
+/**
+ * El id que le toca a un dato de EJEMPLO dentro de una vitrina.
+ *
+ * `items.id` es llave primaria GLOBAL, así que sembrar "M-PRIN" en dos vitrinas
+ * chocaría. Se le pega el sufijo de la vitrina —`M-PRIN-k3f9x2`— y con eso cada
+ * una tiene los suyos. Es DETERMINISTA a propósito: si la siembra corre dos
+ * veces (dos pestañas abiertas), la segunda reescribe las mismas filas en vez
+ * de duplicar la demo entera.
+ *
+ * En el "demo" compartido y en el modo local se devuelve el id tal cual, que es
+ * como ha funcionado siempre.
+ */
+export function idDeEjemplo(id: string, evento: string = eventoActual()): string {
+  if (!esVitrinaPropia(evento)) return id;
+  return `${id}-${evento.slice(PREFIJO_VITRINA.length)}`;
+}
+
+/**
+ * El evento propio de este navegador. Se inventa la primera vez y se guarda;
+ * si el navegador no deja guardar (modo privado), se cae al "demo" compartido,
+ * que es exactamente el comportamiento de antes.
+ */
+function vitrinaPropia(): string {
+  try {
+    if (window.localStorage.getItem(K_SOPORTE) !== "1") return "demo";
+    const guardada = window.localStorage.getItem(K_VITRINA);
+    if (guardada && /^[a-z0-9-]{1,60}$/i.test(guardada)) return guardada;
+    const nueva = PREFIJO_VITRINA + Math.random().toString(36).slice(2, 8);
+    window.localStorage.setItem(K_VITRINA, nueva);
+    return nueva;
+  } catch {
+    return "demo";
+  }
+}
+
+/**
+ * Pregunta UNA vez si la base ya admite vitrinas por visitante y lo apunta.
+ * Se llama sola al crear el proveedor de servidor; no bloquea a nadie y su
+ * respuesta se aplica en la siguiente carga de la página.
+ */
+async function detectarSoporteDeVitrina(rpcPase: string, cabeceras: Record<string, string>) {
+  if (!hayNavegador()) return;
+  try {
+    if (window.localStorage.getItem(K_SOPORTE) === "1") return;
+    const sonda = PREFIJO_VITRINA + "sonda";
+    const res = await fetch(rpcPase, {
+      method: "POST",
+      headers: { ...cabeceras, "Content-Type": "application/json" },
+      body: JSON.stringify({ p_codigo: sonda }),
+    });
+    if (!res.ok) return;
+    const pase = (await res.json()) as unknown;
+    // Un pase de verdad significa que la 0022 ya está corrida.
+    window.localStorage.setItem(K_SOPORTE, typeof pase === "string" && pase ? "1" : "0");
+  } catch {
+    /* sin red: se queda como estaba y se vuelve a intentar en la próxima carga */
+  }
 }
 
 /**
@@ -1619,12 +1726,14 @@ export async function descargarMedios(
  * Devuelve `true` cuando:
  *   - no hay servidor central (modo local: un solo dispositivo, quien lo usa es
  *     el anfitrión — es el modo de las demos y de los planes Renta / Compra), o
- *   - el evento es "demo" (la vitrina pública se puede moderar sin llave), o
+ *   - el evento es una VITRINA pública ("demo" o la propia de este visitante,
+ *     `demo-…`): se puede moderar sin llave porque es contenido de mentira, y
+ *     en la vitrina propia el único que entra es quien la estrenó, o
  *   - este dispositivo tiene la llave privada del evento (llegó por `&a=`).
  */
 export function esAnfitrion(evento: string = eventoActual()): boolean {
   if (!estaConectado()) return true;
-  if (evento === "demo") return true;
+  if (esVitrina(evento)) return true;
   return claveAnfitrion(evento) !== null;
 }
 

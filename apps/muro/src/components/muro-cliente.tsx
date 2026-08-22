@@ -20,6 +20,8 @@ import {
   sufijoEvento,
   esAnfitrion,
   resolverMedios,
+  esVitrinaPropia,
+  idDeEjemplo,
 } from "@salones/sync";
 import { QR } from "@/components/qr";
 import { ModoPantalla } from "@/components/modo-pantalla";
@@ -98,13 +100,20 @@ export function MuroCliente() {
     const cancelar = sync.suscribir<Mensaje>(eventoId, COLECCION_MENSAJES, setMensajes);
     setCargado(true);
 
-    // Solo en la demo local: si el muro está vacío, lo llenamos con ejemplos
-    // para que no se vea vacío. Conectado al servidor no se siembra nada.
-    if (sync.nombre === "local") {
+    /*
+     * La demo se llena sola: en modo local y tambien en la VITRINA PROPIA de
+     * este visitante (`demo-...`), donde los ejemplos llevan su sufijo y no
+     * pueden chocar con los de nadie. En el "demo" compartido NO se siembra:
+     * alli los ids serian fijos y globales.
+     */
+    if (sync.nombre === "local" || esVitrinaPropia(eventoId)) {
       sync.listar<Mensaje>(eventoId, COLECCION_MENSAJES).then((items) => {
         if (items.length === 0) {
           for (const m of mensajesIniciales()) {
-            void sync.guardar(eventoId, COLECCION_MENSAJES, m);
+            void sync.guardar(eventoId, COLECCION_MENSAJES, {
+              ...m,
+              id: idDeEjemplo(m.id, eventoId),
+            });
           }
         }
       });

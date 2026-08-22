@@ -3,7 +3,7 @@
 import * as React from "react";
 import { Plus, Check, Trash2, MessageCircle, Clock } from "lucide-react";
 import { Button, Card, cn, Confirmar, guardarLocal } from "@salones/ui";
-import { obtenerSync, eventoActual, sufijoEvento, esAnfitrion } from "@salones/sync";
+import { obtenerSync, eventoActual, sufijoEvento, esAnfitrion, esVitrinaPropia, idDeEjemplo } from "@salones/sync";
 import {
   invitadosIniciales,
   respuestasIniciales,
@@ -90,12 +90,20 @@ export function RsvpCliente() {
     const eventoId = eventoActual();
     const sync = obtenerSync();
     const cancelar = sync.suscribir<RespuestaItem>(eventoId, COLECCION_RESPUESTAS, setRespuestas);
-    // Solo en la demo local: sembramos respuestas de ejemplo si no hay ninguna.
-    if (sync.nombre === "local") {
+    /*
+     * La demo se llena sola: en modo local y tambien en la VITRINA PROPIA de
+     * este visitante (`demo-...`), donde los ejemplos llevan su sufijo y no
+     * pueden chocar con los de nadie. En el "demo" compartido NO se siembra:
+     * alli los ids serian fijos y globales.
+     */
+    if (sync.nombre === "local" || esVitrinaPropia(eventoId)) {
       sync.listar<RespuestaItem>(eventoId, COLECCION_RESPUESTAS).then((items) => {
         if (items.length === 0) {
           for (const [id, r] of Object.entries(respuestasIniciales)) {
-            void sync.guardar(eventoId, COLECCION_RESPUESTAS, { id, ...r });
+            void sync.guardar(eventoId, COLECCION_RESPUESTAS, {
+              id: idDeEjemplo(id, eventoId),
+              ...r,
+            });
           }
         }
       });

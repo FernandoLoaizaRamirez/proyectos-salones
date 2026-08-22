@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { obtenerSync, eventoActual } from "@salones/sync";
+import { obtenerSync, eventoActual, esVitrinaPropia, idDeEjemplo } from "@salones/sync";
 import { guardarLocal } from "@salones/ui";
 import {
   cancionesIniciales,
@@ -46,12 +46,20 @@ export function useCanciones() {
     const cancelar = sync.suscribir<Cancion>(eventoId, COLECCION_CANCIONES, setCanciones);
     setCargado(true);
 
-    // Solo en la demo local: si la lista está vacía, la sembramos con ejemplos.
-    if (sync.nombre === "local") {
+    /*
+     * La demo se llena sola: en modo local y tambien en la VITRINA PROPIA de
+     * este visitante (`demo-...`), donde los ejemplos llevan su sufijo y no
+     * pueden chocar con los de nadie. En el "demo" compartido NO se siembra:
+     * alli los ids serian fijos y globales.
+     */
+    if (sync.nombre === "local" || esVitrinaPropia(eventoId)) {
       sync.listar<Cancion>(eventoId, COLECCION_CANCIONES).then((items) => {
         if (items.length === 0) {
           for (const c of cancionesIniciales()) {
-            void sync.guardar(eventoId, COLECCION_CANCIONES, c);
+            void sync.guardar(eventoId, COLECCION_CANCIONES, {
+              ...c,
+              id: idDeEjemplo(c.id, eventoId),
+            });
           }
         }
       });

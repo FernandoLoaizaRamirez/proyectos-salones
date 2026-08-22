@@ -3,7 +3,7 @@
 import * as React from "react";
 import { Plus, Check, X, Trash2, Download, MessageCircle } from "lucide-react";
 import { Button, Card, cn, Confirmar, leerLocal } from "@salones/ui";
-import { obtenerSync, eventoActual } from "@salones/sync";
+import { obtenerSync, eventoActual, esVitrinaPropia, idDeEjemplo } from "@salones/sync";
 import {
   invitadosIniciales,
   idDesdeQR,
@@ -118,15 +118,20 @@ export function PasesCliente() {
       setIngresados(mapa);
     });
 
-    if (sync.nombre === "local") {
-      // Solo en la demo: los ejemplos NUNCA viajan al servidor. Sus ids son
-      // fijos y la llave primaria de `items` es global, así que dos eventos
-      // sembrados chocarían — y cada boda real nacería con gente de mentira.
-      // Se siembran al revés para que se vean en el orden de siempre.
+    if (sync.nombre === "local" || esVitrinaPropia(eventoId)) {
+      /*
+       * Los ejemplos se siembran en modo local y en la VITRINA PROPIA de este
+       * visitante, con el sufijo de su vitrina en el id (la llave primaria de
+       * `items` es global). En el "demo" compartido no se siembra.
+       * Se siembran al revés para que se vean en el orden de siempre.
+       */
       void sync.listar<Invitado>(eventoId, COLECCION_PASES).then((items) => {
         if (items.length === 0) {
           for (const i of [...invitadosIniciales].reverse()) {
-            void sync.guardar(eventoId, COLECCION_PASES, i);
+            void sync.guardar(eventoId, COLECCION_PASES, {
+              ...i,
+              id: idDeEjemplo(i.id, eventoId),
+            });
           }
         }
       });

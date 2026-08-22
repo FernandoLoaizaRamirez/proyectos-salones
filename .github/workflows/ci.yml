@@ -64,10 +64,23 @@ jobs:
         # Se enciende el 21 jul 2026, cuando las 6 piezas quedaron desplegadas y
         # verificadas ("Todas las piezas están encendidas", 53 pruebas pasando).
         # ANTES de esa fecha habría dado un rojo permanente sin utilidad.
+        #
+        # EXIGIR_CONEXION=1 → tests/despliegue/apps-conectadas.test.ts deja de
+        # saltarse y ABRE LAS APPS YA PUBLICADAS para comprobar que llevan dentro
+        # la dirección y la llave de Supabase. Sin ellas, `obtenerSync()` cae en
+        # modo LOCAL: la app se ve perfecta, no da ningún error, y nada de lo que
+        # captura el salón sale del teléfono del invitado.
+        #
+        # Se enciende el 21 ago 2026, el día que se descubrió que `invitaciones` y
+        # `photobooth` llevaban SEMANAS así en producción con el CI en verde: no
+        # hay commit que lo delate, porque quien quita las variables es una
+        # persona en el panel de Vercel. Por eso esto mira PRODUCCIÓN y no el
+        # código, y por eso corre en cada push aunque el commit no toque las apps.
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
           EXIGIR_SEGURIDAD: 1
+          EXIGIR_CONEXION: 1
 
   compilar:
     runs-on: ubuntu-latest

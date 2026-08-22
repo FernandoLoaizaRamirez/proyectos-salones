@@ -132,10 +132,25 @@ function archivosDe(carpeta: string): string[] {
   return salida;
 }
 
-/** ¿Esta app importa `@salones/sync` en alguna parte de su código? */
+/**
+ * Un IMPORT de verdad, no una mención suelta.
+ *
+ * Antes esto era un `includes("@salones/sync")` sobre el archivo entero, y el
+ * 22 ago 2026 dio un falso positivo: `apps/sitio-salon/src/lib/vitrina.ts` COPIA
+ * la constante `PREFIJO_VITRINA` en vez de importarla —para no arrastrar el
+ * cliente de la base a una web de marketing— y lo explica en un comentario que
+ * nombra el paquete. La alarma marcó el sitio como "conectado a escondidas" y
+ * puso el CI rojo por hablar del paquete, no por usarlo.
+ *
+ * Se cubren las tres formas reales de traerlo: `from "…"`, `require("…")` e
+ * `import("…")` dinámico. Sigue siendo texto, no análisis del código: es a
+ * propósito, porque tiene que correr sin compilar nada.
+ */
+const IMPORTA_SYNC = /(?:from\s*|require\s*\(\s*|import\s*\(\s*)["']@salones\/sync["']/;
+
 function usaLaBase(app: string): boolean {
   return archivosDe(join(RAIZ, "apps", app, "src")).some((f) =>
-    readFileSync(f, "utf8").includes("@salones/sync"),
+    IMPORTA_SYNC.test(readFileSync(f, "utf8")),
   );
 }
 

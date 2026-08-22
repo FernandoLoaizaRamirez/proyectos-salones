@@ -222,5 +222,11 @@ export const puertaInvitado = {
   titulo: "¿Vienes a un evento?",
   texto:
     "Si te invitaron a una celebración en el recinto, aquí está todo lo tuyo: en qué mesa te toca, las fotos de la noche, la música que suena y el mensaje que quieras dejar. Escribe el código de tu invitación.",
-  ejemplo: "Ej. boda-ana-rodrigo",
+  /*
+   * NO poner aquí un código de ejemplo con pinta de real. Decía
+   * "Ej. boda-ana-rodrigo" y ese evento NO existe: quien lo escribía tal cual
+   * —que es lo natural al probar algo— se topaba con "No encontramos este
+   * evento" en plena demostración.
+   */
+  ejemplo: "El código de tu invitación",
 };

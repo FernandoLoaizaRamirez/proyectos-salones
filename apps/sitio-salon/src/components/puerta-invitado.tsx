@@ -4,6 +4,7 @@ import * as React from "react";
 import { ArrowRight } from "lucide-react";
 import { Reveal } from "./reveal";
 import { salon, puertaInvitado } from "@/lib/salon";
+import { conVitrina, leerOInventarVitrina } from "@/lib/vitrina";
 
 /**
  * LA PUERTA DEL INVITADO — el eslabón que faltaba entre la web y el evento.
@@ -48,6 +49,18 @@ const PORTAL_BASE =
 export function PuertaInvitado() {
   const [codigo, setCodigo] = React.useState("");
   const [error, setError] = React.useState("");
+
+  /*
+   * El código de vitrina de quien mira. Empieza en null A PROPÓSITO: en el
+   * servidor no existe `localStorage`, y si el primer dibujado no coincidiera
+   * con el del servidor, React se quejaría de la hidratación. Se rellena justo
+   * después de montar, y hasta entonces el enlace apunta al demo pelado — que
+   * es exactamente lo que había antes.
+   */
+  const [vitrina, setVitrina] = React.useState<string | null>(null);
+  React.useEffect(() => {
+    setVitrina(leerOInventarVitrina());
+  }, []);
 
   const entrar = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -123,7 +136,7 @@ export function PuertaInvitado() {
           <p className="mt-8 text-sm text-[var(--puerta-sobre-75)]">
             ¿No tienes código?{" "}
             <a
-              href={`${PORTAL_BASE}/?e=demo`}
+              href={conVitrina(PORTAL_BASE, vitrina)}
               className="underline decoration-[var(--puerta-sobre-50)] underline-offset-4 transition-opacity hover:opacity-80"
             >
               Mira cómo se ve por dentro

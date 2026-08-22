@@ -481,6 +481,92 @@ export function precioPaquete(pkg: Paquete, modelo: Modelo): number {
 }
 
 /* ------------------------------------------------------------------ */
+/* La caja cuando se eligen VARIOS paquetes a la vez                   */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Los paquetes SE SOLAPAN: "Todo Incluido" trae al Esencial entero dentro. La
+ * tienda los sumaba como si fueran cosas distintas y pedía $78,150 por las 12
+ * apps que ella misma anuncia en $49,800 — el sitio web y el álbum cobrados dos
+ * veces. Un salón que ve ese número no pregunta: se va.
+ *
+ * REGLA DE LA CAJA: cada app se cobra UNA sola vez, y se la queda el paquete
+ * que le dé el MEJOR descuento (a igualdad, el paquete más grande, que es el
+ * que el cliente ve como "el suyo"). Se eligió esto, y no simplemente prohibir
+ * agregar un paquete que ya viene en otro, porque:
+ *
+ *   - El cliente nunca sale perdiendo por haber tocado dos botones: agregar el
+ *     Esencial y luego Todo Incluido cuesta exactamente lo mismo que agregar
+ *     solo Todo Incluido, que es el precio anunciado.
+ *   - La cuenta sigue CUADRANDO renglón por renglón (en el resumen y en el
+ *     WhatsApp el paquete absorbido aparece como "ya viene en X, sin costo
+ *     extra"), en vez de que un renglón desaparezca sin explicación.
+ *   - Aguanta paquetes futuros que se solapen A MEDIAS, donde "prohibir" no
+ *     sabría qué hacer: ahí cada app se va con su mejor descuento y ya.
+ */
+export type LineaPaquete = {
+  pkg: Paquete;
+  /** Las apps que ESTE paquete cobra en la cuenta. */
+  cobra: Producto[];
+  /** Las que no cobra porque otro paquete elegido ya las trae. */
+  yaCubiertas: Producto[];
+  /** Lo que suma esta línea, con su descuento y redondeado a $50. */
+  precio: number;
+  /** Si no cobra nada: el paquete elegido que ya lo trae entero. */
+  absorbidoPor?: Paquete;
+};
+
+/** Reparte las apps entre los paquetes elegidos para que nada se cobre dos veces. */
+export function repartirPaquetes(elegidos: Paquete[], modelo: Modelo): LineaPaquete[] {
+  // Quién se queda cada app: primero el de MEJOR descuento y, a igualdad, el
+  // más grande. El orden de llegada no manda a propósito — el total no puede
+  // depender de en qué orden tocó el cliente los botones.
+  const porPreferencia = [...elegidos].sort(
+    (a, b) => b.descuento - a.descuento || b.incluye.length - a.incluye.length,
+  );
+  const cobradoPor = new Map<string, Paquete>();
+  for (const pk of porPreferencia) {
+    for (const id of pk.incluye) if (!cobradoPor.has(id)) cobradoPor.set(id, pk);
+  }
+
+  return elegidos.map((pk) => {
+    const apps = appsDelPaquete(pk);
+    const cobra = apps.filter((a) => cobradoPor.get(a.id) === pk);
+    const yaCubiertas = apps.filter((a) => cobradoPor.get(a.id) !== pk);
+    const bruto = cobra.reduce((s, a) => s + a.precios[modelo], 0);
+    return {
+      pkg: pk,
+      cobra,
+      yaCubiertas,
+      // El redondeo a $50 se hace por línea (igual que en `precioPaquete`) para
+      // que el resumen sume EXACTAMENTE lo que se ve renglón por renglón.
+      precio: Math.round((bruto * (1 - pk.descuento)) / 50) * 50,
+      absorbidoPor: cobra.length === 0 ? cobradoPor.get(yaCubiertas[0]?.id ?? "") : undefined,
+    };
+  });
+}
+
+/** Lo que suma la caja por los paquetes elegidos, sin cobrar nada dos veces. */
+export function totalPaquetes(elegidos: Paquete[], modelo: Modelo): number {
+  return repartirPaquetes(elegidos, modelo).reduce((s, l) => s + l.precio, 0);
+}
+
+/**
+ * ¿Este paquete ya viene ENTERO dentro de otro que el cliente eligió? Mismo
+ * trato que las apps sueltas: su botón se apaga y lo dice, en vez de dejar que
+ * se sume dos veces lo mismo. Se exige que el grande descuente igual o más
+ * (regla de la escalera) para que apagarlo nunca le salga más caro al cliente.
+ */
+export function paqueteCubiertoPor(pkg: Paquete, elegidos: Paquete[]): Paquete | undefined {
+  return elegidos.find(
+    (otro) =>
+      otro.id !== pkg.id &&
+      otro.descuento >= pkg.descuento &&
+      pkg.incluye.every((id) => otro.incluye.includes(id)),
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /* Qué modelos aplican a cada app / paquete                            */
 /* ------------------------------------------------------------------ */
 

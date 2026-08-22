@@ -24,16 +24,22 @@ import {
   appsDelPaquete,
   precioPaquete,
   precioPaqueteBruto,
+  repartirPaquetes,
+  paqueteCubiertoPor,
   modelosDeProducto,
   modelosDePaquete,
   nombreModelo,
   notaHonestaGeneral,
   money,
   type Modelo,
+  type Paquete,
   type Producto,
 } from "@/lib/catalogo";
 
 const infoModelo = (m: Modelo) => modelos.find((x) => x.clave === m)!;
+
+/** "Paquete Todo Incluido" → "Todo Incluido", para meterlo dentro de una frase. */
+const sinPrefijo = (pk: Paquete) => pk.nombre.replace(/^Paquete /, "");
 
 /** ¿La app solo se vende (hoy, el sitio web)? Entonces siempre es pago único. */
 const soloSeVende = (p: Producto) => {
@@ -208,6 +214,13 @@ export function CatalogoCliente() {
   // para que un paquete fuera del modelo no "absorba" apps que sí se cobran.
   const enPaquete = new Set(paqSel.flatMap((pk) => pk.incluye));
 
+  // Sin cobro doble ENTRE PAQUETES: "Todo Incluido" trae al Esencial entero,
+  // así que el reparto decide qué app cobra cada uno (regla en catalogo.ts).
+  // Los absorbidos cuestan $0 y se dicen en el resumen, no se borran.
+  const lineasPaq = repartirPaquetes(paqSel, modelo);
+  const paqCobrados = lineasPaq.filter((l) => !l.absorbidoPor);
+  const paqAbsorbidos = lineasPaq.filter((l) => l.absorbidoPor);
+
   // La selección de apps se parte en dos para no mezclar peras con manzanas:
   // lo que se cobra en el modelo elegido (por evento / por mes / pago único) y
   // lo que SOLO se vende (hoy, el sitio web), que siempre es pago único aparte.
@@ -217,10 +230,13 @@ export function CatalogoCliente() {
 
   const totalPeriodico =
     appsModelo.reduce((s, p) => s + p.precios[modelo], 0) +
-    paqSel.reduce((s, pk) => s + precioPaquete(pk, modelo), 0);
+    lineasPaq.reduce((s, l) => s + l.precio, 0);
   const totalUnico = appsUnicas.reduce((s, p) => s + p.precios[AppMode.Owned], 0);
 
-  const nSel = appsModelo.length + appsUnicas.length + paqSel.length;
+  // Los paquetes absorbidos no cuentan como "cosa seleccionada": su botón ya
+  // no dice "Agregado" sino "Ya viene en…", igual que las apps sueltas que un
+  // paquete se traga.
+  const nSel = appsModelo.length + appsUnicas.length + paqCobrados.length;
 
   // Cuando TODO lo elegido es pago único (solo el sitio web), etiquetarlo con
   // el modelo ("Servicio gestionado") era una contradicción: se omite.
@@ -246,11 +262,20 @@ export function CatalogoCliente() {
           `¡Hola! Me interesa contratar con ${vendedor.nombre}.`,
           ...(soloUnico ? [] : [`Modelo de contratación: ${modeloInfo.nombre}.`]),
           "",
-          ...paqSel.map(
-            (pk) =>
-              `• Paquete ${pk.nombre.replace(/^Paquete /, "")} (${appsDelPaquete(pk)
+          ...paqCobrados.map(
+            (l) =>
+              `• Paquete ${sinPrefijo(l.pkg)} (${l.cobra
                 .map((a) => a.nombre)
-                .join(", ")}) — ${money(precioPaquete(pk, modelo))}${modeloInfo.periodo}`,
+                .join(", ")}) — ${money(l.precio)}${modeloInfo.periodo}`,
+          ),
+          // El paquete que otro ya trae viaja al WhatsApp diciéndolo: si se
+          // callara, Fernando recibiría una lista distinta de la que el cliente
+          // creyó armar.
+          ...paqAbsorbidos.map(
+            (l) =>
+              `• Paquete ${sinPrefijo(l.pkg)} — ya viene dentro de ${sinPrefijo(
+                l.absorbidoPor!,
+              )}, sin costo extra`,
           ),
           ...appsModelo.map(
             (p) => `• ${p.nombre} — ${money(p.precios[modelo])}${modeloInfo.periodo}`,
@@ -493,10 +518,18 @@ export function CatalogoCliente() {
           {paquetes.map((pk) => {
             const mDisp = modelosDePaquete(pk);
             const disponible = mDisp.includes(modelo);
-            const activo = !!selPaq[pk.id] && disponible;
             const primero = mDisp[0]!;
-            const bruto = precioPaqueteBruto(pk, modelo);
-            const precio = precioPaquete(pk, modelo);
+            // Ya viene entero dentro de otro paquete agregado: se apaga el
+            // botón antes de que el cliente lo sume, igual que las apps.
+            const cubierto = disponible ? paqueteCubiertoPor(pk, paqSel) : undefined;
+            const activo = !!selPaq[pk.id] && disponible && !cubierto;
+            // Si esta pestaña no lo vende (lleva el sitio web, que solo se
+            // compra), los números salen de la modalidad donde SÍ existe:
+            // enseñar aquí el precio del gestionado sería inventarse una cifra.
+            const modeloPrecio = disponible ? modelo : primero;
+            const infoPrecio = disponible ? modeloInfo : infoModelo(primero);
+            const bruto = precioPaqueteBruto(pk, modeloPrecio);
+            const precio = precioPaquete(pk, modeloPrecio);
             const ahorro = bruto - precio;
             const pct = bruto > 0 ? Math.round((ahorro / bruto) * 100) : 0;
             return (
@@ -537,19 +570,40 @@ export function CatalogoCliente() {
                   </ul>
                 </div>
                 <div className="mt-auto border-t border-border p-6 pt-4">
+                  {/* El precio va SIEMPRE, también cuando la pestaña de arriba
+                      no vende este paquete. La tarjeta destacada abría muda en
+                      "Servicio gestionado" —un "Solo en Compra completa" y un
+                      botón, sin un solo número— y es justo la primera que mira
+                      un salón. Muda no enamora: el número con su etiqueta sí,
+                      y la regla de negocio (el sitio web no se renta) se
+                      explica debajo en vez de esconder la cifra. */}
+                  <div className="flex flex-wrap items-baseline gap-x-2">
+                    <span className="text-sm text-muted-foreground line-through">
+                      {money(bruto)}
+                    </span>
+                    <span className="text-2xl font-semibold">{money(precio)}</span>
+                    <span className="text-sm text-muted-foreground">
+                      {infoPrecio.periodo}
+                      {/* Fuera de su pestaña, el número lleva pegado a qué
+                          modalidad pertenece: "$49,800 pago único · Compra
+                          completa" no se puede confundir con el precio de la
+                          pestaña en la que está parado el cliente. */}
+                      {disponible ? null : ` · ${infoPrecio.nombre}`}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs font-medium text-primary">
+                    Ahorras {pct}% · {money(ahorro)}
+                    {infoPrecio.periodo}
+                  </p>
+
                   {disponible ? (
-                    <>
-                      <div className="flex flex-wrap items-baseline gap-x-2">
-                        <span className="text-sm text-muted-foreground line-through">
-                          {money(bruto)}
-                        </span>
-                        <span className="text-2xl font-semibold">{money(precio)}</span>
-                        <span className="text-sm text-muted-foreground">{modeloInfo.periodo}</span>
-                      </div>
-                      <p className="mt-1 text-xs font-medium text-primary">
-                        Ahorras {pct}% · {money(ahorro)}
-                        {modeloInfo.periodo}
-                      </p>
+                    cubierto ? (
+                      /* Sin cobro doble entre paquetes: el que ya viene entero
+                         dentro de otro agregado no se puede volver a sumar. */
+                      <Button variant="outline" disabled className="mt-4 w-full">
+                        <Check className="size-4" /> Ya viene en {sinPrefijo(cubierto)}
+                      </Button>
+                    ) : (
                       <Button
                         variant={activo ? "primary" : "outline"}
                         className="mt-4 w-full"
@@ -566,15 +620,15 @@ export function CatalogoCliente() {
                           </>
                         )}
                       </Button>
-                    </>
+                    )
                   ) : (
                     <>
-                      <p className="text-sm">
+                      <p className="mt-2 text-sm">
                         <span className="font-medium">
-                          Solo en {mDisp.map(nombreModelo).join(" o ")}
+                          Solo en {mDisp.map(nombreModelo).join(" o ")}:
                         </span>{" "}
                         <span className="text-muted-foreground">
-                          (incluye el sitio web, que se vende).
+                          incluye el sitio web de tu salón, que se hace a tu medida y no se renta.
                         </span>
                       </p>
                       {selPaq[pk.id] ? (
@@ -590,7 +644,7 @@ export function CatalogoCliente() {
                         className="mt-4 w-full"
                         onClick={() => setModelo(primero)}
                       >
-                        Ver en {infoModelo(primero).nombre}
+                        Elegir {infoModelo(primero).nombre}
                       </Button>
                     </>
                   )}
@@ -616,12 +670,36 @@ export function CatalogoCliente() {
                 calma.
               </p>
               <ul className="mt-6 space-y-2 text-sm">
-                {paqSel.map((pk) => (
-                  <li key={pk.id} className="flex items-baseline justify-between gap-3">
-                    <span>{pk.nombre}</span>
+                {paqCobrados.map((l) => (
+                  <li key={l.pkg.id} className="flex items-baseline justify-between gap-3">
+                    <span>
+                      {l.pkg.nombre}
+                      {/* Solape a medias (hoy no lo hay: los paquetes o son
+                          ajenos o uno contiene al otro). Si algún día Fernando
+                          arma uno que comparta apps con otro, el renglón dice
+                          por qué cuesta menos que su tarjeta. */}
+                      {l.yaCubiertas.length > 0 ? (
+                        <span className="block text-xs text-muted-foreground">
+                          sin las {l.yaCubiertas.length} apps que ya llevas en otro paquete
+                        </span>
+                      ) : null}
+                    </span>
                     <span className="whitespace-nowrap font-medium">
-                      {money(precioPaquete(pk, modelo))}
+                      {money(l.precio)}
                       {modeloInfo.periodo}
+                    </span>
+                  </li>
+                ))}
+                {/* El paquete que otro ya trae entero: se queda a la vista en
+                    $0 para que se entienda por qué el total no subió. */}
+                {paqAbsorbidos.map((l) => (
+                  <li
+                    key={l.pkg.id}
+                    className="flex items-baseline justify-between gap-3 text-muted-foreground"
+                  >
+                    <span>{l.pkg.nombre}</span>
+                    <span className="text-right text-xs">
+                      ya viene en {sinPrefijo(l.absorbidoPor!)} · sin costo extra
                     </span>
                   </li>
                 ))}

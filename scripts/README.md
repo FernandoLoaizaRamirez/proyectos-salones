@@ -42,3 +42,15 @@ es la forma segura: deja a las 14 apps con el código de `main`.
 Dejar de fiarse de `VERCEL_GIT_PREVIOUS_SHA` y preguntarle a la API de Vercel
 cuál fue el último despliegue **READY de esa app**, que es la única referencia
 que no miente. Necesita un token de Vercel disponible durante la construcción.
+
+## Lo que NO funciona (probado el 22 ago 2026)
+
+- **`npx vercel deploy --prod` desde la raíz.** No falla: se queda **colgado**
+  intentando subir el monorepo entero, y sale con código 0 sin haber creado nada.
+  Desde fuera parece que funcionó. Comprobado con `npx vercel ls`: ningún
+  despliegue nuevo. No es la salida.
+- **Esperar a que la fila llegue sola.** Vercel construye de una en una, y cada
+  push nuevo **descarta los intermedios**. Con otra sesión empujando cada pocos
+  minutos, las apps del final de la fila —el catálogo entre ellas— no llegan a su
+  turno nunca. Si hay alguien más trabajando en el repo, hay que esperar a que
+  pare antes de empujar el commit que reconstruye.

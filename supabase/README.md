@@ -31,6 +31,12 @@ Se aplican **en orden**. Cada una es idempotente/aditiva (segura de correr):
 | `0018_cupo_almacenamiento.sql` | **Cupo de espacio por evento**, medido de los bytes reales de `storage.objects`. Necesita la `0017`. | ✅ Corrida el 14 ago 2026. ⚠️ Sus cupos (3 GB / 15 GB) los reemplaza la `0019`: eran más grandes que todo el proyecto. |
 | `0019_cupos_plan_gratis.sql` | **Techo global del almacén** (900 MB) + cupos a escala del plan gratis + aviso al 80% en el diagnóstico. Necesita la `0018`. | ✅ Corrida el 14 ago 2026. **Aquí se cambian los cuatro números el día que se suba a un plan de pago.** |
 
+| `0023_tope_subidas_vuelve.sql` | **El tope de subidas vuelve a topar.** La `0022_vitrina_por_visitante` reescribió `permitir_subida` y de paso le quitó el `insert into media_permisos` (sin apunte, los contadores se quedan en cero y concede SIEMPRE) y le dio `grant execute` a `anon`, que la `0015` prohibía expresamente. Devuelve las dos cosas sin tocar los topes de las vitrinas. | ⛔ **PENDIENTE DE CORRER** (escrita el 21 ago 2026). Medido ese día contra producción: 65 llamadas seguidas con la misma huella, **65 concedidas** con un tope de 60. Idempotente. |
+
+> ⚠️ **Faltan en esta tabla la `0020`, la `0021` y las DOS `0022`** — sí, hay dos
+> archivos con el número 0022 (`album_privado` y `vitrina_por_visitante`), lo
+> que es una trampa para quien las corra a mano: por el número parecen una sola.
+
 > ⚠️ **CÓMO SABER DE VERDAD QUÉ ESTÁ CORRIDO.** No te fíes de esta tabla:
 > pregúntaselo a la base. (De las pruebas ya sí te puedes fiar: hasta el 14 ago
 > 2026, `sobrescritura.test.ts` se saltaba sus casos **en silencio** y salía

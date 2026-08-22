@@ -15,6 +15,7 @@
  *
  *   · x-evento-pase       → la sync nueva (pase firmado, migración 0006)
  *   · x-evento-anfitrion  → la llave del anfitrión (migración 0009)
+ *   · demo-               → la vitrina por visitante (migración 0022)
  *
  * USO:
  *   node scripts/comprobar-apps-al-dia.mjs
@@ -64,6 +65,13 @@ const SENALES = {
   pase: "x-evento-pase",
   anfitrion: "x-evento-anfitrion",
   medios: "media-ver",
+  /*
+   * `PREFIJO_VITRINA` de @salones/sync. Es un texto literal, así que sobrevive
+   * al minificado — los nombres de función NO: comprobar `esVitrinaPropia` da
+   * un falso "NO" en cuanto Next renombra. Aprendido el 21 ago 2026 buscando
+   * por qué las demos seguían compartiendo el evento "demo".
+   */
+  vitrina: "demo-",
 };
 
 async function bajar(url) {
@@ -94,21 +102,37 @@ for (const [nombre, url, ruta = "/"] of APPS) {
     const pase = codigo.includes(SENALES.pase);
     const anfitrion = codigo.includes(SENALES.anfitrion);
     const medios = codigo.includes(SENALES.medios);
+    const vitrina = codigo.includes(SENALES.vitrina);
+    /*
+     * La vitrina NO entra en `lista` a propósito: el corte de la 0009 no
+     * depende de ella. Si una app va atrasada de vitrina, la demo se ve pobre
+     * —comparte el evento "demo" y abre vacía— pero ninguna boda se rompe.
+     * Se informa, no se bloquea.
+     */
     const lista = pase && anfitrion;
     if (!lista) todasListas = false;
-    filas.push([nombre, marca(pase), marca(anfitrion), marca(medios), lista ? "LISTA" : "ATRASADA"]);
+    filas.push([
+      nombre,
+      marca(pase),
+      marca(anfitrion),
+      marca(medios),
+      marca(vitrina),
+      lista ? "LISTA" : "ATRASADA",
+    ]);
   } catch (e) {
     todasListas = false;
-    filas.push([nombre, "?", "?", "?", `NO RESPONDE (${e.message})`]);
+    filas.push([nombre, "?", "?", "?", "?", `NO RESPONDE (${e.message})`]);
   }
 }
 
 const ancho = (i) => Math.max(...filas.map((f) => f[i].length), 12);
 console.log(
-  ["app".padEnd(ancho(0)), "pase", "anfitrión", "fotos", "estado"].join("  "),
+  ["app".padEnd(ancho(0)), "pase", "anfitrión", "fotos", "vitrina", "estado"].join("  "),
 );
 for (const f of filas) {
-  console.log([f[0].padEnd(ancho(0)), f[1].padEnd(4), f[2].padEnd(9), f[3].padEnd(5), f[4]].join("  "));
+  console.log(
+    [f[0].padEnd(ancho(0)), f[1].padEnd(4), f[2].padEnd(9), f[3].padEnd(5), f[4].padEnd(7), f[5]].join("  "),
+  );
 }
 
 console.log("");

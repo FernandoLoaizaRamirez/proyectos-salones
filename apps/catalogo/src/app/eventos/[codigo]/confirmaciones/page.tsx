@@ -22,6 +22,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft,
+  BellRing,
   Check,
   ClipboardList,
   Copy,
@@ -39,8 +40,10 @@ import {
 import { Button, Card, cn, Confirmar, aCSV, descargarCSV, type ColumnaCSV } from "@salones/ui";
 import {
   COLECCION_ACOMODO,
+  COLECCION_INVITACION,
   COLECCION_MESAS,
   EstadoRSVP,
+  invitacionDe,
   idPaseDeInvitado,
   mesaDe,
   normalizarAcomodoCrudo,
@@ -76,6 +79,13 @@ import {
   telefonoBonito,
   type ListaLeida,
 } from "@/lib/lista-invitados";
+import {
+  COLECCION_RECORDATORIOS,
+  haceCuanto,
+  mensajeRecordatorio,
+  porRecordarHoy,
+  type RecordatorioItem,
+} from "@/lib/recordatorios";
 import { baseDeApp, enlaceInvitacionPersonal, enlacePase } from "@/lib/pantallas";
 
 /**
@@ -115,6 +125,12 @@ export default function Confirmaciones({ params }: { params: Promise<{ codigo: s
   const [editId, setEditId] = React.useState<string | null>(null);
   const [error, setError] = React.useState("");
   const [guardando, setGuardando] = React.useState(false);
+  /** A quién se le recordó y cuándo (colección propia, una fila por invitado). */
+  const [recordatorios, setRecordatorios] = React.useState<RecordatorioItem[]>([]);
+  /** La fecha límite que el salón puso en la invitación, para el recordatorio. */
+  const [fechaLimite, setFechaLimite] = React.useState("");
+  /** Qué parte de la lista se está mirando. */
+  const [filtro, setFiltro] = React.useState<"todos" | "pendientes" | "sin-tel">("todos");
   /** El bloque de "pegar la lista": abierto, lo pegado, y en qué acabó. */
   const [pegarAbierto, setPegarAbierto] = React.useState(false);
   const [pegado, setPegado] = React.useState("");
@@ -158,6 +174,35 @@ export default function Confirmaciones({ params }: { params: Promise<{ codigo: s
   React.useEffect(() => {
     if (!evento) return;
     return obtenerSync().suscribir<RespuestaItem>(codigo, COLECCION_RESPUESTAS, setRespuestas);
+  }, [evento, codigo]);
+
+  /*
+   * Los recordatorios y la FECHA LÍMITE, de una sola lectura cada uno.
+   *
+   * Los recordatorios los escribe SOLO esta pantalla, así que no hace falta
+   * sondearlos: lo que se guarda aquí se pinta al momento con `setRecordatorios`.
+   * Y la fecha límite vive en la invitación (la capturó el salón en la otra
+   * pantalla) y no cambia mientras se persigue a nadie.
+   */
+  React.useEffect(() => {
+    if (!evento) return;
+    let vivo = true;
+    const sync = obtenerSync();
+    void Promise.all([
+      sync.listar<RecordatorioItem>(codigo, COLECCION_RECORDATORIOS),
+      sync.listar(codigo, COLECCION_INVITACION),
+    ])
+      .then(([recs, inv]) => {
+        if (!vivo) return;
+        setRecordatorios(recs);
+        setFechaLimite(invitacionDe(codigo, inv)?.rsvp.fechaLimite ?? "");
+      })
+      .catch(() => {
+        /* sin recordatorios previos se empieza de cero; no es un error que enseñar */
+      });
+    return () => {
+      vivo = false;
+    };
   }, [evento, codigo]);
 
   // El acomodo de mesas, UNA sola lectura (no en vivo): las mesas no cambian
@@ -205,6 +250,30 @@ export default function Confirmaciones({ params }: { params: Promise<{ codigo: s
   const confirmados = invitados.filter((i) => estadoDe(i.id) === EstadoRSVP.Confirmado);
   const rechazados = invitados.filter((i) => estadoDe(i.id) === EstadoRSVP.Rechazado);
   const pendientes = invitados.length - confirmados.length - rechazados.length;
+
+  /* ---- A quién hay que perseguir --------------------------------------- */
+
+  /** Cuándo se le recordó a cada quien. */
+  const recordadoPor = React.useMemo(
+    () => new Map(recordatorios.map((r) => [r.id, r.fecha])),
+    [recordatorios],
+  );
+  const sinContestar = invitados.filter((i) => estadoDe(i.id) === EstadoRSVP.Pendiente);
+  const sinTelefono = invitados.filter((i) => !i.telefono);
+  /**
+   * El "ahora" se congela al abrir la pantalla y no se lee dentro de cada
+   * renglón: si cada uno llamara a `Date.now()`, dos invitados recordados en el
+   * mismo minuto podrían acabar diciendo cosas distintas. Va como estado con
+   * inicializador perezoso porque leer el reloj al pintar es impuro (y el lint
+   * de este repo lo marca, con razón).
+   */
+  const [ahora] = React.useState(() => Date.now());
+  const faltanPorRecordar = porRecordarHoy(sinContestar, recordadoPor, ahora);
+
+  /** La lista que se está mirando, según el filtro de arriba. */
+  const visibles =
+    filtro === "pendientes" ? sinContestar : filtro === "sin-tel" ? sinTelefono : invitados;
+
   const personas = confirmados.reduce((s, i) => s + (estados.get(i.id)?.personas ?? 0), 0);
   const avance = invitados.length ? Math.round((confirmados.length / invitados.length) * 100) : 0;
 
@@ -349,6 +418,30 @@ export default function Confirmaciones({ params }: { params: Promise<{ codigo: s
     if (!url) return;
     const msg = `¡Hola! Nos encantaría contar contigo en ${evento?.nombre ?? "nuestro evento"}. Confirma tu asistencia aquí:\n${url}`;
     window.open(enlaceWhatsApp(inv.telefono, msg), "_blank", "noopener,noreferrer");
+  };
+
+  /** Deja constancia de que ya se le persiguió: en pantalla y en el evento. */
+  const apuntarRecordatorio = (id: string) => {
+    const fila: RecordatorioItem = { id, fecha: Date.now() };
+    setRecordatorios((prev) => [...prev.filter((r) => r.id !== id), fila]);
+    void obtenerSync().guardar<RecordatorioItem>(codigo, COLECCION_RECORDATORIOS, fila);
+  };
+
+  /**
+   * RECORDARLE A ESTE. Abre su chat con el texto del recordatorio —que no es el
+   * de la primera invitación: quien no contestó no necesita que se la presenten
+   * otra vez, necesita saber qué falta y hasta cuándo— y apunta la fecha.
+   *
+   * Ese apunte es la mitad del valor: con 40 pendientes, el salón manda unos
+   * cuantos, lo interrumpen, y al volver lo único que quiere saber es por dónde
+   * iba.
+   */
+  const recordar = (inv: Invitado) => {
+    const url = enlaceInvitado(inv, codigo, baseDeApp("rsvp"));
+    if (!url) return;
+    const msg = mensajeRecordatorio(evento?.nombre ?? "", fechaLimite, url);
+    window.open(enlaceWhatsApp(inv.telefono, msg), "_blank", "noopener,noreferrer");
+    apuntarRecordatorio(inv.id);
   };
 
   /*
@@ -842,11 +935,45 @@ export default function Confirmaciones({ params }: { params: Promise<{ codigo: s
 
         {/* Lista de invitados */}
         <div>
-          <p className="mb-4 text-sm text-muted-foreground">
+          <p className="mb-3 text-sm text-muted-foreground">
             <span className="font-semibold text-foreground">{invitados.length}</span>{" "}
             {invitados.length === 1 ? "invitado" : "invitados"} en la lista. Manda a cada uno su
             enlace, o marca tú la respuesta.
           </p>
+
+          {/* ---- Perseguir a los que faltan --------------------------------
+              Sin esto, "recordarles" es leerse la lista entera buscando los
+              ámbar. El filtro ES la función: enseña solo a quien falta, y el
+              renglón de cada uno dice si ya se le escribió y cuándo. */}
+          {invitados.length > 0 ? (
+            <div className="mb-4 flex flex-wrap items-center gap-2">
+              {(
+                [
+                  ["todos", `Todos (${invitados.length})`],
+                  ["pendientes", `Sin contestar (${sinContestar.length})`],
+                  ["sin-tel", `Sin WhatsApp (${sinTelefono.length})`],
+                ] as const
+              ).map(([clave, etiqueta]) => (
+                <button
+                  key={clave}
+                  onClick={() => setFiltro(clave)}
+                  className={cn(
+                    "rounded-full px-3 py-1.5 text-sm ring-1 transition-colors",
+                    filtro === clave
+                      ? "bg-primary/10 text-primary ring-primary/30"
+                      : "text-muted-foreground ring-border hover:bg-muted",
+                  )}
+                >
+                  {etiqueta}
+                </button>
+              ))}
+              {faltanPorRecordar > 0 && filtro !== "pendientes" ? (
+                <span className="text-xs text-muted-foreground">
+                  · {faltanPorRecordar} sin recordatorio hoy
+                </span>
+              ) : null}
+            </div>
+          ) : null}
 
           {invitados.length === 0 ? (
             <Card className="p-8 text-center">
@@ -856,12 +983,24 @@ export default function Confirmaciones({ params }: { params: Promise<{ codigo: s
                 salón (migración 0008) esté aplicado.
               </p>
             </Card>
+          ) : visibles.length === 0 ? (
+            <Card className="p-8 text-center">
+              <h3 className="font-semibold">
+                {filtro === "pendientes" ? "Ya contestaron todos" : "Todos tienen WhatsApp"}
+              </h3>
+              <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
+                {filtro === "pendientes"
+                  ? "No queda nadie a quien recordarle."
+                  : "No falta ningún teléfono por capturar."}
+              </p>
+            </Card>
           ) : (
             <div className="space-y-2">
-              {invitados.map((inv) => {
+              {visibles.map((inv) => {
                 const estado = estadoDe(inv.id);
                 const confirmo = estado === EstadoRSVP.Confirmado;
                 const mesaPase = mesaDeInvitado(inv.nombre);
+                const recordado = haceCuanto(recordadoPor.get(inv.id), ahora);
                 return (
                   <Card key={inv.id} className="p-4">
                     <div className="flex flex-wrap items-center justify-between gap-3">
@@ -892,6 +1031,11 @@ export default function Confirmaciones({ params }: { params: Promise<{ codigo: s
                               · sin WhatsApp
                             </span>
                           )}
+                          {/* Solo cuando falta contestar: a quien ya confirmó no
+                              le importa a nadie cuándo se le recordó. */}
+                          {recordado && estado === EstadoRSVP.Pendiente ? (
+                            <> · recordado {recordado}</>
+                          ) : null}
                         </div>
                       </div>
                       <div className="flex flex-wrap items-center gap-1.5">
@@ -950,6 +1094,27 @@ export default function Confirmaciones({ params }: { params: Promise<{ codigo: s
                         <Button variant="outline" size="sm" onClick={() => compartir(inv)}>
                           <MessageCircle className="size-4" /> Enviar
                         </Button>
+                        {/* El recordatorio solo aparece donde tiene sentido: a
+                            quien ya contestó no se le persigue. Lleva otro texto
+                            que "Enviar" y deja apuntada la fecha. */}
+                        {estado === EstadoRSVP.Pendiente ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => recordar(inv)}
+                            title={
+                              recordado
+                                ? `Ya se le recordó ${recordado}. Se le vuelve a escribir.`
+                                : "Le escribe pidiéndole que confirme, y queda apuntado"
+                            }
+                            className={cn(
+                              recordado === "hoy" &&
+                                "border-amber-500/40 text-amber-600 dark:text-amber-400",
+                            )}
+                          >
+                            <BellRing className="size-4" /> Recordar
+                          </Button>
+                        ) : null}
                         {/* La invitación completa (saluda por su nombre y enseña su mesa),
                             no solo el RSVP: por WhatsApp o copiada para pegarla a mano. */}
                         <Button

@@ -10,7 +10,7 @@ import {
   productos,
   vendedor,
 } from "@/lib/catalogo";
-import { QR } from "@/components/qr";
+import { EnlaceDemo, QRDemo } from "@/components/demo-vitrina";
 import { CatalogoCliente } from "@/components/catalogo-cliente";
 
 const inicial = vendedor.nombre.trim().slice(0, 1).toUpperCase() || "S";
@@ -144,25 +144,21 @@ export default function Page() {
 
           {/* En el celular: botón directo a la demo estrella + dos suplentes. */}
           <div className="mt-8 md:hidden">
-            <a
-              href={demoPrincipal.demoUrl}
-              target="_blank"
-              rel="noopener noreferrer"
+            <EnlaceDemo
+              href={demoPrincipal.demoUrl!}
               className={cn(buttonVariants({ size: "lg" }), "w-full")}
             >
               <Camera className="size-5" /> Tómate una foto en el photobooth
-            </a>
+            </EnlaceDemo>
             <div className="mt-3 flex flex-col gap-2">
               {demosSecundarias.map((p) => (
-                <a
+                <EnlaceDemo
                   key={p.id}
-                  href={p.demoUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  href={p.demoUrl!}
                   className={cn(buttonVariants({ variant: "outline", size: "sm" }), "w-full")}
                 >
                   {invitacionDemo[p.id] ?? `O prueba ${p.nombre}`}
-                </a>
+                </EnlaceDemo>
               ))}
             </div>
           </div>
@@ -170,7 +166,7 @@ export default function Page() {
           {/* En computadora: la tarjetita de mesa con el QR de verdad. */}
           <div className="mt-10 hidden flex-col items-center md:flex">
             <div className="rounded-xl border border-border bg-card p-5 shadow-lg">
-              <QR value={demoPrincipal.demoUrl!} size={180} />
+              <QRDemo value={demoPrincipal.demoUrl!} size={180} />
               <p className="mt-3 max-w-[220px] text-sm font-medium">
                 Apunta la cámara de tu celular a este código
               </p>
@@ -188,14 +184,12 @@ export default function Page() {
               {[demoPrincipal, ...demosSecundarias].map((p, i) => (
                 <span key={p.id}>
                   {i > 0 ? " · " : null}
-                  <a
-                    href={p.demoUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <EnlaceDemo
+                    href={p.demoUrl!}
                     className="underline underline-offset-2 hover:text-foreground"
                   >
                     {p.nombre.toLowerCase()}
-                  </a>
+                  </EnlaceDemo>
                 </span>
               ))}
             </p>

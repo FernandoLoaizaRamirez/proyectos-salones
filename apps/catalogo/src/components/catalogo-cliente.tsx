@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { Button, buttonVariants, Card, cn } from "@salones/ui";
 import { AppMode } from "@salones/core";
+import { EnlaceDemo } from "@/components/demo-vitrina";
 import {
   vendedor,
   modelos,
@@ -106,14 +107,12 @@ function TarjetaApp({
 
         <div className="mt-4 flex gap-2">
           {p.demoUrl ? (
-            <a
+            <EnlaceDemo
               href={p.demoUrl}
-              target="_blank"
-              rel="noopener noreferrer"
               className={cn(buttonVariants({ variant: "outline" }), "flex-1")}
             >
               <ExternalLink className="size-4" /> Ver demo
-            </a>
+            </EnlaceDemo>
           ) : null}
           {enPaquete ? (
             /* Sin cobro doble: si un paquete agregado ya la incluye, aquí no se

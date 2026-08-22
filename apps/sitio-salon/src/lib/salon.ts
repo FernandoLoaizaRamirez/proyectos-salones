@@ -30,6 +30,22 @@ export type Espacio = {
   foto: string;
 };
 
+/*
+ * LAS FOTOS DE ESTA LISTA TIENEN QUE ENSEÑAR EL ESPACIO, no un momento bonito.
+ *
+ * Hasta el 21 ago 2026 tres de las cuatro no lo hacían: la Capilla era una
+ * pareja junto a una palmera (no salía ninguna capilla), el Salón Imperial
+ * —que el texto promete "con doble altura y candelabros"— era un primer plano
+ * de una mesa con copas, y la Terraza era una pareja a contraluz. Un cliente
+ * que lee "Cuatro escenarios" y no ve ni un escenario deja de creerse la
+ * página. Se cambiaron por fotos donde SÍ se ve el sitio, con nombre de
+ * archivo que dice cuál es (`espacio-*.jpg`) para que no se vuelvan a mezclar
+ * con las de la galería, que ahí sí van los momentos.
+ *
+ * Las tres nuevas son de Pexels (licencia gratuita, uso comercial, sin
+ * atribución obligatoria). Cuando Fernando tenga fotos del salón real, se
+ * sustituyen respetando el mismo criterio: se ve el espacio.
+ */
 export const espacios: Espacio[] = [
   {
     nombre: "Jardín de los Encinos",
@@ -45,7 +61,7 @@ export const espacios: Espacio[] = [
     descripcion:
       "Nuestro salón principal con doble altura, candelabros y climatización, para veladas de gala en cualquier época del año.",
     capacidad: "Hasta 350 invitados",
-    foto: "/img/u03.jpg",
+    foto: "/img/espacio-salon.jpg",
   },
   {
     nombre: "Terraza del Atardecer",
@@ -53,7 +69,7 @@ export const espacios: Espacio[] = [
     descripcion:
       "Una terraza empedrada con vista al jardín, perfecta para cocteles de bienvenida y celebraciones más íntimas.",
     capacidad: "Hasta 120 invitados",
-    foto: "/img/u01.jpg",
+    foto: "/img/espacio-terraza.jpg",
   },
   {
     nombre: "Capilla Santa Renata",
@@ -61,7 +77,7 @@ export const espacios: Espacio[] = [
     descripcion:
       "Capilla propia dentro del recinto para vivir la ceremonia y la fiesta en un mismo lugar, sin traslados.",
     capacidad: "Hasta 200 invitados",
-    foto: "/img/u15.jpg",
+    foto: "/img/espacio-capilla.jpg",
   },
 ];
 

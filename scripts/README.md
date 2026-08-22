@@ -54,3 +54,11 @@ que no miente. Necesita un token de Vercel disponible durante la construcción.
   minutos, las apps del final de la fila —el catálogo entre ellas— no llegan a su
   turno nunca. Si hay alguien más trabajando en el repo, hay que esperar a que
   pare antes de empujar el commit que reconstruye.
+
+## Cuánto dura la ventana
+
+Vercel tarda ~5 minutos en recorrer las 14 apps, y **cualquier push que llegue
+en ese rato descarta lo que quede en la fila**. Si otra sesión está trabajando,
+conviene avisarle y esperar a que pare antes de empujar el commit que
+reconstruye; si no, se gastan 14 construcciones para nada y el cambio sigue sin
+publicarse.

@@ -3,7 +3,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
 /**
- * ÁLBUM PRIVADO: cada invitado ve SOLO lo suyo (0022).
+ * ÁLBUM PRIVADO: cada invitado ve SOLO lo suyo (0024, nacio como 0022).
  * ---------------------------------------------------------------------------
  * LO QUE MÁS SE VIGILA AQUÍ NO ES LA FUNCIÓN NUEVA. Esta migración reescribe la
  * política de lectura de `items`, que es por donde leen TODAS las apps: el muro,
@@ -18,7 +18,7 @@ import { join } from "node:path";
 
 const RAIZ = join(__dirname, "..", "..");
 const MIGRACIONES = join(RAIZ, "supabase", "migrations");
-const NOMBRE = "0022_album_privado.sql";
+const NOMBRE = "0024_album_privado.sql";
 const leer = (...ruta: string[]) => readFileSync(join(RAIZ, ...ruta), "utf8");
 
 function sqlActivo(archivo: string): string {

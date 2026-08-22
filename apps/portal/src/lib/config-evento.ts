@@ -23,6 +23,7 @@ import {
   type Plan,
   FEATURES_CONOCIDAS as F,
 } from "@salones/core";
+import { esVitrina } from "@salones/sync";
 import type { BrandingSalon } from "@salones/ui";
 
 /** De dónde salió la config que se está mostrando. */
@@ -74,10 +75,16 @@ type RespuestaConfig = {
 
 /** Config de demostración (sin datos de servidor). */
 function configDemo(codigo: string): ConfigEvento {
-  const esDemo = !codigo || codigo === "demo";
+  /*
+   * Vitrina es "demo" Y TAMBIEN "demo-xxxxxx" (la propia de cada visitante,
+   * migración 0022). Antes solo se reconocía "demo", así que la vitrina de un
+   * visitante caía por el otro lado y el portal la nombraba con su código
+   * crudo: "Tus recuerdos de demo-7znf7u".
+   */
+  const esDemo = !codigo || esVitrina(codigo);
   return {
-    codigo: esDemo ? "demo" : codigo,
-    nombre: esDemo ? "Evento de demostración" : codigo,
+    codigo: codigo || "demo",
+    nombre: esDemo ? "Boda Ana & Rodrigo" : codigo,
     salon: null,
     entitlements: resolveEntitlements(PLAN_DEMO),
     branding: null,
@@ -104,6 +111,16 @@ export async function resolverConfigEvento(codigo: string): Promise<ConfigEvento
       { headers, next: { revalidate: 60 } },
     );
 
+    /*
+     * ⚠️ UNA VITRINA NUNCA ES "EVENTO NO ENCONTRADO" (arreglado el 22 ago 2026).
+     *
+     * Las vitrinas (`demo` y `demo-xxxxxx`) NO viven en la tabla `events` —así
+     * se diseñó la 0022—, así que `evento-config` contesta 404 para ellas. El
+     * portal lo tomaba al pie de la letra y le enseñaba al visitante "No
+     * encontramos este evento", con el catálogo mandándole justo ese enlace.
+     * Comprobado en vivo antes de arreglarlo.
+     */
+    if (res.status === 404 && esVitrina(codigo)) return configDemo(codigo);
     if (res.status === 404) {
       return {
         codigo,

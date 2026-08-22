@@ -1,5 +1,17 @@
 -- ============================================================================
--- 0022 · ALBUM PRIVADO: cada invitado ve SOLO lo suyo  (2026-08-15)
+-- 0024 · ALBUM PRIVADO: cada invitado ve SOLO lo suyo  (2026-08-15)
+--
+-- ⚠️ NACIO COMO 0022 Y SE RENUMERO EL 22 AGO 2026. Habia DOS archivos 0022
+--    (este y `0022_vitrina_por_visitante.sql`), y en este proyecto las
+--    migraciones se corren A MANO: el numero es el unico registro de que se
+--    corrio, asi que "ya corriste la 0022?" no tenia respuesta.
+--
+--    Se movio ESTE y no la vitrina, aunque este es mas antiguo, porque la
+--    `0023_tope_subidas_vuelve.sql` LLAMA a `es_vitrina()`, que nace en la
+--    vitrina: si la vitrina pasara a un numero mayor que 0023, una base
+--    reconstruida de cero fallaria al llegar a la 0023. Este archivo, en
+--    cambio, no depende de nada ni nadie depende de el, asi que se mueve sin
+--    consecuencias.
 -- ----------------------------------------------------------------------------
 -- QUE RESUELVE:
 --   Hoy el album es de todos para todos: quien tiene el QR ve —y se descarga—

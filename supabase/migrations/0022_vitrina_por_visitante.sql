@@ -34,6 +34,25 @@
 --     detras de cada vitrina hay una sola persona probando. Asi el plan gratis
 --     de Supabase no se puede vaciar a base de visitas.
 --
+-- ⛔ NO LA VUELVAS A CORRER SUELTA, FUERA DE ORDEN (comprobado el 22 ago 2026)
+--   Su bloque de `permitir_subida` es ANTERIOR a la `0023_tope_subidas_vuelve`,
+--   que arreglo dos cosas ahi: (1) faltaba el `insert into media_permisos`, sin
+--   el cual el tope contaba pero nunca topaba, y (2) esta migracion le da
+--   `grant execute` a `anon` y `authenticated`, o sea que cualquiera con la
+--   llave publica podia llamarla; la 0023 se lo quita y solo deja `service_role`.
+--
+--   Correr ESTA despues de la 0023 deshace las dos cosas EN SILENCIO. Pase por
+--   ahi: la corri suelta el 22 ago y hubo que comprobar en la base que los
+--   permisos seguian bien (lo estaban: solo `service_role`).
+--
+--   De cero y en orden (0022 -> 0023) no hay problema: la 0023 va detras y deja
+--   la version buena. El peligro es solo re-correr esta sola.
+--
+--   Si tienes que comprobarlo:
+--     select p.proacl from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+--      where n.nspname='public' and p.proname='permitir_subida';
+--     -- Debe salir SOLO postgres y service_role. Si aparece anon, corre la 0023.
+--
 -- DESPUES DE CORRERLA
 --   No hace falta tocar nada mas: las apps piden su vitrina solas y se dan
 --   cuenta de que el servidor ya la admite. ANTES de correrla siguen usando el

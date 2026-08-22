@@ -52,7 +52,18 @@ describe("cuánto hace que se le recordó", () => {
     expect(haceCuanto(0, AHORA)).toBe("");
   });
 
-  it("una fecha en el futuro tampoco dice nada (reloj torcido)", () => {
+  it("un apunte hecho HACE UN MINUTO, con el reloj congelado, dice 'hoy'", () => {
+    /*
+     * EL FALLO QUE ESTO TAPA, cazado probándolo en producción el 22 ago 2026:
+     * la pantalla congela su "ahora" al abrirse, así que un recordatorio hecho
+     * dos minutos después queda técnicamente en el futuro. La primera versión
+     * devolvía "" y el "recordado hoy" no aparecía hasta recargar la página —
+     * que es justo el aviso que evita escribirle dos veces a la misma persona.
+     */
+    expect(haceCuanto(AHORA + 120_000, AHORA)).toBe("hoy");
+  });
+
+  it("pero un apunte de MAÑANA sigue sin decir nada (reloj torcido)", () => {
     expect(haceCuanto(AHORA + 86_400_000, AHORA)).toBe("");
   });
 });

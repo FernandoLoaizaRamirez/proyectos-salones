@@ -36,11 +36,23 @@ const DIA = 86_400_000;
  * esto se pueda probar sin depender de la hora a la que corran las pruebas.
  */
 export function haceCuanto(fecha: number | undefined, ahora: number): string {
-  if (!fecha || fecha > ahora) return "";
+  if (!fecha) return "";
   // Se comparan DÍAS DE CALENDARIO, no múltiplos de 24 horas: para quien mira
   // la pantalla, un mensaje de anoche a las 11 fue "ayer", no "hace 9 horas".
   const dias = Math.floor((mediaNoche(ahora) - mediaNoche(fecha)) / DIA);
-  if (dias <= 0) return "hoy";
+  /*
+   * `dias < 0` es un apunte de un día POSTERIOR al reloj de la pantalla: eso
+   * solo pasa con un reloj torcido, y ahí es mejor callar que mentir.
+   *
+   * ⚠️ Pero OJO con el mismo día: la pantalla congela su "ahora" al abrirse, así
+   * que un recordatorio hecho dos minutos después queda técnicamente "en el
+   * futuro". La primera versión devolvía "" en ese caso y el resultado era que
+   * el "recordado hoy" NO aparecía hasta recargar la página — justo el aviso que
+   * el salón necesita para no escribirle dos veces a la misma persona. Se cazó
+   * probándolo en producción, no en las pruebas.
+   */
+  if (dias < 0) return "";
+  if (dias === 0) return "hoy";
   if (dias === 1) return "ayer";
   return `hace ${dias} días`;
 }

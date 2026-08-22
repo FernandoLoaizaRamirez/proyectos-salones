@@ -183,8 +183,18 @@ export const productos: Producto[] = [
   {
     id: "album-fotos",
     nombre: "Álbum de fotos del evento",
+    /*
+     * Aquí decía "sus fotos y videos". NO ES VERDAD y hay que dejarlo así:
+     * el video es el PAQUETE DE VIDEO, se cobra aparte, viene apagado por
+     * defecto (migración 0017) y su candado está en el servidor —`media-subir`
+     * responde 402—. Ni siquiera está encendido en el evento `demo`, así que el
+     * salón no podía verlo por ningún lado y aun así se lo prometíamos dentro
+     * de este precio. El día que el paquete tenga precio y quepa en el plan de
+     * almacenamiento, va como PRODUCTO PROPIO de este catálogo, no escondido en
+     * la descripción de otro. (21 ago 2026)
+     */
     descripcion:
-      "Los invitados suben sus fotos y videos escaneando un código QR, y todos los ven y descargan en un mismo lugar. Recuerdos de todos, al instante.",
+      "Los invitados suben sus fotos escaneando un código QR, y todas las ven y descargan en un mismo lugar. Recuerdos de todos, al instante.",
     beneficio: "Las fotos de todos los invitados, juntas en un mismo lugar",
     icono: Camera,
     acento: "from-fuchsia-500 to-purple-600",

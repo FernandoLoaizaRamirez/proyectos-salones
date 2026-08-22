@@ -97,12 +97,15 @@ const COLECCION_PASES = "pases";
 
 type Estado = (typeof EstadoRSVP)[keyof typeof EstadoRSVP];
 
-const ETIQUETA: Record<Estado, string> = {
-  [EstadoRSVP.Pendiente]: "Pendiente",
-  [EstadoRSVP.Confirmado]: "Confirmó",
-  [EstadoRSVP.Rechazado]: "No asiste",
-};
-
+/*
+ * Aquí vivía una segunda tabla `ETIQUETA`, la de los rótulos de cada estado.
+ * Estaba MUERTA sin que se notara: dentro del componente hay otra con el mismo
+ * nombre —la que arma el Excel— declarada antes de usarse, así que las insignias
+ * de la lista llevaban años pintándose con la del Excel y esta no la leía nadie.
+ * Se quita la de fuera y se deja la de dentro: así lo que se ve en pantalla no
+ * cambia (siguen diciendo "Confirmado"), y desaparece la advertencia de lint que
+ * arrastraba el archivo.
+ */
 const ESTILO: Record<Estado, string> = {
   [EstadoRSVP.Confirmado]: "bg-green-500/10 text-green-600 ring-green-500/30",
   [EstadoRSVP.Rechazado]: "bg-red-500/10 text-red-600 ring-red-500/30",

@@ -27,16 +27,16 @@ export const datosLegales: DatosLegales = {
   // Con el salón de demostración puesto, para que las páginas se puedan ver.
   // Al dar de alta un cliente real, aquí van SUS datos.
   salon: "Hacienda Santa Renata",
-  // CAMBIA esto: el correo donde el salón atiende las peticiones de los invitados.
-  contacto: PENDIENTE,
-  // CAMBIA esto: el domicilio fiscal o comercial del salón. La ley lo exige.
-  domicilio: PENDIENTE,
+  // El correo donde el salón atiende las peticiones de los invitados.
+  contacto: "jfloaizaramirez@gmail.com",
+  // El domicilio fiscal o comercial del salón. La ley lo exige.
+  domicilio: "Blvd. de la Pradera #23, Col. Los Huertos",
 
   // ---- Del PROVEEDOR (tú, el encargado) ----------------------------------
   proveedor: vendedor.nombre,
   sitio: "https://suite-salones.vercel.app/legal",
 
-  actualizado: "20 de julio de 2026",
+  actualizado: "22 de agosto de 2026",
 };
 
 /** Los campos que siguen sin rellenar. Vacío = listo para publicar. */

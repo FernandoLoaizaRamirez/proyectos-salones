@@ -30,7 +30,7 @@ export const datosLegales: DatosLegales = {
   // El correo donde el salón atiende las peticiones de los invitados.
   contacto: "jfloaizaramirez@gmail.com",
   // El domicilio fiscal o comercial del salón. La ley lo exige.
-  domicilio: "Blvd. de la Pradera #23, Col. Los Huertos",
+  domicilio: "Blvd. de la Pradera #23, Col. Los Huertos, Culiacán, Sinaloa, C.P. 80019",
 
   // ---- Del PROVEEDOR (tú, el encargado) ----------------------------------
   proveedor: vendedor.nombre,

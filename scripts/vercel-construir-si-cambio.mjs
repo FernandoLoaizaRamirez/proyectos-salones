@@ -157,6 +157,29 @@ if (carpetaApp === "/" || !existsSync(join(RAIZ, carpetaApp))) {
 // cambios y saltó las 14 apps — dejándolas viejas en producción. La salida es
 // empujar un commit que toque este mismo archivo (o `scripts/`): la regla de
 // arriba de "no nos fiamos del portero cambiado" reconstruye todo.
+//
+// ⚠️ Y VUELVE A MORDER CON DOS COMMITS SEGUIDOS (21 ago 2026). No hace falta
+// tope de cuota: basta con empujar dos veces con poco margen.
+//
+//   1. `4db3a17` (las vitrinas por visitante) tocó `packages/sync` y siete
+//      apps. Vercel construyó cuatro (pases-qr, rsvp, álbum, portal) y a las
+//      demás ni les disparó construcción: cuando llegó el commit siguiente,
+//      descartó los intermedios y saltó directo al último.
+//   2. `667430a` (de otra sesión, solo fotos del sitio) sí disparó todas. Pero
+//      el portero de cada app comparó contra `4db3a17` —el último INTENTO— en
+//      vez de contra su último despliegue bueno (`b6647b4`). En ese rango de un
+//      solo commit no había nada suyo, así que canceló.
+//
+// Resultado: playlist, muro, mesas, dinámicas, brindis, invitaciones,
+// photobooth, mi-mesa y el catálogo se quedaron SIN el código de las vitrinas,
+// con producción atrasada y sin ninguna señal de error. El síntoma es que el
+// historial de la app salta un commit: `... READY b6647b4 → CANCELED 667430a`,
+// sin rastro del de en medio.
+//
+// La salida es la misma de siempre y por eso este comentario vive aquí: tocar
+// `scripts/` reconstruye las 14. Si algún día conviene arreglarlo de raíz, hay
+// que dejar de fiarse de `VERCEL_GIT_PREVIOUS_SHA` y preguntarle a la API de
+// Vercel cuál fue el último despliegue READY de ESTA app.
 const anterior = process.env.VERCEL_GIT_PREVIOUS_SHA;
 const actual = process.env.VERCEL_GIT_COMMIT_SHA || "HEAD";
 if (!anterior) construir("primera construcción de esta app (no hay con qué comparar)");

@@ -1,4 +1,5 @@
 import { ThemeToggle } from "@salones/ui";
+import { estaConectado } from "@salones/sync";
 import { evento } from "@/lib/playlist";
 import { DjCliente } from "@/components/dj-cliente";
 
@@ -37,10 +38,19 @@ export default function Page() {
 
       <footer className="border-t border-border">
         <div className="mx-auto max-w-5xl px-6 py-8 text-xs text-muted-foreground">
-          {evento.lugar} · Demo de {evento.organizador.nombre}. En esta demostración las peticiones se
-          guardan en este dispositivo (se actualizan en vivo entre pestañas del mismo navegador);
-          para juntar las peticiones de todos los teléfonos en una sola lista se conecta a un sistema
-          central.
+          {/*
+           * El pie dice la VERDAD según cómo esté corriendo la app, no un texto
+           * fijo. Hasta el 22 ago 2026 afirmaba siempre "se guardan en este
+           * dispositivo", y llevaba meses siendo falso: las apps ya guardan en
+           * el servidor. O sea que el pie le decía al salón que la demo hace
+           * MENOS de lo que hace, justo donde se está intentando vender.
+           * `estaConectado()` ya se usaba así en otras pantallas de esta misma
+           * app; aquí faltaba.
+           */}
+          {evento.lugar} · Demo de {evento.organizador.nombre}.{" "}
+          {estaConectado()
+            ? "Las peticiones y los votos llegan a esta lista desde el teléfono de cada invitado, en vivo: así lo verá tu DJ."
+            : "En esta demostración las peticiones se guardan en este dispositivo (se actualizan en vivo entre pestañas del mismo navegador); para juntar las peticiones de todos los teléfonos en una sola lista se conecta a un sistema central."}
         </div>
       </footer>
     </main>

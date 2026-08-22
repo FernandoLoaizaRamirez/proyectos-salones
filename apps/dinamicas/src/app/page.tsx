@@ -1,4 +1,5 @@
 import { ThemeToggle } from "@salones/ui";
+import { estaConectado } from "@salones/sync";
 import { evento } from "@/lib/dinamicas";
 import { HostCliente } from "@/components/host-cliente";
 
@@ -37,9 +38,19 @@ export default function Page() {
 
       <footer className="border-t border-border">
         <div className="mx-auto max-w-5xl px-6 py-8 text-xs text-muted-foreground">
-          {evento.lugar} · Demo de {evento.organizador.nombre}. En esta demostración el ranking se
-          actualiza en vivo entre los teléfonos de todos los invitados; para
-          un ranking común entre muchos teléfonos se conecta a un sistema central.
+          {/*
+           * El pie dice la VERDAD según cómo esté corriendo la app, no un texto
+           * fijo. Hasta el 22 ago 2026 afirmaba siempre "se guardan en este
+           * dispositivo", y llevaba meses siendo falso: las apps ya guardan en
+           * el servidor. O sea que el pie le decía al salón que la demo hace
+           * MENOS de lo que hace, justo donde se está intentando vender.
+           * `estaConectado()` ya se usaba así en otras pantallas de esta misma
+           * app; aquí faltaba.
+           */}
+          {evento.lugar} · Demo de {evento.organizador.nombre}.{" "}
+          {estaConectado()
+            ? "El ranking de la trivia junta en vivo a todos los invitados, cada uno jugando desde su propio teléfono."
+            : "En esta demostración el ranking se actualiza en vivo entre las pestañas de este navegador; para un ranking común entre muchos teléfonos se conecta a un sistema central."}
         </div>
       </footer>
     </main>

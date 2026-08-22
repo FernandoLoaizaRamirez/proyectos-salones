@@ -1,4 +1,5 @@
 import { ThemeToggle } from "@salones/ui";
+import { estaConectado } from "@salones/sync";
 import { evento } from "@/lib/rsvp";
 import { RsvpCliente } from "@/components/rsvp-cliente";
 
@@ -40,9 +41,19 @@ export default function Page() {
 
       <footer className="border-t border-border">
         <div className="mx-auto max-w-6xl px-6 py-8 text-xs text-muted-foreground">
-          {evento.lugar} · Demo de {evento.organizador.nombre}. En esta demostración las respuestas
-          se guardan en este dispositivo (se actualizan en vivo entre pestañas del mismo navegador);
-          para varios organizadores a la vez se conecta a un sistema central.
+          {/*
+           * El pie dice la VERDAD según cómo esté corriendo la app, no un texto
+           * fijo. Hasta el 22 ago 2026 afirmaba siempre "se guardan en este
+           * dispositivo", y llevaba meses siendo falso: las apps ya guardan en
+           * el servidor. O sea que el pie le decía al salón que la demo hace
+           * MENOS de lo que hace, justo donde se está intentando vender.
+           * `estaConectado()` ya se usaba así en otras pantallas de esta misma
+           * app; aquí faltaba.
+           */}
+          {evento.lugar} · Demo de {evento.organizador.nombre}.{" "}
+          {estaConectado()
+            ? "Las confirmaciones llegan solas desde el teléfono de cada invitado, y varios organizadores ven la misma lista al mismo tiempo."
+            : "En esta demostración las respuestas se guardan en este dispositivo (se actualizan en vivo entre pestañas del mismo navegador); para varios organizadores a la vez se conecta a un sistema central."}
         </div>
       </footer>
     </main>

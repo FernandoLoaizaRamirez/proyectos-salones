@@ -1,4 +1,5 @@
 import { ThemeToggle } from "@salones/ui";
+import { estaConectado } from "@salones/sync";
 import { evento } from "@/lib/evento";
 import { PasesCliente } from "@/components/pases-cliente";
 
@@ -37,10 +38,19 @@ export default function Page() {
 
       <footer className="border-t border-border">
         <div className="mx-auto max-w-5xl px-6 py-8 text-xs text-muted-foreground">
-          {evento.lugar} · Demo de {evento.organizador.nombre}. Con el servicio conectado, la lista
-          y el registro de la puerta viven en el evento: dos entradas ven lo mismo y nada se pierde
-          si un teléfono se queda sin batería. En esta demostración se guardan en este dispositivo,
-          ya separados por evento.
+          {/*
+           * El pie dice la VERDAD según cómo esté corriendo la app, no un texto
+           * fijo. Hasta el 22 ago 2026 afirmaba siempre "se guardan en este
+           * dispositivo", y llevaba meses siendo falso: las apps ya guardan en
+           * el servidor. O sea que el pie le decía al salón que la demo hace
+           * MENOS de lo que hace, justo donde se está intentando vender.
+           * `estaConectado()` ya se usaba así en otras pantallas de esta misma
+           * app; aquí faltaba.
+           */}
+          {evento.lugar} · Demo de {evento.organizador.nombre}.{" "}
+          {estaConectado()
+            ? "La lista y el registro de la puerta viven en el evento: dos entradas ven lo mismo y nada se pierde si un teléfono se queda sin batería."
+            : "En esta demostración la lista y el registro se guardan en este dispositivo, ya separados por evento; con el servicio conectado viven en el evento y dos entradas ven lo mismo."}
         </div>
       </footer>
     </main>

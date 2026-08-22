@@ -28,6 +28,7 @@ import {
   quitarMedio,
   MB_POR_ARCHIVO,
   type ResultadoDescarga,
+  esVitrina,
 } from "@salones/sync";
 import {
   fotosEjemplo,
@@ -38,10 +39,16 @@ import {
 import { useTieneVideo } from "@/lib/video";
 
 export function Album() {
-  // Con el servicio gestionado, el álbum llega del servidor (y arranca vacío
-  // hasta que los invitados suben); en local, la demo muestra los ejemplos.
+  /*
+   * Con el servicio gestionado el álbum llega del servidor y arranca vacío
+   * hasta que los invitados suben. PERO una VITRINA es una demostración: ahí
+   * se enseñan los ejemplos aunque esté conectada, o el salón abre la demo del
+   * álbum y ve una pantalla vacía. Antes solo se libraba el modo local; desde
+   * la 0022 las demos van conectadas, así que hacía falta esta segunda puerta.
+   * Las muestras son locales (`/img/a0*.jpg`): no se suben ni gastan cupo.
+   */
   const [archivos, setArchivos] = React.useState<Archivo[]>(() =>
-    estaConectado() ? [] : fotosEjemplo,
+    estaConectado() && !esVitrina() ? [] : fotosEjemplo,
   );
   const [arrastrando, setArrastrando] = React.useState(false);
   const [subiendo, setSubiendo] = React.useState(0);

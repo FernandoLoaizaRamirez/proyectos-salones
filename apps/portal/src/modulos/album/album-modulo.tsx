@@ -38,6 +38,7 @@ import {
   quitarMedio,
   resolverMedios,
   mensajeDeSubida,
+  esVitrina,
 } from "@salones/sync";
 import {
   COLECCION_FOTOS,
@@ -324,9 +325,18 @@ export function AlbumModulo({
     [evento, anotarMias],
   );
 
-  // Mientras el evento de demostración esté vacío, se enseñan fotos de muestra
-  // para que se vea cómo queda el álbum. Con una foto real desaparecen.
-  const ejemplos = React.useMemo(() => (evento === "demo" ? fotosEjemplo() : []), [evento]);
+  /*
+   * Mientras una VITRINA esté vacía se enseñan fotos de muestra, para que se
+   * vea cómo queda el álbum lleno. Con una foto real desaparecen.
+   *
+   * Decía `evento === "demo"`, y eso dejó de valer el 21 ago 2026: desde la
+   * 0022 cada visitante estrena su propia vitrina (`demo-xxxxxx`), que no es
+   * la cadena "demo", así que el álbum de la demo pasó a verse VACÍO justo
+   * cuando el catálogo empezó a repartir esos enlaces. `esVitrina()` cubre las
+   * dos. Las muestras son locales (`/img/a0*.jpg`): no se suben a ningún lado,
+   * no gastan cupo y no ensucian los datos de nadie.
+   */
+  const ejemplos = React.useMemo(() => (esVitrina(evento) ? fotosEjemplo() : []), [evento]);
   const mostrando = fotos.length > 0 ? fotos : ejemplos;
   const sonEjemplos = fotos.length === 0 && ejemplos.length > 0;
 

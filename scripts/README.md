@@ -62,3 +62,35 @@ en ese rato descarta lo que quede en la fila**. Si otra sesión está trabajando
 conviene avisarle y esperar a que pare antes de empujar el commit que
 reconstruye; si no, se gastan 14 construcciones para nada y el cambio sigue sin
 publicarse.
+
+## La causa raíz de verdad: un interruptor de Vercel (22 ago 2026)
+
+Todo lo de arriba son síntomas. El freno real no era nuestro portero: era una
+opción del proyecto en Vercel, en **Settings → Build and Deployment → Root
+Directory**:
+
+> **Skip deployments** when there are no changes to the root directory or its
+> dependencies.
+
+Con eso encendido, Vercel decide por su cuenta si tu cambio "afecta" a la app —
+y cuando decide que no, **no crea el despliegue siquiera**. Ni siquiera aparece
+como *Canceled* en la lista: no aparece nada. Por eso se buscaba en el sitio
+equivocado.
+
+Y decidía mal. Medido en `suite-salones` (root: `apps/catalogo`):
+
+| Commit | Qué tocó | Qué hizo Vercel |
+| --- | --- | --- |
+| `a6b1b97` | solo `scripts/README.md` | **sí** construyó |
+| `d044a0a` | `apps/catalogo/…/page.tsx` | **no creó nada** |
+
+Justo al revés. Nuestro portero, corrido a mano igual que lo corre Vercel, decía
+CONSTRUIR en los dos casos.
+
+**Se apagó ese interruptor en `suite-salones`.** A partir de aquí, Vercel crea
+siempre el despliegue y quien decide es nuestro portero, que es para lo que
+existe y al que sí podemos arreglarle los fallos.
+
+⚠️ **Los otros 13 proyectos siguen con el interruptor encendido.** Si a otra app
+le vuelve a pasar que "empujé y no se publicó, y no aparece ni cancelado", es
+esto: mismo sitio, mismo interruptor.

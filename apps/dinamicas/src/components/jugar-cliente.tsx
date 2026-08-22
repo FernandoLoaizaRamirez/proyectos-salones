@@ -47,7 +47,10 @@ export function JugarCliente() {
       <div className="w-full max-w-lg">
         <button
           onClick={() => setJuego("hub")}
-          className="mb-4 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+          /* `-ml-2 px-2 py-2`: este boton medía 20 px de alto y es el unico camino
+             de vuelta; con una copa en la otra mano no se le atinaba. El texto
+             queda en el mismo sitio. */
+          className="-ml-2 mb-3 inline-flex min-h-9 items-center gap-1.5 rounded-[var(--radius)] px-2 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
         >
           <ArrowLeft className="size-4" /> Elegir otro juego
         </button>

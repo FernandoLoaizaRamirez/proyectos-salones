@@ -31,7 +31,13 @@ import {
 } from "@/lib/mimesa";
 
 const K_ACOMODO = "mimesa-acomodo";
-const UMBRAL_QR = 1200;
+/*
+ * Tope de caracteres para que el QR siga siendo ESCANEABLE de verdad. Estaba en
+ * 1200 y con un acomodo de 16 invitados (922 caracteres) el codigo salia con 117
+ * modulos por lado dibujados en 132 px: una mancha gris. Por encima de este tope
+ * se ofrece el enlace o WhatsApp, que es lo que si funciona.
+ */
+const UMBRAL_QR = 300;
 
 function acomodoSemilla(): Acomodo {
   return {
@@ -160,7 +166,8 @@ export function MiMesaCliente() {
         <Card className="mt-8 p-6 text-center">
           <button
             onClick={() => setSeleccion(null)}
-            className="mb-4 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+            /* Medía 20 px de alto y es el unico regreso desde el resultado. */
+            className="-ml-2 mb-3 inline-flex min-h-9 items-center gap-1.5 rounded-[var(--radius)] px-2 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
           >
             <ArrowLeft className="size-4" /> Buscar otro nombre
           </button>
@@ -326,7 +333,7 @@ export function MiMesaCliente() {
               {urlCompartir.length <= UMBRAL_QR ? (
                 <QR value={urlCompartir} size={132} />
               ) : (
-                <div className="grid size-[132px] shrink-0 place-items-center rounded-[var(--radius)] border border-dashed border-border p-3 text-center text-[11px] text-muted-foreground">
+                <div className="grid size-[132px] shrink-0 place-items-center rounded-[var(--radius)] border border-dashed border-border p-3 text-center text-xs text-muted-foreground">
                   El acomodo es grande: compártelo por el enlace o WhatsApp (un QR quedaría difícil de
                   escanear).
                 </div>

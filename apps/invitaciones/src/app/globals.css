@@ -148,13 +148,18 @@ section.compacta {
 }
 
 /* ── ramas SVG en esquinas ── */
+/*
+ * `z-index: -1` (antes 0): la ramita es ADORNO y se estaba dibujando encima
+ * del texto y de los botones — cruzaba por las letras de "CUENTA REGRESIVA" y
+ * tapaba parte del itinerario. Detras del papel es su sitio.
+ */
 .rincon {
   position: absolute;
   width: 118px;
   height: 118px;
   pointer-events: none;
   opacity: 0.55;
-  z-index: 0;
+  z-index: -1;
 }
 .rincon svg {
   width: 100%;
@@ -512,7 +517,14 @@ section.compacta {
   font-size: clamp(1.6rem, 8vw, 2.3rem);
   line-height: 1;
   color: var(--magenta);
-  font-variant-numeric: tabular-nums;
+  /*
+   * `lining-nums`: la serif de la invitacion dibuja las cifras al estilo
+   * antiguo, donde el 1 es una I con patas y el 0 una O, asi que "211 DIAS"
+   * se leia "2II" y "01 MIN" parecia "OI". La cuenta regresiva es de lo
+   * primero que mira el invitado: tiene que leerse como numero.
+   */
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: "lnum" 1, "tnum" 1;
 }
 .casilla i {
   display: block;
@@ -889,8 +901,13 @@ section.compacta {
 .campo textarea {
   resize: vertical;
 }
+/*
+ * Margen ABAJO tambien (antes solo arriba): el aviso quedo colocado encima de
+ * los botones para que se vea sin desplazar, y en la pantalla de gracias el
+ * boton "Cambiar mi respuesta" acababa pegado al texto, sin un pelo de aire.
+ */
 #rsvpMsg {
-  margin: var(--e3) 0 0;
+  margin: var(--e3) 0;
   font-size: 0.92rem;
   color: var(--magenta);
   min-height: 1.2em;
@@ -984,7 +1001,9 @@ section.compacta {
   position: absolute;
   inset: 0;
   z-index: -1;
-  background: linear-gradient(rgba(58, 43, 49, 0.42), rgba(58, 43, 49, 0.68));
+  /* Velo mas cerrado (antes .42/.68): sobre los platos claros y las hojas
+     iluminadas, el texto blanco del cierre no se leia al sol. */
+  background: linear-gradient(rgba(58, 43, 49, 0.58), rgba(58, 43, 49, 0.82));
 }
 .cierre-txt {
   text-align: center;

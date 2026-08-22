@@ -306,7 +306,7 @@ export function RsvpCliente() {
                         <span className="truncate font-medium">{inv.nombre}</span>
                         <span
                           className={cn(
-                            "rounded-full px-2 py-0.5 text-[11px] font-medium ring-1",
+                            "rounded-full px-2 py-0.5 text-xs font-medium ring-1",
                             estiloEstado[estado],
                           )}
                         >
@@ -421,7 +421,7 @@ export function RsvpCliente() {
                   <span className="font-medium">{r.nombre?.trim() || "Sin nombre"}</span>
                   <span
                     className={cn(
-                      "rounded-full px-2 py-0.5 text-[11px] font-medium ring-1",
+                      "rounded-full px-2 py-0.5 text-xs font-medium ring-1",
                       estiloEstado[r.estado],
                     )}
                   >

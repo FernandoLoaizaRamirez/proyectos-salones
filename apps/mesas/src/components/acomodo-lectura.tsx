@@ -144,7 +144,7 @@ export function AcomodoLectura() {
               >
                 <div className="flex items-center justify-between gap-2">
                   <h3 className="truncate font-semibold">{mesa.nombre}</h3>
-                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
                     <Users className="size-3" /> {usados}/{mesa.capacidad}
                   </span>
                 </div>

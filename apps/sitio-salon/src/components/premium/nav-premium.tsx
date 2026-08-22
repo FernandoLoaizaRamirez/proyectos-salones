@@ -57,7 +57,8 @@ export function NavPremium() {
         </nav>
 
         <button
-          className="text-cream md:hidden"
+          /* `-m-2 p-2`: mismo caso que la clasica, 24 px es muy poco para un dedo. */
+          className="-m-2 p-2 text-cream md:hidden"
           aria-label="Abrir menú"
           onClick={() => setOpen((v) => !v)}
         >

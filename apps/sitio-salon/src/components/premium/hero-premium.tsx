@@ -137,7 +137,9 @@ export function HeroPremium() {
             type="button"
             onClick={() => setIdx(i)}
             aria-label={`Ver foto ${i + 1} de ${slides.length}`}
-            className="relative h-1.5 overflow-hidden rounded-full bg-cream/25 transition-[width] duration-500"
+            /* La barrita sigue midiendo 6 px (es la decoracion), pero el boton
+               se agranda por debajo con `before:` para que el dedo le atine. */
+            className="relative h-1.5 overflow-hidden rounded-full bg-cream/25 transition-[width] duration-500 before:absolute before:-inset-y-3 before:inset-x-0 before:content-['']"
             style={{ width: i === idx ? "2.5rem" : "0.5rem" }}
           >
             {i === idx ? (

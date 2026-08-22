@@ -17,7 +17,10 @@ export default function Page() {
   return (
     <>
       <Nav />
-      <main>
+      {/* `pb-24` en celular: el boton flotante de WhatsApp se sentaba
+          encima del ultimo renglon de cada seccion (una frase cortada a media
+          palabra en Paquetes, el campo Mensaje en Contacto). */}
+      <main className="pb-24 md:pb-0">
         <Hero />
         <Intro />
         <Espacios />

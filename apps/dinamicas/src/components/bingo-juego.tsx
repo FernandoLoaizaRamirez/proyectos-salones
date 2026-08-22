@@ -79,15 +79,26 @@ export function BingoJuego() {
               key={c.id}
               onClick={() => alternar(i)}
               className={cn(
-                "relative aspect-square rounded-[var(--radius)] border p-1.5 text-center text-[11px] leading-tight transition-colors sm:text-xs",
+                /*
+                 * `font-medium` SIEMPRE (no solo al marcar): si solo lo llevaba
+                 * la casilla marcada, al tocarla el texto engordaba, se
+                 * reacomodaba de dos renglones a tres y las palabras brincaban
+                 * de sitio delante del invitado.
+                 */
+                "relative aspect-square rounded-[var(--radius)] border p-1.5 text-center text-xs font-medium leading-tight transition-colors",
                 on
-                  ? "border-primary bg-primary/15 font-medium text-primary"
+                  ? "border-primary bg-primary/15 text-primary"
                   : "border-border text-muted-foreground hover:bg-muted",
               )}
             >
-              <span className="flex size-full items-center justify-center">{c.texto}</span>
+              {/* La palomita va ABAJO a la derecha y el texto le deja sitio con
+                  `pb-3`: arriba se montaba sobre la ultima letra del primer
+                  renglon en 7 de las 16 casillas. */}
+              <span className={cn("flex size-full items-center justify-center", on && "pb-3")}>
+                {c.texto}
+              </span>
               {on ? (
-                <Check className="absolute right-1 top-1 size-3.5 text-primary" />
+                <Check className="absolute bottom-1 right-1 size-3.5 text-primary" />
               ) : null}
             </button>
           );

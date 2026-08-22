@@ -372,7 +372,9 @@ export function Album() {
 
       {/* Contador + descargar */}
       <div className="space-y-2">
-        <div className="flex items-center justify-between gap-4">
+        {/* Apilado en celular: con la descarga en marcha eran tres bloques en
+            342 px y los dos textos se partian en dos renglones cada uno. */}
+        <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
           <p className="text-sm text-muted-foreground">
             <span className="font-semibold text-foreground">{archivos.length}</span>{" "}
             {archivos.length === 1 ? "recuerdo" : "recuerdos"} en el álbum
@@ -494,7 +496,10 @@ export function Album() {
               ir(-1);
             }}
             aria-label="Anterior"
-            className="absolute left-4 z-10 grid size-11 place-items-center rounded-full border border-white/30 text-white transition-colors hover:bg-white/10 md:left-8"
+            /* En celular las flechas bajan al pie: puestas encima de la foto
+               tapaban 36 px cada una, o sea la quinta parte del ancho justo a
+               media altura (una cara, un ramo). */
+            className="absolute bottom-4 left-6 z-10 grid size-11 place-items-center rounded-full border border-white/30 bg-black/50 text-white transition-colors hover:bg-white/10 md:inset-y-auto md:bottom-auto md:left-8 md:bg-transparent"
           >
             <ChevronLeft className="size-5" />
           </button>
@@ -504,9 +509,27 @@ export function Album() {
               ir(1);
             }}
             aria-label="Siguiente"
-            className="absolute right-4 z-10 grid size-11 place-items-center rounded-full border border-white/30 text-white transition-colors hover:bg-white/10 md:right-8"
+            className="absolute bottom-4 right-6 z-10 grid size-11 place-items-center rounded-full border border-white/30 bg-black/50 text-white transition-colors hover:bg-white/10 md:inset-y-auto md:bottom-auto md:right-8 md:bg-transparent"
           >
             <ChevronRight className="size-5" />
+          </button>
+          {/* Guardar SOLO esta: hasta ahora, para quedarse con una foto habia
+              que cerrar el visor y bajar el album entero. */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              // Una sola foto: sin barra de progreso y sin posibilidad de
+              // detenerla a medias, por eso el avance se ignora y `seguir`
+              // siempre dice que si.
+              void descargarMedios(
+                [{ nombre: actual.nombre, url: ver(actual.url) }],
+                () => {},
+                () => true,
+              );
+            }}
+            className="absolute bottom-4 left-1/2 z-10 flex h-11 -translate-x-1/2 items-center gap-2 rounded-full border border-white/30 bg-black/50 px-4 text-sm font-medium text-white transition-colors hover:bg-white/10 md:bottom-6"
+          >
+            <Download className="size-4" /> Guardar esta
           </button>
           <div className="max-h-[85vh] max-w-4xl" onClick={(e) => e.stopPropagation()}>
             {actual.tipo.startsWith("video/") ? (

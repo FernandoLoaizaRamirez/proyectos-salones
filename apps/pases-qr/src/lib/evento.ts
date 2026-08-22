@@ -167,3 +167,14 @@ export function decodificarPase(datos: string): Invitado | null {
     tipo: pase.tipo ?? "General",
   };
 }
+
+/**
+ * "Mesa 4" a partir de "4", pero sin repetir la palabra si el salon ya bautizo
+ * la mesa ("Mesa principal de los novios"). Antes cada pantalla escribia la
+ * palabra a mano y se leia "Mesa Mesa principal de los novios".
+ */
+export function etiquetaMesa(mesa: string): string {
+  const limpia = mesa.trim();
+  if (!limpia) return "";
+  return /^mesa/i.test(limpia) ? limpia : `Mesa ${limpia}`;
+}

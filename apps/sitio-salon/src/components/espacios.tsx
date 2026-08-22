@@ -20,9 +20,13 @@ export function Espacios() {
         {espacios.map((e, i) => (
           <Reveal key={e.nombre} delay={i * 80} className="h-full">
             <article className="group h-full overflow-hidden rounded-[var(--radius)] border border-border bg-card">
-              <Photo label={e.nombre} src={e.foto} alt={e.nombre} aspect="aspect-[16/10]" framed={false} />
+              {/* Sin `label`: el nombre ya va como titulo de la tarjeta justo
+                  debajo, y salia impreso DOS veces, una sobre la otra. */}
+              <Photo src={e.foto} alt={e.nombre} aspect="aspect-[16/10]" framed={false} />
               <div className="p-6">
-                <div className="flex items-center justify-between gap-4">
+                {/* Apilado en celular: con un nombre de dos renglones el titulo
+                    y la etiqueta dorada se encimaban. */}
+                <div className="flex flex-col items-start gap-1 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4">
                   <h3 className="font-display text-2xl">{e.nombre}</h3>
                   <span className="eyebrow shrink-0">{e.etiqueta}</span>
                 </div>

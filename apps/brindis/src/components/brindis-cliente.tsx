@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { createPortal } from "react-dom";
 import {
   Video,
   Circle,
@@ -662,12 +663,23 @@ export function CompartirBrindis() {
 
   return (
     <>
-      <Button variant="outline" size="sm" onClick={() => setAbierto(true)}>
-        <QrCode className="size-4" /> Compartir
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => setAbierto(true)}
+        aria-label="Compartir el brindis con un codigo QR"
+      >
+        <QrCode className="size-4" /> <span className="hidden sm:inline">Compartir</span>
       </Button>
-      {abierto ? (
+      {abierto
+        ? /* Este dialogo cuelga del <header>, que lleva `backdrop-blur`: eso crea
+             un lienzo propio y el `fixed` se anclaba al encabezado en vez de a la
+             pantalla, asi que la tarjeta salia pegada arriba y el resto quedaba
+             sin oscurecer, como a medio abrir. `createPortal` lo saca al <body>,
+             que es donde debe vivir un dialogo. */
+          createPortal(
         <div
-          className="fixed inset-0 z-40 grid place-items-center bg-black/50 p-4"
+          className="fixed inset-0 z-40 grid place-items-center overflow-y-auto bg-black/50 p-4"
           onClick={() => setAbierto(false)}
         >
           <Card className="w-full max-w-md p-6" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
@@ -706,8 +718,10 @@ export function CompartirBrindis() {
               </div>
             </div>
           </Card>
-        </div>
-      ) : null}
+        </div>,
+            document.body,
+          )
+        : null}
     </>
   );
 }

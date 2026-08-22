@@ -209,7 +209,7 @@ export function AcomodoCliente() {
       if (inv.asientos > restan) {
         mostrarAviso(
           `No caben ${inv.asientos} lugar${inv.asientos === 1 ? "" : "es"} en “${mesa.nombre}”. ` +
-            `${restan <= 0 ? "Está llena." : `Solo quedan ${restan} libre${restan === 1 ? "" : "s"}.`}`,
+            `${restan <= 0 ? "Está llena." : restan === 1 ? "Solo queda 1 lugar libre." : `Solo quedan ${restan} lugares libres.`}`,
         );
         return false;
       }
@@ -489,7 +489,7 @@ export function AcomodoCliente() {
       <div className="flex min-w-0 items-center gap-2 sm:flex-1">
         <GripVertical className="size-4 shrink-0 text-muted-foreground" />
         <span className="min-w-0 flex-1 truncate font-medium">{inv.nombre}</span>
-        <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+        <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
           <Users className="size-3" />
           {inv.asientos}
         </span>
@@ -756,7 +756,14 @@ export function AcomodoCliente() {
               )}
             </div>
             <p className="mt-3 text-xs text-muted-foreground">
-              Arrastra un invitado a una mesa, o usa el menú “Sin mesa / mesa” de cada uno.
+              {/* En celular no se puede arrastrar: el arrastre nativo de HTML no
+                  responde al dedo. Ahí se nombra solo el camino que sí funciona. */}
+              <span className="hidden sm:inline">
+                Arrastra un invitado a una mesa, o usa el menú “Sin mesa / mesa” de cada uno.
+              </span>
+              <span className="sm:hidden">
+                Usa el menú “Sin mesa / mesa” de cada invitado para sentarlo.
+              </span>
             </p>
           </Card>
         </div>
@@ -765,7 +772,9 @@ export function AcomodoCliente() {
         <div>
           {mesas.length === 0 ? (
             <div className="rounded-[var(--radius)] border border-dashed border-border p-12 text-center text-muted-foreground">
-              Aún no hay mesas. Crea la primera con el formulario de la izquierda.
+              Aún no hay mesas. Crea la primera con el formulario de{" "}
+              <span className="hidden sm:inline">la izquierda</span>
+              <span className="sm:hidden">arriba</span>.
             </div>
           ) : (
             <div className="grid grid-cols-[minmax(0,1fr)] gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -791,7 +800,7 @@ export function AcomodoCliente() {
                         <h3 className="truncate font-semibold">{mesa.nombre}</h3>
                         <span
                           className={cn(
-                            "mt-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ring-1",
+                            "mt-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ring-1",
                             tonoOcupacion(usados, mesa.capacidad),
                           )}
                         >
@@ -819,7 +828,8 @@ export function AcomodoCliente() {
                     <div className="mt-3 flex-1 space-y-2">
                       {gente.length === 0 ? (
                         <p className="grid h-20 place-items-center rounded-[var(--radius)] border border-dashed border-border text-center text-xs text-muted-foreground">
-                          Arrastra invitados aquí
+                          <span className="hidden sm:inline">Arrastra invitados aquí</span>
+                          <span className="sm:hidden">Sin invitados todavía</span>
                         </p>
                       ) : (
                         gente.map((inv) => chipInvitado(inv, true))
@@ -868,7 +878,7 @@ export function AcomodoCliente() {
               {urlCompartir.length <= UMBRAL_QR ? (
                 <QR value={urlCompartir} size={132} />
               ) : (
-                <div className="grid size-[132px] shrink-0 place-items-center rounded-[var(--radius)] border border-dashed border-border p-3 text-center text-[11px] text-muted-foreground">
+                <div className="grid size-[132px] shrink-0 place-items-center rounded-[var(--radius)] border border-dashed border-border p-3 text-center text-xs text-muted-foreground">
                   El acomodo es grande: compártelo por el enlace o WhatsApp (un QR quedaría difícil de
                   escanear).
                 </div>

@@ -66,7 +66,7 @@ export function RompehielosJuego() {
               <div className="mb-1 flex items-center gap-2 text-sm font-medium">
                 <span
                   className={cn(
-                    "grid size-5 shrink-0 place-items-center rounded-full border text-[10px]",
+                    "grid size-5 shrink-0 place-items-center rounded-full border text-xs",
                     hecho
                       ? "border-primary bg-primary text-primary-foreground"
                       : "border-border text-transparent",

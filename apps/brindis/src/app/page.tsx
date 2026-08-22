@@ -24,6 +24,9 @@ export default function Page() {
               <div className="truncate text-xs text-muted-foreground">Brindis en video</div>
             </div>
           </div>
+          {/* En el celular estos dos van con puro icono: con sus rotulos se
+              comian 206 px de los 342 y el nombre de la boda quedaba en
+              "Boda An...". */}
           <div className="flex shrink-0 items-center gap-2">
             <CompartirBrindis />
             <ThemeToggle />

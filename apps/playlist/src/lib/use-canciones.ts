@@ -101,6 +101,15 @@ export function useCanciones() {
       }
       // El autor de la canción cuenta como su primer voto (en este dispositivo).
       setMisVotos((v) => (v.includes(c.id) ? v : [...v, c.id]));
+      /*
+       * Y se pinta YA, sin esperar al sondeo. Antes el botón decía "¡Agregada!"
+       * mientras la lista de abajo seguía diciendo "0 en cola · Aún no hay
+       * canciones": durante uno a tres segundos la pantalla se contradecía sola
+       * y el invitado creía que su canción no había entrado. Si el sondeo trae
+       * algo distinto, manda el servidor (esto solo adelanta lo que ya se
+       * guardó bien).
+       */
+      setCanciones((lista) => (lista.some((x) => x.id === c.id) ? lista : [...lista, c]));
       return true;
     },
     [],

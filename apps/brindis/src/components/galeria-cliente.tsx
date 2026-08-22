@@ -182,7 +182,15 @@ export function GaleriaCliente() {
             </p>
           </div>
           {!recuerdoUrl ? (
-            <Button onClick={crearRecuerdo} disabled={creando || videos.length === 0}>
+            /* Sin brindis todavia el boton se veia encendido (solo un poco
+               apagado) y al tocarlo no pasaba nada ni se explicaba por que.
+               Ahora se nota que esta en espera y una linea dice cuando servira. */
+            <Button
+              variant={videos.length === 0 ? "outline" : "primary"}
+              onClick={crearRecuerdo}
+              disabled={creando || videos.length === 0}
+              title={videos.length === 0 ? "Disponible cuando llegue el primer brindis" : undefined}
+            >
               {creando ? (
                 <>
                   <Loader2 className="size-4 animate-spin" /> {estado ? TEXTO_ESTADO[estado] ?? "Creando…" : "Creando…"}
@@ -195,6 +203,11 @@ export function GaleriaCliente() {
             </Button>
           ) : null}
         </div>
+        {!recuerdoUrl && videos.length === 0 ? (
+          <p className="mt-2 text-xs text-muted-foreground">
+            Disponible en cuanto llegue el primer brindis.
+          </p>
+        ) : null}
 
         {creando ? (
           <p className="mt-3 text-xs text-muted-foreground">

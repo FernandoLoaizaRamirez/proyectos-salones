@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!--
+    Favicon de la app. Antes no había ninguno: la pestaña salía con el cuadrito
+    gris del navegador, el celular guardaba un acceso directo en blanco si el
+    salón se la ponía en su pantalla de inicio, y la consola registraba un 404
+    en cada carga. El símbolo es una lista con una palomita.
+    El dibujo va en trazo, sin texto: un favicon no puede depender de una
+    fuente web porque no le da tiempo a cargar.
+  -->
+  <rect width="64" height="64" rx="12" fill="#c026a3"/>
+  <g fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="12" y="14" width="40" height="38" rx="5"/>
+    <path d="M22 32l7 7 14-15"/>
+  </g>
+</svg>

@@ -92,14 +92,19 @@ export function Bingo({ evento }: { evento: string }) {
               onClick={() => alternar(i)}
               aria-pressed={on}
               className={cn(
-                "relative aspect-square rounded-[var(--radius)] border p-1.5 text-center text-[11px] leading-tight transition-colors sm:text-xs",
+                // `font-medium` siempre y palomita abajo: si no, el texto
+                // engordaba al marcar y brincaba de renglon, y la palomita se
+                // montaba sobre la ultima letra.
+                "relative aspect-square rounded-[var(--radius)] border p-1.5 text-center text-xs font-medium leading-tight transition-colors",
                 on
-                  ? "border-primary bg-primary/15 font-medium text-primary"
+                  ? "border-primary bg-primary/15 text-primary"
                   : "border-border text-muted-foreground hover:bg-muted",
               )}
             >
-              <span className="flex size-full items-center justify-center">{c.texto}</span>
-              {on ? <Check className="absolute right-1 top-1 size-3.5 text-primary" /> : null}
+              <span className={cn("flex size-full items-center justify-center", on && "pb-3")}>
+                {c.texto}
+              </span>
+              {on ? <Check className="absolute bottom-1 right-1 size-3.5 text-primary" /> : null}
             </button>
           );
         })}

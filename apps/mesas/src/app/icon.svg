@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!--
+    Favicon de la app. Antes no había ninguno: la pestaña salía con el cuadrito
+    gris del navegador, el celular guardaba un acceso directo en blanco si el
+    salón se la ponía en su pantalla de inicio, y la consola registraba un 404
+    en cada carga. El símbolo es una mesa redonda con sus lugares.
+    El dibujo va en trazo, sin texto: un favicon no puede depender de una
+    fuente web porque no le da tiempo a cargar.
+  -->
+  <rect width="64" height="64" rx="12" fill="#c026a3"/>
+  <g fill="none" stroke="#ffffff" stroke-width="3">
+    <circle cx="32" cy="32" r="11"/>
+    <circle cx="32" cy="14" r="3.5" fill="#ffffff"/>
+    <circle cx="32" cy="50" r="3.5" fill="#ffffff"/>
+    <circle cx="14" cy="32" r="3.5" fill="#ffffff"/>
+    <circle cx="50" cy="32" r="3.5" fill="#ffffff"/>
+  </g>
+</svg>

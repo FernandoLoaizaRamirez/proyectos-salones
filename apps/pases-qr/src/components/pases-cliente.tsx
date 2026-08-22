@@ -15,6 +15,7 @@ import {
   type Acceso,
   type Invitado,
   type Tipo,
+  etiquetaMesa,
 } from "@/lib/evento";
 import { useEventoReal } from "@/lib/evento-real";
 import { PassTicket } from "./pass-ticket";
@@ -371,7 +372,7 @@ export function PasesCliente() {
       setResultado({
         estado: "repetido",
         titulo: inv.nombre,
-        detalle: `Ya había ingresado · Mesa ${inv.mesa} · ${inv.personas} pers`,
+        detalle: `Ya había ingresado · ${etiquetaMesa(inv.mesa)} · ${inv.personas} pers`,
         hora: horaDe(yaTs),
       });
     } else {
@@ -382,7 +383,7 @@ export function PasesCliente() {
       setResultado({
         estado: "ok",
         titulo: inv.nombre,
-        detalle: `¡Puede ingresar! · Mesa ${inv.mesa} · ${inv.personas} pers`,
+        detalle: `¡Puede ingresar! · ${etiquetaMesa(inv.mesa)} · ${inv.personas} pers`,
         hora: horaDe(ts),
       });
     }
@@ -392,7 +393,11 @@ export function PasesCliente() {
     (texto: string) => {
       const id = idDesdeQR(texto);
       const now = Date.now();
-      if (id && ultimo.current && ultimo.current.id === id && now - ultimo.current.t < 2500) return;
+      // El candado dura lo MISMO que el aviso en pantalla (6 s). Con 2,5 s, si el
+      // invitado dejaba su QR delante de la camara —que es lo normal— el verde
+      // "¡Puede ingresar!" se convertia solo en el ambar "Ya habia ingresado" y
+      // el de la puerta veia un pase repetido donde no lo habia.
+      if (id && ultimo.current && ultimo.current.id === id && now - ultimo.current.t < 6000) return;
       if (id) ultimo.current = { id, t: now };
       const inv = id ? invitadosRef.current.find((i) => i.id === id) : undefined;
       if (!inv) {
@@ -627,13 +632,13 @@ export function PasesCliente() {
                       <div className="flex items-center gap-2">
                         <span className="truncate font-medium">{inv.nombre}</span>
                         {inv.tipo === "VIP" ? (
-                          <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] text-primary">
+                          <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">
                             VIP
                           </span>
                         ) : null}
                       </div>
                       <div className="text-sm text-muted-foreground">
-                        Mesa {inv.mesa} · {inv.personas} pers · {inv.id}
+                        {etiquetaMesa(inv.mesa)} · {inv.personas} pers · {inv.id}
                       </div>
                     </div>
                     <div className="flex items-center gap-1.5">
@@ -797,13 +802,13 @@ export function PasesCliente() {
                     <div className="flex items-center gap-2">
                       <span className="truncate font-medium">{inv.nombre}</span>
                       {inv.tipo === "VIP" ? (
-                        <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] text-primary">
+                        <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">
                           VIP
                         </span>
                       ) : null}
                     </div>
                     <div className="text-sm text-muted-foreground">
-                      Mesa {inv.mesa} · {inv.personas} pers · {inv.id}
+                      {etiquetaMesa(inv.mesa)} · {inv.personas} pers · {inv.id}
                     </div>
                     {dentro ? (
                       <div className="mt-0.5 text-xs font-medium text-green-600 dark:text-green-400">

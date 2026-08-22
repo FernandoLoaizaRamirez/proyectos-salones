@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!--
+    Favicon de la app. Antes no había ninguno: la pestaña salía con el cuadrito
+    gris del navegador, el celular guardaba un acceso directo en blanco si el
+    salón se la ponía en su pantalla de inicio, y la consola registraba un 404
+    en cada carga. El símbolo es un código QR.
+    El dibujo va en trazo, sin texto: un favicon no puede depender de una
+    fuente web porque no le da tiempo a cargar.
+  -->
+  <rect width="64" height="64" rx="12" fill="#c026a3"/>
+  <g fill="none" stroke="#ffffff" stroke-width="3">
+    <rect x="13" y="13" width="15" height="15" rx="2"/>
+    <rect x="36" y="13" width="15" height="15" rx="2"/>
+    <rect x="13" y="36" width="15" height="15" rx="2"/>
+    <path d="M36 36h6v6h-6zM45 45h6v6h-6z" stroke-width="3"/>
+  </g>
+</svg>

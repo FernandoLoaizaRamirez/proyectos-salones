@@ -4,7 +4,7 @@ import { MiMesaCliente } from "@/components/mi-mesa-cliente";
 
 export default function Page() {
   return (
-    <main className="min-h-screen">
+    <main className="flex min-h-screen flex-col">
       <header className="border-b border-border">
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-4 px-6 py-3">
           <div className="min-w-0">
@@ -15,7 +15,9 @@ export default function Page() {
         </div>
       </header>
 
-      <section className="grid place-items-center px-6 py-12">
+      {/* `flex-1`: sin esto el pie quedaba flotando a media pantalla, con un
+          hueco negro debajo, porque el contenido no llenaba el alto. */}
+      <section className="grid flex-1 place-items-center px-6 py-12">
         <MiMesaCliente />
       </section>
 

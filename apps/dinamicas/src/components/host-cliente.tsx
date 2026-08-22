@@ -120,7 +120,7 @@ export function HostCliente() {
             )}
           </Card>
           <p className="mt-2 text-xs text-muted-foreground">
-            Se actualiza en vivo entre pestañas del mismo navegador.
+            Se actualiza en vivo con lo que juegan los invitados desde sus teléfonos.
           </p>
         </div>
       </div>

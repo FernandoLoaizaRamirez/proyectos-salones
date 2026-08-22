@@ -27,7 +27,7 @@ export default function Page() {
             Quién se sienta en cada mesa
           </h1>
           <p className="mt-2 max-w-2xl text-muted-foreground">
-            Crea tus mesas y arrastra a cada invitado a su lugar. Verás los cupos usados y libres al
+            Crea tus mesas y sienta a cada invitado en su lugar. Verás los cupos usados y libres al
             instante. Cuando termines, comparte el acomodo por un enlace de solo lectura.
           </p>
         </div>

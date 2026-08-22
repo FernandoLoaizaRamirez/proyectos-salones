@@ -109,7 +109,7 @@ export default function MisEventos() {
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="truncate font-semibold">{e.nombre}</span>
                     {e.estado !== "activo" ? (
-                      <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+                      <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
                         Cerrado
                       </span>
                     ) : null}

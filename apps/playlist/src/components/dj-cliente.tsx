@@ -179,12 +179,12 @@ export function DjCliente() {
                   <div className="flex items-center gap-2">
                     <span className="truncate font-medium">{c.titulo}</span>
                     {c.estado === EstadoCancion.Puesta ? (
-                      <span className="shrink-0 rounded-full bg-green-500/10 px-2 py-0.5 text-[11px] font-medium text-green-600 ring-1 ring-green-500/30">
+                      <span className="shrink-0 rounded-full bg-green-500/10 px-2 py-0.5 text-xs font-medium text-green-600 ring-1 ring-green-500/30">
                         Puesta
                       </span>
                     ) : null}
                     {c.estado === EstadoCancion.Descartada ? (
-                      <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground ring-1 ring-border">
+                      <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground ring-1 ring-border">
                         Descartada
                       </span>
                     ) : null}

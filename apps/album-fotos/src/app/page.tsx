@@ -41,8 +41,9 @@ export default function Page() {
 
       <footer className="border-t border-border">
         <div className="mx-auto max-w-5xl px-6 py-8 text-xs text-muted-foreground">
-          Álbum de {evento.nombre} · Demo de {evento.organizador}. En esta demostración los archivos
-          se quedan en tu dispositivo; para un evento real, todos ven las fotos de todos.
+          Álbum de {evento.nombre} · Demo de {evento.organizador}. Lo que subas aquí lo verá
+          cualquiera que abra esta demostración, así que no subas nada que no quieras enseñar; en
+          un evento real el álbum es privado y solo lo ven los invitados de esa fiesta.
         </div>
       </footer>
     </main>

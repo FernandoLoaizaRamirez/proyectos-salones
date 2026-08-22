@@ -52,7 +52,11 @@ export function AvisoParticipacion({
         href={`${base}/privacidad`}
         target="_blank"
         rel="noopener noreferrer"
-        className="underline underline-offset-2 hover:text-foreground"
+        /* `inline-block py-1.5 -my-1.5`: estos enlaces median 16 px de alto y
+           con el dedo se fallaba. El relleno los sube a 28 px de zona tocable y
+           los margenes negativos evitan que el parrafo crezca. Son justo los
+           enlaces que alguien deberia poder abrir ANTES de aceptar. */
+        className="inline-block py-1.5 -my-1.5 underline underline-offset-2 hover:text-foreground"
       >
         aviso de privacidad
       </a>
@@ -64,7 +68,11 @@ export function AvisoParticipacion({
             href={`${base}/imagen`}
             target="_blank"
             rel="noopener noreferrer"
-            className="underline underline-offset-2 hover:text-foreground"
+            /* `inline-block py-1.5 -my-1.5`: estos enlaces median 16 px de alto y
+           con el dedo se fallaba. El relleno los sube a 28 px de zona tocable y
+           los margenes negativos evitan que el parrafo crezca. Son justo los
+           enlaces que alguien deberia poder abrir ANTES de aceptar. */
+        className="inline-block py-1.5 -my-1.5 underline underline-offset-2 hover:text-foreground"
           >
             uso de tu imagen
           </a>

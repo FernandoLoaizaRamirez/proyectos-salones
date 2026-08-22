@@ -1,7 +1,7 @@
 "use client";
 
 import { QRCodeSVG } from "qrcode.react";
-import { contenidoQR, evento, type Invitado } from "@/lib/evento";
+import { contenidoQR, etiquetaMesa, evento, type Invitado } from "@/lib/evento";
 
 /** Lo que el boleto pinta del evento (el nombre arriba y la fecha del pie). */
 type TextosTicket = { nombre: string; fechaCorta: string };
@@ -13,12 +13,6 @@ type TextosTicket = { nombre: string; fechaCorta: string };
  * antepone otra, para no imprimir "Mesa Mesa principal". Vacía = sin etiqueta
  * (esa parte del renglón simplemente no se pinta).
  */
-function etiquetaMesa(mesa: string): string {
-  const limpia = mesa.trim();
-  if (!limpia) return "";
-  return /^mesa\b/i.test(limpia) ? limpia : `Mesa ${limpia}`;
-}
-
 /** Pase con estilo de boleto premium (lo que recibe cada invitado). */
 export function PassTicket({
   inv,
@@ -47,15 +41,15 @@ export function PassTicket({
 
       <div className={size === "sm" ? "px-5 pt-4" : "px-7 pt-6"}>
         <div className="flex items-center justify-between gap-3">
-          <span className="truncate text-[0.62rem] uppercase tracking-[0.22em] text-white/55">
+          <span className="truncate text-xs uppercase tracking-[0.22em] text-white/55">
             {textos.nombre}
           </span>
           {vip ? (
-            <span className="shrink-0 rounded-full bg-amber-400/15 px-2 py-0.5 text-[0.6rem] font-semibold uppercase tracking-wider text-amber-300 ring-1 ring-amber-300/40">
+            <span className="shrink-0 rounded-full bg-amber-400/15 px-2 py-0.5 text-xs font-semibold uppercase tracking-wider text-amber-300 ring-1 ring-amber-300/40">
               VIP
             </span>
           ) : (
-            <span className="shrink-0 rounded-full bg-white/10 px-2 py-0.5 text-[0.6rem] font-medium uppercase tracking-wider text-white/60">
+            <span className="shrink-0 rounded-full bg-white/10 px-2 py-0.5 text-xs font-medium uppercase tracking-wider text-white/60">
               Acceso
             </span>
           )}
@@ -88,7 +82,7 @@ export function PassTicket({
             bgColor="#ffffff"
           />
         </div>
-        <p className="mt-3 text-[0.68rem] uppercase tracking-[0.18em] text-white/40">
+        <p className="mt-3 text-xs uppercase tracking-[0.18em] text-white/40">
           Pase {inv.id}
           {textos.fechaCorta ? ` · ${textos.fechaCorta}` : ""}
         </p>

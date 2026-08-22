@@ -70,25 +70,29 @@ export function ModoPantalla({
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-background">
       {/* Barra superior */}
-      <div className="flex items-center justify-between px-8 py-6">
-        <div>
+      <div className="flex items-center justify-between gap-3 px-8 py-6">
+        {/* `min-w-0`: que ceda el titulo, no los botones. Sin esto flexbox
+            aplastaba la X hasta dejarla ovalada y el boton de quitar partia su
+            texto en dos renglones pegados al borde. */}
+        <div className="min-w-0">
           <div className="text-sm font-medium text-primary">Muro de mensajes</div>
-          <div className="text-2xl font-semibold tracking-tight">{evento.nombre}</div>
+          <div className="truncate text-2xl font-semibold tracking-tight">{evento.nombre}</div>
         </div>
         <div className="flex items-center gap-3">
           {onQuitar && actual ? (
             <button
               onClick={() => onQuitar(actual)}
               aria-label={`Quitar el mensaje de ${actual.nombre} que está en pantalla`}
-              className="flex h-11 items-center gap-2 rounded-full border border-border px-4 text-sm font-medium text-muted-foreground transition-colors hover:border-red-500/50 hover:text-red-500"
+              className="flex h-11 shrink-0 items-center gap-2 rounded-full border border-border px-4 text-sm font-medium text-muted-foreground transition-colors hover:border-red-500/50 hover:text-red-500"
             >
-              <Trash2 className="size-4" /> Quitar este mensaje
+              <Trash2 className="size-4" />{" "}
+              <span className="hidden sm:inline">Quitar este mensaje</span>
             </button>
           ) : null}
           <button
             onClick={onClose}
             aria-label="Salir del modo pantalla"
-            className="grid size-11 place-items-center rounded-full border border-border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            className="grid size-11 shrink-0 place-items-center rounded-full border border-border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           >
             <X className="size-5" />
           </button>

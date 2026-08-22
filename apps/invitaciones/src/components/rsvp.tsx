@@ -235,7 +235,9 @@ export function Rsvp({
                 <label htmlFor="rsvpMensaje">Mensaje (opcional)</label>
                 <textarea
                   id="rsvpMensaje"
-                  rows={3}
+                  /* 4 renglones: con 3, la cuarta linea del mensaje quedaba
+                     cortada a media letra contra el borde del recuadro. */
+                  rows={4}
                   value={mensaje}
                   onChange={(e) => setMensaje(e.target.value)}
                   placeholder={

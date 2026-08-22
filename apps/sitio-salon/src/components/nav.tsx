@@ -70,7 +70,9 @@ export function Nav() {
         </nav>
 
         <button
-          className={`md:hidden ${light ? "text-cream" : "text-foreground"}`}
+          /* `-m-2 p-2`: el icono mide 24 px y era mas chico que la yema de un
+             dedo. El relleno lo lleva a 40 px tocables sin moverlo de sitio. */
+          className={`-m-2 p-2 md:hidden ${light ? "text-cream" : "text-foreground"}`}
           aria-label="Abrir menú"
           onClick={() => setOpen((v) => !v)}
         >

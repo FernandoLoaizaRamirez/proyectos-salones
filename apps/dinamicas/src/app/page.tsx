@@ -38,7 +38,7 @@ export default function Page() {
       <footer className="border-t border-border">
         <div className="mx-auto max-w-5xl px-6 py-8 text-xs text-muted-foreground">
           {evento.lugar} · Demo de {evento.organizador.nombre}. En esta demostración el ranking se
-          guarda en este dispositivo (se actualiza en vivo entre pestañas del mismo navegador); para
+          actualiza en vivo entre los teléfonos de todos los invitados; para
           un ranking común entre muchos teléfonos se conecta a un sistema central.
         </div>
       </footer>

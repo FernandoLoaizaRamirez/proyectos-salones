@@ -25,7 +25,7 @@ import {
   invitacionTieneContenido,
   nombresInvitacion,
 } from "@salones/core";
-import { eventoActual, obtenerSync } from "@salones/sync";
+import { eventoActual, obtenerSync, esVitrina } from "@salones/sync";
 import { evento, type TextosMarcos } from "@/lib/photobooth";
 
 /** Los textos de la muestra, el respaldo de todo lo demás. */
@@ -109,7 +109,7 @@ export function useEventoReal(): {
     // hidratación. En la vitrina no hay nada más que hacer: el estado inicial
     // YA es la muestra.
     const codigo = eventoActual();
-    if (codigo === "demo") return;
+    if (esVitrina(codigo)) return;
     // El código se fija de inmediato: aunque la lectura tarde o falle, el
     // botón de guardar en el álbum tiene que apuntar al evento correcto.
     setEstado((prev) => ({ ...prev, codigo }));

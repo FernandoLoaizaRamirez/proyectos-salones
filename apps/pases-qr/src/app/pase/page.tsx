@@ -17,7 +17,7 @@ import {
   normalizarMesasCrudas,
   normalizarNombre,
 } from "@salones/core";
-import { obtenerSync } from "@salones/sync";
+import { obtenerSync, esVitrina } from "@salones/sync";
 import { decodificarPase, type Invitado } from "@/lib/evento";
 import { useEventoReal } from "@/lib/evento-real";
 import { PassTicket } from "@/components/pass-ticket";
@@ -55,7 +55,7 @@ export default function PasePage() {
    * equivocada sería peor que dejar la de antes.
    */
   React.useEffect(() => {
-    if (codigo === "demo" || inv === "cargando" || inv === null) return;
+    if (esVitrina(codigo) || inv === "cargando" || inv === null) return;
     let vivo = true;
     (async () => {
       try {

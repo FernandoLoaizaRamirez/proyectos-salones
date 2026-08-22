@@ -25,7 +25,7 @@ import {
   invitacionTieneContenido,
   nombresInvitacion,
 } from "@salones/core";
-import { obtenerSync } from "@salones/sync";
+import { obtenerSync, esVitrina } from "@salones/sync";
 import { olvidarPerfil, usePerfil } from "@/lib/perfil";
 
 /** Lo poquito que la portada necesita de la invitación. */
@@ -77,13 +77,13 @@ export function HeroEvento({ evento }: { evento: string }) {
         const inv = invitacionDe(evento, items);
         if (inv && invitacionTieneContenido(inv)) {
           setDatos({ nombres: nombresInvitacion(inv), fechaISO: inv.fechaISO, ciudad: inv.ciudad });
-        } else if (evento === "demo") {
+        } else if (esVitrina(evento)) {
           setDatos(DATOS_DEMO);
         }
       })
       .catch(() => {
         // Sin red no hay portada extra; la vitrina "demo" sí se enseña completa.
-        if (vivo && evento === "demo") setDatos(DATOS_DEMO);
+        if (vivo && esVitrina(evento)) setDatos(DATOS_DEMO);
       });
     return () => {
       vivo = false;

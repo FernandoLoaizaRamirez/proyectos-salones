@@ -26,7 +26,7 @@ import {
   invitacionTieneContenido,
   nombresInvitacion,
 } from "@salones/core";
-import { eventoActual, obtenerSync } from "@salones/sync";
+import { eventoActual, obtenerSync, esVitrina } from "@salones/sync";
 import { evento } from "@/lib/evento";
 
 /** Los textos del evento que pintan el boleto y los mensajes. */
@@ -108,7 +108,7 @@ export function useEventoReal(): {
     // hidratación. En la vitrina no hay nada más que hacer: el estado inicial
     // YA es la muestra.
     const codigo = eventoActual();
-    if (codigo === "demo") return;
+    if (esVitrina(codigo)) return;
     // El código se fija de inmediato: aunque la lectura tarde o falle, los
     // enlaces que se arman con él (el pase, el portal) tienen que apuntar al
     // evento correcto.

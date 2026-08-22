@@ -26,7 +26,7 @@ import {
   invitacionTieneContenido,
   type Invitacion,
 } from "@salones/core";
-import { eventoActual, obtenerSync, resolverMedios } from "@salones/sync";
+import { eventoActual, obtenerSync, resolverMedios, esVitrina } from "@salones/sync";
 import { INVITACION_DEMO } from "./invitacion";
 
 export type EstadoInvitacion =
@@ -80,7 +80,7 @@ export function useInvitacion(): EstadoInvitacion {
 
       if (inv && invitacionTieneContenido(inv)) {
         setEstado({ fase: "lista", inv, codigo });
-      } else if (codigo === "demo") {
+      } else if (esVitrina(codigo)) {
         setEstado({ fase: "muestra", inv: INVITACION_DEMO, codigo });
       } else {
         setEstado({ fase: "preparando", codigo });

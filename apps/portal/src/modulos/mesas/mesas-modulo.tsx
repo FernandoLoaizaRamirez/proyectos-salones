@@ -15,7 +15,7 @@
 import * as React from "react";
 import { Armchair, Search, Users } from "lucide-react";
 import { Card, EmptyState, cn } from "@salones/ui";
-import { obtenerSync } from "@salones/sync";
+import { obtenerSync, esVitrina } from "@salones/sync";
 import { usePerfil } from "@/lib/perfil";
 import {
   COLECCION_ACOMODO,
@@ -66,7 +66,7 @@ export function MesasModulo({ evento }: { evento: string }) {
   // Mientras el evento de demostración esté vacío se enseña la semilla de
   // muestra (la misma boda que en apps/mesas). NUNCA se escribe al almacén; con
   // un acomodo real desaparece. Un evento real jamás la ve.
-  const conSemilla = evento === "demo" && mesas.length === 0 && acomodo.length === 0;
+  const conSemilla = esVitrina(evento) && mesas.length === 0 && acomodo.length === 0;
   const mesasVista = conSemilla ? SEMILLA_MESAS : mesas;
   const acomodoVista = conSemilla ? SEMILLA_ACOMODO : acomodo;
 

@@ -31,7 +31,7 @@ import {
   type InvitadoMesa,
   type MesaEvento,
 } from "@salones/core";
-import { obtenerSync } from "@salones/sync";
+import { obtenerSync, esVitrina } from "@salones/sync";
 import { Rincon } from "./botanica";
 
 /*
@@ -88,7 +88,7 @@ export function TuMesa({
   /** Avisa a la página que la sección ya está en el árbol (ver useRevelados). */
   onAparece?: () => void;
 }) {
-  const esMuestra = codigo === "demo";
+  const esMuestra = esVitrina(codigo);
   // En la muestra los datos son locales y existen desde el primer pintado; en
   // un evento real empiezan vacíos y llegan (o no) con la lectura de abajo.
   const [datos, setDatos] = React.useState<Datos | null>(() =>

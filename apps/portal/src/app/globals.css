@@ -1,5 +1,12 @@
 @import "tailwindcss";
 @import "../../../../packages/ui/src/styles/tokens.css";
+/*
+ * El bloque `@theme inline` COMPARTIDO (mapea los tokens a las utilidades de
+ * Tailwind). Antes estaba copiado a mano aquí y en cada app — y esa copia se
+ * quedó sin `--color-accent`, `--color-surface` ni las tipografías: las
+ * utilidades del rediseño no existían aunque los tokens sí.
+ */
+@import "../../../../packages/ui/src/styles/theme-app.css";
 
 /* Escanea el sistema de diseño compartido para generar sus estilos. */
 @source "../../../../packages/ui/src";
@@ -7,23 +14,31 @@
 /* Tema oscuro por clase (.dark), controlado por next-themes. */
 @custom-variant dark (&:where(.dark, .dark *));
 
-@theme inline {
-  --color-background: var(--bg);
-  --color-foreground: var(--fg);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-fg);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-fg);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-fg);
-  --color-border: var(--border);
-  --color-ring: var(--ring);
-  --font-sans: var(--font-sans);
-  --radius: var(--radius);
-}
-
 body {
   background-color: var(--color-background);
   color: var(--color-foreground);
   font-family: var(--font-sans);
+}
+
+/*
+ * TRANSICIONES ENTRE EXPERIENCIAS. La navegación dentro del portal es de
+ * cliente (Link), así que las view transitions de documento no aplican: el
+ * fundido lo da el propio TemaScope al cambiar de tema. Aquí solo se suaviza
+ * la entrada de cada pantalla, y se respeta a quien pidió menos movimiento.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  main {
+    animation: entrar 0.35s ease-out both;
+  }
+}
+
+@keyframes entrar {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }

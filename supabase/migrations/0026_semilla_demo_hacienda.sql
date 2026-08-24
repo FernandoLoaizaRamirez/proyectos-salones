@@ -63,3 +63,14 @@ on conflict (event_id) do update set
   monograma   = excluded.monograma,
   frase       = excluded.frase,
   actualizado = now();
+
+-- --------------------------------------------------------------------------
+-- Y el EVENTO demo se llama como la boda que cuenta la demo.
+--
+-- Se llamaba "Demostración pública": honesto, pero delataba el software justo
+-- donde más se ve —el título de la pestaña y la tarjeta de WhatsApp— mientras
+-- la portada decía "Ana & Rodrigo" (que sale de la invitación capturada). Dos
+-- nombres para el mismo evento en la misma pantalla. La vitrina por visitante
+-- ya usaba el nombre de la boda; esto alinea el evento real con ella.
+-- --------------------------------------------------------------------------
+update events set nombre = 'Boda Ana & Rodrigo' where codigo = 'demo';

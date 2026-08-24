@@ -8,9 +8,10 @@ import { ImageResponse } from "next/og";
  * raya azul sin imagen, indistinguible de un enlace sospechoso. Mucha gente no
  * abre eso.
  *
- * NO lleva marca de salón: el portal es multi-cliente y un mismo despliegue
- * atiende todos los eventos, así que la imagen tiene que servirle a cualquiera.
- * La marca del salón sí se ve al ENTRAR (ver components/marca-salon.tsx).
+ * ⚠️ ESTA ES LA GENÉRICA, la de respaldo. Desde el rediseño cada evento tiene
+ * la SUYA —con su nombre, su monograma y los colores de su salón— generada
+ * en `app/api/og/route.tsx` y enlazada desde el `generateMetadata` de la
+ * portada. Esta solo se usa en las rutas que no conocen el evento.
  */
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";

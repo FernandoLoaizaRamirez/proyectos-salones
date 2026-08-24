@@ -96,6 +96,14 @@ describe("TEMA_DEMO coincide con la semilla 0026 (la base)", () => {
     expect(sql).toContain(String(EVENTO_DEMO.monograma));
     expect(sql).toContain(String(EVENTO_DEMO.frase));
   });
+
+  it("el evento demo se llama igual en la base que en la vitrina", () => {
+    // La vitrina (`demo-xxxxxx`) usa la constante y el evento `demo` usa la
+    // base: si se separan, el mismo producto se anuncia con dos nombres según
+    // el enlace por el que entres — y eso se ve en el título de la pestaña y
+    // en la tarjeta de WhatsApp.
+    expect(sql).toContain(DATOS_EVENTO_DEMO.nombre);
+  });
 });
 
 describe("el tema demo resuelto (lo que de verdad se pinta)", () => {

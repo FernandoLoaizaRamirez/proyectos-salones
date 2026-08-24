@@ -23,7 +23,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="es" suppressHydrationWarning>
       <body>
-        <ThemeProvider>{children}</ThemeProvider>
+        {/*
+          EL INVITADO ARRANCA EN CLARO. El componente compartido sigue
+          teniendo "dark" por defecto (lo usa el panel, que es una
+          herramienta de trabajo); aquí se pisa porque la experiencia de
+          una boda no puede abrir como un panel de software. El botón de
+          claro/oscuro sigue disponible y la elección del invitado manda
+          sobre este valor.
+        */}
+        <ThemeProvider defaultTheme="light">{children}</ThemeProvider>
       </body>
     </html>
   );

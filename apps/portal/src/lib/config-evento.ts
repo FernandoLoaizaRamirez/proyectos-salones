@@ -24,7 +24,15 @@ import {
   FEATURES_CONOCIDAS as F,
 } from "@salones/core";
 import { esVitrina, type ConfigEventoCruda } from "@salones/sync";
-import type { BrandingSalon, TemaEvento } from "@salones/ui";
+import {
+  TEMA_DEMO,
+  EVENTO_DEMO,
+  DATOS_EVENTO_DEMO,
+  resolverTema,
+  type BrandingSalon,
+  type TemaEvento,
+  type TemaResuelto,
+} from "@salones/ui";
 
 /** De dónde salió la config que se está mostrando. */
 export type EstadoConfig = "ok" | "demo" | "no-encontrado";
@@ -50,6 +58,12 @@ export type ConfigEvento = {
   fecha: string | null;
   /** Tipo del evento (boda/xv/…), si el salón lo capturó. */
   tipo: string | null;
+  /**
+   * EL TEMA YA FUSIONADO (salón + evento), lo único que consumen la cáscara
+   * y los componentes. Quien pinta no sabe —ni le importa— si el color vino
+   * del salón, del evento o del tema base.
+   */
+  tema: TemaResuelto;
   estado: EstadoConfig;
 };
 
@@ -91,15 +105,26 @@ function configDemo(codigo: string): ConfigEvento {
    * crudo: "Tus recuerdos de demo-7znf7u".
    */
   const esDemo = !codigo || esVitrina(codigo);
+  const nombre = esDemo ? DATOS_EVENTO_DEMO.nombre : codigo;
+  /*
+   * EL TEMA DE LA CASA, no el rosa de fábrica. Las vitrinas (`demo-xxxxxx`) no
+   * existen en `events` —así se diseñó la 0022— y el modo local no tiene base
+   * a la que preguntar: los dos caminos llegan aquí. Sin esto, LA PANTALLA QUE
+   * VENDE (la que abre un salón desde "Vive la experiencia") seguiría oscura y
+   * genérica, que es justo lo que el rediseño vino a matar.
+   */
   return {
     codigo: codigo || "demo",
-    nombre: esDemo ? "Boda Ana & Rodrigo" : codigo,
-    salon: null,
+    nombre,
+    salon: esDemo ? TEMA_DEMO.nombre : null,
     entitlements: resolveEntitlements(PLAN_DEMO),
-    branding: null,
-    brandingEvento: null,
-    fecha: null,
-    tipo: null,
+    branding: esDemo ? TEMA_DEMO : null,
+    brandingEvento: esDemo ? EVENTO_DEMO : null,
+    fecha: esDemo ? DATOS_EVENTO_DEMO.fechaISO : null,
+    tipo: esDemo ? "boda" : null,
+    tema: esDemo
+      ? resolverTema(TEMA_DEMO, EVENTO_DEMO, { origen: "demo", datosEvento: DATOS_EVENTO_DEMO })
+      : resolverTema({ nombre }, null, { origen: "demo", datosEvento: { nombre } }),
     estado: "demo",
   };
 }
@@ -143,6 +168,7 @@ export async function resolverConfigEvento(codigo: string): Promise<ConfigEvento
         brandingEvento: null,
         fecha: null,
         tipo: null,
+        tema: resolverTema({ nombre: "Evento no encontrado" }),
         estado: "no-encontrado",
       };
     }
@@ -159,6 +185,13 @@ export async function resolverConfigEvento(codigo: string): Promise<ConfigEvento
       brandingEvento: datos.brandingEvento ?? null,
       fecha: datos.evento.fecha ?? null,
       tipo: datos.evento.tipo ?? null,
+      // La fusión de las dos capas, en el único sitio donde vive: el motor de
+      // @salones/ui. Un evento sin marca capturada hereda la del salón; un
+      // salón sin marca, el tema base — y todo pasa por el saneo.
+      tema: resolverTema(datos.branding ?? { nombre: datos.evento.nombre }, datos.brandingEvento, {
+        origen: "servidor",
+        datosEvento: { nombre: datos.evento.nombre, fechaISO: datos.evento.fecha ?? undefined },
+      }),
       estado: "ok",
     };
   } catch {

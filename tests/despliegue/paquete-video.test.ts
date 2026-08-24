@@ -185,8 +185,11 @@ describe("Los dos álbumes esconden el video cuando no está contratado", () => 
 
   it("el portal lo resuelve en el servidor, con los entitlements del evento", () => {
     // Así la primera pintada ya sabe si el video va: no hay parpadeo ni espera.
+    // El prefijo de la config es libre (`config`, `ctx.config`…): lo que se
+    // vigila es que salga de `tieneFuncion` sobre los entitlements DEL EVENTO
+    // en el servidor, no de una consulta del navegador.
     expect(leer("apps", "portal", "src", "app", "album", "page.tsx")).toMatch(
-      /conVideo=\{tieneFuncion\(config\.entitlements,\s*F\.Video\)\}/,
+      /conVideo=\{tieneFuncion\([\w.]*entitlements,\s*F\.Video\)\}/,
     );
   });
 

@@ -1,3 +1,4 @@
+export { CascaraEvento } from "./cascara-evento";
 export { useTemaEvento } from "./use-tema-evento";
 export type { EstadoTemaEvento } from "./use-tema-evento";
 export { useEventoReal, hashtagDeNombre } from "./use-evento-real";

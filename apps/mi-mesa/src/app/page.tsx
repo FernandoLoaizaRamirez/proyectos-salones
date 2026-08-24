@@ -1,32 +1,22 @@
-import { ThemeToggle } from "@salones/ui";
-import { evento } from "@/lib/mimesa";
+/**
+ * "MI MESA": el invitado busca su nombre y descubre dónde se sienta.
+ *
+ * La cabecera propia y el pie con "Demo de…" los sustituye `CascaraEvento`:
+ * marca del salón, menú de experiencias, regreso al evento y el tema de la
+ * boda. El nombre del evento lo lleva la cinta, sacado del evento real.
+ */
+import { CascaraEvento } from "@salones/experiencia";
 import { MiMesaCliente } from "@/components/mi-mesa-cliente";
 
 export default function Page() {
   return (
-    <main className="flex min-h-screen flex-col">
-      <header className="border-b border-border">
-        <div className="mx-auto flex max-w-3xl items-center justify-between gap-4 px-6 py-3">
-          <div className="min-w-0">
-            <div className="truncate text-sm font-semibold leading-tight">{evento.nombre}</div>
-            <div className="truncate text-xs text-muted-foreground">Encuentra tu mesa</div>
-          </div>
-          <ThemeToggle />
-        </div>
-      </header>
-
-      {/* `flex-1`: sin esto el pie quedaba flotando a media pantalla, con un
-          hueco negro debajo, porque el contenido no llenaba el alto. */}
-      <section className="grid flex-1 place-items-center px-6 py-12">
+    <CascaraEvento modulo="mesas" ancho="3xl">
+      <h1 className="mb-8 text-center font-[family-name:var(--font-display)] text-3xl font-semibold tracking-tight">
+        Encuentra tu mesa
+      </h1>
+      <div className="grid place-items-center">
         <MiMesaCliente />
-      </section>
-
-      <footer className="border-t border-border">
-        <div className="mx-auto max-w-3xl px-6 py-8 text-center text-xs text-muted-foreground">
-          {evento.lugar} · Demo de {evento.organizador.nombre}. Usa el mismo acomodo que la app
-          “Acomodo de mesas”: se abre por enlace o se carga el mismo archivo.
-        </div>
-      </footer>
-    </main>
+      </div>
+    </CascaraEvento>
   );
 }

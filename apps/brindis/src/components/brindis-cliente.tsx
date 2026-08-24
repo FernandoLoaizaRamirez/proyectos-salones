@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { Button, Card, cn, AvisoParticipacion, Confirmar } from "@salones/ui";
 import { estaConectado, eventoActual, sufijoEvento } from "@salones/sync";
+import { useEventoReal } from "@salones/experiencia";
 import { QR } from "@/components/qr";
 import {
   evento,
@@ -83,6 +84,18 @@ export function BrindisCliente() {
   // Con el Servicio gestionado el brindis viaja a la galería del anfitrión; sin
   // él se queda en este teléfono y se comparte por WhatsApp (ver src/lib/nube.ts).
   const conectado = estaConectado();
+  /*
+   * DE QUIÉN es la boda y A QUIÉN se le manda el video. Antes salía de la
+   * muestra: el invitado grababa su brindis, leía el nombre de OTRA novia y,
+   * si el compartir del teléfono fallaba, el video se iba por WhatsApp al
+   * proveedor del software.
+   */
+  const { textos } = useEventoReal({
+    nombre: evento.nombre,
+    fecha: evento.fecha,
+    hashtag: "",
+    organizador: evento.organizador,
+  });
   const [fase, setFase] = React.useState<Fase>("inicio");
   const [error, setError] = React.useState("");
   const [aviso, setAviso] = React.useState("");
@@ -375,9 +388,9 @@ export function BrindisCliente() {
     setCompartiendo(false);
     if (!ok) {
       descargarVideo(blobRef.current, mimeRef.current);
-      const msg = `¡Grabé un brindis para ${evento.nombre}! 🥂 Te lo mando por aquí (adjunto el video que se acaba de descargar).`;
+      const msg = `¡Grabé un brindis para ${textos.nombre}! 🥂 Te lo mando por aquí (adjunto el video que se acaba de descargar).`;
       window.open(
-        `https://wa.me/${evento.organizador.whatsapp}?text=${encodeURIComponent(msg)}`,
+        `https://wa.me/${textos.organizador.whatsapp}?text=${encodeURIComponent(msg)}`,
         "_blank",
         "noopener,noreferrer",
       );

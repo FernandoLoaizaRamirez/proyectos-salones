@@ -31,6 +31,16 @@ export type TextosEvento = {
   fecha: string;
   /** Sin "#": lo pone quien lo pinta. */
   hashtag: string;
+  /**
+   * A QUIÉN le escribe el invitado (confirmaciones, avisos).
+   *
+   * ⚠️ POR QUÉ ESTÁ AQUÍ: nueve apps llevaban quemado el WhatsApp del
+   * PROVEEDOR como "organizador". En una boda real, el invitado que pulsaba
+   * "confirmar" le escribía a quien hizo el software en vez de a los novios.
+   * Sale de `rsvp.whatsapp` de la invitación — justo el campo que el salón
+   * captura en su panel para eso.
+   */
+  organizador: { nombre: string; whatsapp: string };
 };
 
 /**
@@ -69,6 +79,13 @@ async function consultar(codigo: string, respaldo: TextosEvento): Promise<DatosE
         // "evento" final es para no dejar un hueco si la invitación trae
         // fecha pero todavía no nombres.
         hashtag: inv.hashtag.trim() || hashtagDeNombre(nombre) || "evento",
+        // Sin WhatsApp capturado se conserva el del respaldo: mejor el número
+        // de la muestra que un enlace que no lleva a nadie.
+        organizador: {
+          nombre,
+          whatsapp:
+            inv.rsvp.whatsapp.replace(/[^0-9]/g, "") || respaldo.organizador.whatsapp,
+        },
       },
       conDatosReales: true,
     };

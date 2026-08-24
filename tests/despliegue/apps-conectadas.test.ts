@@ -86,6 +86,19 @@ const PUBLICADAS: Record<string, string> = {
   dinamicas: "https://proyectos-salones-dinamicas.vercel.app",
   invitaciones: "https://invitaciones-weld.vercel.app",
   mesas: "https://proyectos-salones-mesas.vercel.app",
+  /*
+   * ⚠️ mi-mesa ENTRA AQUI con el rediseno (Fase 4). Antes no tocaba la base
+   * —ensenaba siempre el acomodo de MUESTRA, con "Ana Herrera" en la Mesa
+   * principal— y por eso vivia en SIN_BASE. Ahora usa @salones/experiencia,
+   * que lee el acomodo de verdad y el tema del salon.
+   *
+   * Hasta que su proyecto de Vercel tenga las DOS variables
+   * (NEXT_PUBLIC_SUPABASE_URL y NEXT_PUBLIC_SUPABASE_ANON_KEY), esta prueba
+   * se pone ROJA con EXIGIR_CONEXION=1. Es la alarma haciendo su trabajo:
+   * una app que cree hablar con la base y no puede ensenaria una boda
+   * inventada en la fiesta de verdad.
+   */
+  "mi-mesa": "https://proyectos-salones-mi-mesa.vercel.app",
   muro: "https://proyectos-salones-muro.vercel.app",
   "pases-qr": "https://pases-qr.vercel.app",
   photobooth: "https://proyectos-salones-photobooth.vercel.app",
@@ -98,7 +111,7 @@ const PUBLICADAS: Record<string, string> = {
  * Las que NO usan `@salones/sync` y por lo tanto NO necesitan llaves.
  * Si alguna empieza a usarla, la capa 1 obliga a moverla arriba.
  */
-const SIN_BASE = ["mi-mesa", "sitio-salon"];
+const SIN_BASE = ["sitio-salon"];
 
 /** La dirección de Supabase, sea cual sea el proyecto. */
 const DIRECCION = /https:\/\/[a-z0-9-]+\.supabase\.co/;
@@ -146,11 +159,24 @@ function archivosDe(carpeta: string): string[] {
  * `import("…")` dinámico. Sigue siendo texto, no análisis del código: es a
  * propósito, porque tiene que correr sin compilar nada.
  */
-const IMPORTA_SYNC = /(?:from\s*|require\s*\(\s*|import\s*\(\s*)["']@salones\/sync["']/;
+/**
+ * Los paquetes que llevan a la base. `@salones/sync` es el cliente; pero desde
+ * el rediseño (Fase 4) las apps del invitado llegan a ella POR DENTRO de
+ * `@salones/experiencia` —sus hooks `useTemaEvento` y `useEventoReal` piden la
+ * config del evento y la invitación—, y una app puede no nombrar `sync` en
+ * ninguna línea y aun así necesitar las llaves.
+ *
+ * ⚠️ Si esta lista se queda corta, la alarma se vuelve CIEGA justo para las
+ * apps nuevas: quedarían clasificadas como "no usa la base" y nadie vigilaría
+ * que tengan sus llaves en Vercel. Es exactamente el agujero por el que se coló
+ * el fallo de agosto de 2026 — con otra forma.
+ */
+const IMPORTA_LA_BASE =
+  /(?:from\s*|require\s*\(\s*|import\s*\(\s*)["']@salones\/(?:sync|experiencia)["']/;
 
 function usaLaBase(app: string): boolean {
   return archivosDe(join(RAIZ, "apps", app, "src")).some((f) =>
-    IMPORTA_SYNC.test(readFileSync(f, "utf8")),
+    IMPORTA_LA_BASE.test(readFileSync(f, "utf8")),
   );
 }
 

@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@salones/core": "workspace:*",
+    "@salones/directorio": "workspace:*",
     "@salones/sync": "workspace:*",
     "@salones/ui": "workspace:*"
   },

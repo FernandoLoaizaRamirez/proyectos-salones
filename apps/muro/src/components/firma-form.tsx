@@ -3,6 +3,7 @@
 import * as React from "react";
 import { Camera, X, Send, Check, PenLine, MessageCircle, Loader2 } from "lucide-react";
 import { Button, Card, cn, AvisoParticipacion } from "@salones/ui";
+import { useEventoReal } from "@salones/experiencia";
 import {
   obtenerSync,
   estaConectado,
@@ -21,6 +22,17 @@ const campo =
   "w-full rounded-[var(--radius)] border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/30";
 
 export function FirmaForm() {
+  /*
+   * A QUIEN le llega el mensaje. Antes salia de la muestra quemada: en una
+   * boda real, el invitado le escribia por WhatsApp al proveedor del
+   * software en vez de a los novios.
+   */
+  const { textos } = useEventoReal({
+    nombre: evento.nombre,
+    fecha: evento.fecha,
+    hashtag: "",
+    organizador: evento.organizador,
+  });
   const [nombre, setNombre] = React.useState("");
   const [texto, setTexto] = React.useState("");
   /**
@@ -120,14 +132,14 @@ export function FirmaForm() {
   const enviarWhatsApp = () => {
     if (!enviado) return;
     const lineas = [
-      `Mensaje para el muro · ${evento.nombre}`,
+      `Mensaje para el muro · ${textos.nombre}`,
       "",
       `De: ${enviado.nombre}`,
       enviado.texto,
       enviado.foto ? "(Adjunto una foto desde mi teléfono)" : "",
     ].filter(Boolean);
     window.open(
-      `https://wa.me/${evento.organizador.whatsapp}?text=${encodeURIComponent(lineas.join("\n"))}`,
+      `https://wa.me/${textos.organizador.whatsapp}?text=${encodeURIComponent(lineas.join("\n"))}`,
       "_blank",
       "noopener,noreferrer",
     );

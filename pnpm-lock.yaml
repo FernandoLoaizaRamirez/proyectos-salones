@@ -42,6 +42,9 @@ importers:
       '@salones/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@salones/experiencia':
+        specifier: workspace:*
+        version: link:../../packages/experiencia
       '@salones/sync':
         specifier: workspace:*
         version: link:../../packages/sync
@@ -94,6 +97,9 @@ importers:
       '@salones/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@salones/experiencia':
+        specifier: workspace:*
+        version: link:../../packages/experiencia
       '@salones/sync':
         specifier: workspace:*
         version: link:../../packages/sync
@@ -210,6 +216,9 @@ importers:
       '@salones/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@salones/experiencia':
+        specifier: workspace:*
+        version: link:../../packages/experiencia
       '@salones/sync':
         specifier: workspace:*
         version: link:../../packages/sync
@@ -308,6 +317,9 @@ importers:
       '@salones/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@salones/experiencia':
+        specifier: workspace:*
+        version: link:../../packages/experiencia
       '@salones/sync':
         specifier: workspace:*
         version: link:../../packages/sync
@@ -360,6 +372,12 @@ importers:
       '@salones/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@salones/experiencia':
+        specifier: workspace:*
+        version: link:../../packages/experiencia
+      '@salones/sync':
+        specifier: workspace:*
+        version: link:../../packages/sync
       '@salones/ui':
         specifier: workspace:*
         version: link:../../packages/ui
@@ -409,6 +427,9 @@ importers:
       '@salones/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@salones/experiencia':
+        specifier: workspace:*
+        version: link:../../packages/experiencia
       '@salones/sync':
         specifier: workspace:*
         version: link:../../packages/sync
@@ -461,6 +482,9 @@ importers:
       '@salones/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@salones/experiencia':
+        specifier: workspace:*
+        version: link:../../packages/experiencia
       '@salones/sync':
         specifier: workspace:*
         version: link:../../packages/sync
@@ -516,6 +540,9 @@ importers:
       '@salones/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@salones/experiencia':
+        specifier: workspace:*
+        version: link:../../packages/experiencia
       '@salones/sync':
         specifier: workspace:*
         version: link:../../packages/sync
@@ -568,6 +595,9 @@ importers:
       '@salones/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@salones/experiencia':
+        specifier: workspace:*
+        version: link:../../packages/experiencia
       '@salones/sync':
         specifier: workspace:*
         version: link:../../packages/sync
@@ -672,6 +702,9 @@ importers:
       '@salones/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@salones/experiencia':
+        specifier: workspace:*
+        version: link:../../packages/experiencia
       '@salones/sync':
         specifier: workspace:*
         version: link:../../packages/sync
@@ -811,6 +844,9 @@ importers:
       '@salones/core':
         specifier: workspace:*
         version: link:../core
+      '@salones/directorio':
+        specifier: workspace:*
+        version: link:../directorio
       '@salones/sync':
         specifier: workspace:*
         version: link:../sync

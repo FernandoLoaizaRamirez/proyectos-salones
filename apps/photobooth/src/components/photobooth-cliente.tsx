@@ -507,8 +507,7 @@ export function PieBooth() {
   }
   return (
     <>
-      {evento.lugar} · Demo de {evento.organizador.nombre}. Tu foto se arma en tu propio
-      dispositivo
+      Tu foto se arma en tu propio dispositivo
       {conServidor
         ? // La vitrina desplegada SÍ tiene servidor: decir "nada se sube" sería
           // mentira en cuanto alguien use el botón de guardar.

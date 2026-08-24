@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@salones/core": "workspace:*",
+    "@salones/experiencia": "workspace:*",
     "@salones/sync": "workspace:*",
     "@salones/ui": "workspace:*",
     "jsqr": "^1.4.0",

@@ -1,22 +1,21 @@
-import { ThemeToggle } from "@salones/ui";
+/**
+ * La pantalla del INVITADO de esta app, dentro de la cáscara compartida.
+ *
+ * La cabecera hecha a mano (con el cuadrito "SR" quemado y el botón de
+ * claro/oscuro) la sustituye `CascaraEvento`: trae la marca del salón, el menú
+ * de experiencias, el regreso al evento y el tema de la boda. El nombre del
+ * evento ya no se pinta aquí — lo lleva la cinta, sacado del evento real.
+ */
+import { CascaraEvento } from "@salones/experiencia";
 import { PedirCliente } from "@/components/pedir-cliente";
-import { evento } from "@/lib/playlist";
 
 export default function PedirPage() {
   return (
-    <main className="min-h-screen">
-      <header className="border-b border-border">
-        <div className="mx-auto flex max-w-3xl items-center justify-between gap-4 px-6 py-3">
-          <div className="min-w-0">
-            <div className="truncate text-sm font-semibold leading-tight">{evento.nombre}</div>
-            <div className="truncate text-xs text-muted-foreground">Playlist colaborativa</div>
-          </div>
-          <ThemeToggle />
-        </div>
-      </header>
-      <section className="grid place-items-center px-6 py-10">
-        <PedirCliente />
-      </section>
-    </main>
+    <CascaraEvento modulo="playlist" ancho="3xl">
+      <h1 className="mb-8 font-[family-name:var(--font-display)] text-3xl font-semibold tracking-tight">
+        Playlist colaborativa
+      </h1>
+      <PedirCliente />
+    </CascaraEvento>
   );
 }

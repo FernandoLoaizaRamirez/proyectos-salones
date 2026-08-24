@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@salones/core": "workspace:*",
+    "@salones/experiencia": "workspace:*",
     "@salones/sync": "workspace:*",
     "@salones/ui": "workspace:*",
     "lucide-react": "^1.27.0",

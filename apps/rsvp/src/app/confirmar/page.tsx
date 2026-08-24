@@ -4,6 +4,7 @@ import * as React from "react";
 import { Check, X, MessageCircle } from "lucide-react";
 import { Button, Card, cn, AvisoParticipacion } from "@salones/ui";
 import { obtenerSync, eventoActual } from "@salones/sync";
+import { CascaraEvento, useEventoReal } from "@salones/experiencia";
 import {
   decodificar,
   evento,
@@ -12,7 +13,22 @@ import {
   type Invitado,
 } from "@/lib/rsvp";
 
+/** Los datos de la muestra, por si el salón aún no capturó la invitación. */
+const RESPALDO = {
+  nombre: evento.nombre,
+  fecha: evento.fecha,
+  hashtag: "",
+  organizador: evento.organizador,
+};
+
 export default function ConfirmarPage() {
+  /*
+   * De QUIÉN es la boda y a QUIÉN le llega la confirmación. Antes esto salía
+   * de la muestra quemada en el código: en un evento real, el invitado que
+   * pulsaba "Confirmar" le escribía por WhatsApp al proveedor del software en
+   * vez de a los novios.
+   */
+  const { textos } = useEventoReal(RESPALDO);
   const [inv, setInv] = React.useState<Invitado | null | "cargando">("cargando");
   const [asiste, setAsiste] = React.useState<"si" | "no" | "">("");
   const [personas, setPersonas] = React.useState(1);
@@ -42,7 +58,7 @@ export default function ConfirmarPage() {
       /* si el guardado falla, aún queda el aviso por WhatsApp de abajo */
     }
     const lineas = [
-      `Confirmación de asistencia · ${evento.nombre}`,
+      `Confirmación de asistencia · ${textos.nombre}`,
       "",
       `Nombre: ${inv.nombre}`,
       asiste === "si"
@@ -50,7 +66,7 @@ export default function ConfirmarPage() {
         : "¿Asistiré?: No podré asistir",
     ];
     window.open(
-      `https://wa.me/${evento.organizador.whatsapp}?text=${encodeURIComponent(lineas.join("\n"))}`,
+      `https://wa.me/${textos.organizador.whatsapp}?text=${encodeURIComponent(lineas.join("\n"))}`,
       "_blank",
       "noopener,noreferrer",
     );
@@ -58,7 +74,8 @@ export default function ConfirmarPage() {
   };
 
   return (
-    <main className="grid min-h-screen place-items-center p-6">
+    <CascaraEvento modulo="rsvp" ancho="lg">
+      <div className="grid place-items-center">
       {inv === "cargando" ? (
         <p className="text-muted-foreground">Cargando…</p>
       ) : !inv ? (
@@ -86,8 +103,8 @@ export default function ConfirmarPage() {
         </Card>
       ) : (
         <Card className="w-full max-w-sm p-8 text-center">
-          <p className="text-sm text-muted-foreground">{evento.nombre}</p>
-          <p className="text-sm text-muted-foreground">{evento.fecha}</p>
+          <p className="text-sm text-muted-foreground">{textos.nombre}</p>
+          <p className="text-sm text-muted-foreground">{textos.fecha}</p>
           <h1 className="mt-5 text-2xl font-semibold tracking-tight">Hola, {inv.nombre}</h1>
           <p className="mt-2 text-muted-foreground">¿Podrás acompañarnos?</p>
 
@@ -143,6 +160,7 @@ export default function ConfirmarPage() {
           </p>
         </Card>
       )}
-    </main>
+      </div>
+    </CascaraEvento>
   );
 }

@@ -30,6 +30,12 @@ export function Portal({
   // En la muestra el botón lleva al portal demo tal cual (sin `?e=`): la
   // vitrina enseña la vitrina. En un evento real el enlace carga su código y,
   // si hay enlace personal, la identidad va en el fragmento.
+  /*
+   * En la muestra se manda al portal SIN código: él estrena la vitrina propia
+   * del visitante. Antes se caía en la compartida, que se enseña medio vacía a
+   * propósito. En un evento real viaja su código y, si hay enlace personal, la
+   * identidad va en el fragmento (que nunca toca el servidor).
+   */
   const href =
     codigo === "demo"
       ? PORTAL_BASE
@@ -47,7 +53,10 @@ export function Portal({
             evento.
           </p>
           <div className="acciones">
-            <a className="btn solido" href={href} target="_blank" rel="noopener noreferrer">
+            {/* MISMA pestaña: abrir una nueva es la señal más fuerte de "esto
+                es otra aplicación", y el invitado termina con media docena
+                abiertas. El portal ya trae su propio camino de vuelta. */}
+            <a className="btn solido" href={href}>
               Abrir el portal del evento
             </a>
           </div>

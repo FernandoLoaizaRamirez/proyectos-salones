@@ -99,6 +99,14 @@ export default function GeneradorEvento() {
   const [userId, setUserId] = React.useState<string | null>(null);
 
   const [nombre, setNombre] = React.useState("");
+  /*
+   * FECHA Y TIPO. Las columnas existen desde la 0002 y nadie las escribia,
+   * asi que en un evento real la cuenta regresiva del portal no aparecia
+   * (no habia fecha que contar) y un salon con doce bodas no distinguia
+   * cual era la de este sabado.
+   */
+  const [fecha, setFecha] = React.useState("");
+  const [tipo, setTipo] = React.useState("boda");
   const [codigo, setCodigo] = React.useState("");
   const [copiado, setCopiado] = React.useState("");
   const [guardando, setGuardando] = React.useState(false);
@@ -137,6 +145,9 @@ export default function GeneradorEvento() {
       tenant_id: identidad.tenantId,
       codigo: nuevoCodigo,
       nombre: nombre.trim() || "Evento sin nombre",
+      // Vacio = NULL: mejor sin fecha que con una inventada.
+      fecha: fecha || null,
+      tipo,
       created_by: userId,
     });
     setGuardando(false);
@@ -240,6 +251,35 @@ export default function GeneradorEvento() {
                 )}
                 {guardando ? "Guardando…" : "Crear evento"}
               </Button>
+            </div>
+
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              <label className="block text-sm">
+                <span className="mb-1.5 block font-medium">Fecha del evento</span>
+                <input
+                  type="date"
+                  className="w-full rounded-[var(--radius)] border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
+                  value={fecha}
+                  onChange={(e) => setFecha(e.target.value)}
+                />
+                <span className="mt-1 block text-xs text-muted-foreground">
+                  Con ella, el portal enseña la cuenta regresiva a los invitados.
+                </span>
+              </label>
+              <label className="block text-sm">
+                <span className="mb-1.5 block font-medium">Tipo de celebración</span>
+                <select
+                  className="w-full rounded-[var(--radius)] border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
+                  value={tipo}
+                  onChange={(e) => setTipo(e.target.value)}
+                >
+                  <option value="boda">Boda</option>
+                  <option value="xv">XV años</option>
+                  <option value="corporativo">Evento corporativo</option>
+                  <option value="bautizo">Bautizo</option>
+                  <option value="otro">Otro</option>
+                </select>
+              </label>
             </div>
 
             {error ? <p className="mt-3 text-sm text-red-600 dark:text-red-400">{error}</p> : null}

@@ -176,6 +176,21 @@ if (carpetaApp === "/" || !existsSync(join(RAIZ, carpetaApp))) {
 // historial de la app salta un commit: `... READY b6647b4 → CANCELED 667430a`,
 // sin rastro del de en medio.
 //
+// ⚠️ TERCERA VEZ, 24 ago 2026 — y esta la provocamos nosotros. Se empujó la
+// Fase 2 del rediseño (`2d1f365`, el portal editorial: tocaba `packages/ui` y
+// por tanto ~13 apps) y OCHO MINUTOS después la Fase 3 (`a1ac7f4`, solo el
+// sitio). Vercel descartó los intermedios, y el portero del PORTAL comparó
+// `a1ac7f4` contra `2d1f365`: en ese rango solo hay `apps/sitio-salon` y un
+// test de `tests/`, así que canceló. Resultado: el portal se quedó con el
+// código de la Fase 1 y en producción seguía saliendo el título viejo
+// ("Portal del evento" en vez de "Boda Ana & Rodrigo · Hacienda Santa
+// Renata"), sin una sola señal de error.
+//
+// LA REGLA PRÁCTICA, hasta que se arregle de raíz: **una fase por empujón, y
+// esperar a que la fila de Vercel termine antes del siguiente.** Si ya se
+// empujaron dos seguidos, el remedio es tocar `scripts/` (este archivo) para
+// que la regla de "no nos fiamos del portero cambiado" reconstruya las 14.
+//
 // La salida es la misma de siempre y por eso este comentario vive aquí: tocar
 // `scripts/` reconstruye las 14. Si algún día conviene arreglarlo de raíz, hay
 // que dejar de fiarse de `VERCEL_GIT_PREVIOUS_SHA` y preguntarle a la API de

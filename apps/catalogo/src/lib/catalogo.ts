@@ -226,7 +226,7 @@ export const productos: Producto[] = [
     icono: CalendarCheck,
     acento: "from-teal-500 to-emerald-600",
     disponible: true,
-    demoUrl: URLS.rsvp,
+    demoUrl: `${URLS.rsvp}/confirmar`,
     precios: { MANAGED: 500, RENTAL: 600, OWNED: 5500 },
     notaGestionado:
       "Con el Servicio gestionado —así corre esta demo— el tablero se actualiza solo con la confirmación de cada invitado, desde su propio teléfono. En Renta/Compra, cada respuesta te llega por WhatsApp.",
@@ -240,7 +240,7 @@ export const productos: Producto[] = [
     icono: QrCode,
     acento: "from-sky-500 to-blue-600",
     disponible: true,
-    demoUrl: URLS["pases-qr"],
+    demoUrl: `${URLS["pases-qr"]}/pase`,
     precios: { MANAGED: 700, RENTAL: 850, OWNED: 7500 },
   },
   {
@@ -264,7 +264,7 @@ export const productos: Producto[] = [
     icono: BookHeart,
     acento: "from-rose-500 to-fuchsia-600",
     disponible: true,
-    demoUrl: URLS.muro,
+    demoUrl: `${URLS.muro}/firmar`,
     precios: { MANAGED: 550, RENTAL: 650, OWNED: 5500 },
     notaGestionado:
       "Con el Servicio gestionado —así corre esta demo— los mensajes aparecen solos en la pared desde el teléfono de cada invitado. En Renta/Compra funciona en una tablet en la fiesta o por WhatsApp.",
@@ -278,7 +278,7 @@ export const productos: Producto[] = [
     icono: ListMusic,
     acento: "from-cyan-500 to-blue-600",
     disponible: true,
-    demoUrl: URLS.playlist,
+    demoUrl: `${URLS.playlist}/pedir`,
     precios: { MANAGED: 600, RENTAL: 700, OWNED: 6000 },
     notaGestionado:
       "Con el Servicio gestionado —así corre esta demo— las peticiones y los votos llegan al DJ desde el teléfono de cada invitado. En Renta/Compra funciona en una tablet-kiosco en la fiesta.",
@@ -319,7 +319,7 @@ export const productos: Producto[] = [
     icono: Gamepad2,
     acento: "from-yellow-500 to-orange-600",
     disponible: true,
-    demoUrl: URLS.dinamicas,
+    demoUrl: `${URLS.dinamicas}/jugar`,
     precios: { MANAGED: 600, RENTAL: 700, OWNED: 6000 },
     notaGestionado:
       "Con el Servicio gestionado —así corre esta demo— el ranking de la trivia junta en vivo a todos los invitados. El bingo y el rompehielos funcionan en cada teléfono, sin necesidad de nada más.",

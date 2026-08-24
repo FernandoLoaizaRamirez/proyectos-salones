@@ -1,6 +1,15 @@
 import Link from "next/link";
 import { ThemeToggle, buttonVariants, cn } from "@salones/ui";
-import { Camera, Check, ChevronDown, MessageCircle, QrCode, Sparkles, Wifi } from "lucide-react";
+import {
+  Camera,
+  Check,
+  ChevronDown,
+  MessageCircle,
+  PartyPopper,
+  QrCode,
+  Sparkles,
+  Wifi,
+} from "lucide-react";
 import { AppMode } from "@salones/core";
 import {
   demosDestacadas,
@@ -10,6 +19,7 @@ import {
   productos,
   vendedor,
 } from "@/lib/catalogo";
+import { URLS } from "@salones/directorio";
 import { EnlaceDemo, QRDemo } from "@/components/demo-vitrina";
 import { CatalogoCliente } from "@/components/catalogo-cliente";
 
@@ -31,6 +41,17 @@ const demoPrincipal = productos.find((p) => p.id === demosDestacadas.principal)!
 const demosSecundarias = demosDestacadas.secundarias
   .map((id) => productos.find((p) => p.id === id))
   .filter((p): p is (typeof productos)[number] => Boolean(p?.demoUrl));
+
+/*
+ * EL PORTAL DEL EVENTO: la demo estrella.
+ *
+ * Hasta el rediseño el catálogo enseñaba las apps SUELTAS y el portal —la casa
+ * de la celebración, que es lo que de verdad se vende— no aparecía por ningún
+ * lado. Un salón veía doce piezas en vez de un producto. Ahora el QR y el
+ * botón grande llevan ahí: se entra a la boda completa y desde dentro se
+ * recorren todas las experiencias.
+ */
+const PORTAL_DEMO = process.env.NEXT_PUBLIC_PORTAL_URL || URLS.portal;
 
 /** Textos de los chips de las demos suplentes, por id de app. */
 const invitacionDemo: Record<string, string> = {
@@ -145,10 +166,10 @@ export default function Page() {
           {/* En el celular: botón directo a la demo estrella + dos suplentes. */}
           <div className="mt-8 md:hidden">
             <EnlaceDemo
-              href={demoPrincipal.demoUrl!}
+              href={PORTAL_DEMO}
               className={cn(buttonVariants({ size: "lg" }), "w-full")}
             >
-              <Camera className="size-5" /> Tómate una foto en el photobooth
+              <PartyPopper className="size-5" /> Entra a la boda de Ana &amp; Rodrigo
             </EnlaceDemo>
             <div className="mt-3 flex flex-col gap-2">
               {demosSecundarias.map((p) => (
@@ -166,7 +187,7 @@ export default function Page() {
           {/* En computadora: la tarjetita de mesa con el QR de verdad. */}
           <div className="mt-10 hidden flex-col items-center md:flex">
             <div className="rounded-xl border border-border bg-card p-5 shadow-lg">
-              <QRDemo value={demoPrincipal.demoUrl!} size={180} />
+              <QRDemo value={PORTAL_DEMO} size={180} />
               <p className="mt-3 max-w-[220px] text-sm font-medium">
                 Apunta la cámara de tu celular a este código
               </p>

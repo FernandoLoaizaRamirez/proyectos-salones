@@ -3,6 +3,8 @@
 import * as React from "react";
 import { Check, X, Trophy, ArrowRight, RefreshCw } from "lucide-react";
 import { Button, Card, cn } from "@salones/ui";
+import { useCaracteristica } from "@salones/experiencia";
+import { CARACTERISTICAS_CONOCIDAS } from "@salones/core";
 import { useRanking } from "@/lib/use-ranking";
 import { triviaPreguntas, porPuntaje } from "@/lib/dinamicas";
 
@@ -11,6 +13,8 @@ const campo =
 
 export function TriviaJuego() {
   const { ranking, agregar } = useRanking();
+  // El salon puede vender las dinamicas SIN tabla de posiciones.
+  const conRanking = useCaracteristica(CARACTERISTICAS_CONOCIDAS.DinamicasRanking);
   const [fase, setFase] = React.useState<"nombre" | "jugando" | "fin">("nombre");
   const [nombre, setNombre] = React.useState("");
   const [idx, setIdx] = React.useState(0);
@@ -95,7 +99,7 @@ export function TriviaJuego() {
               ? "¡Muy bien! Se nota que los quieres."
               : "¡Gracias por jugar! Ya habrá revancha."}
         </p>
-        {posicion > 0 ? (
+        {posicion > 0 && conRanking ? (
           <p className="mt-3 text-sm">
             Vas en el lugar <span className="font-semibold text-primary">#{posicion}</span> del
             ranking.

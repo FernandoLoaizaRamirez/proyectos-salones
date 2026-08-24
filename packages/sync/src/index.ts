@@ -675,6 +675,41 @@ function crearProveedorServidor(url: string, anon: string): ProveedorSync {
     return consulta;
   };
 
+  /*
+   * La gemela para las CARACTERÍSTICAS finas (0027). Misma caché y misma
+   * memoria; lo que cambia es a qué se responde ante la duda: aquí SÍ, porque
+   * estas vienen incluidas en su módulo y esconderlas le quitaría al invitado
+   * algo que su evento sí tiene (ver `eventoTieneCaracteristica`).
+   */
+  preguntarCaracteristica = (evento, clave) => {
+    const memoria = `car::${evento}::${clave}`;
+    const guardada = funciones.get(memoria);
+    if (guardada) return guardada;
+
+    const consulta = (async () => {
+      try {
+        const res = await fetch(`${raiz}/rest/v1/rpc/evento_tiene_caracteristica`, {
+          method: "POST",
+          headers: { ...auth, "Content-Type": "application/json" },
+          body: JSON.stringify({ p_codigo: evento, p_clave: clave }),
+        });
+        // 404 = la 0027 todavía no está aplicada: se responde que SÍ, para que
+        // la pantalla siga como hasta ahora mientras dura el despliegue.
+        if (res.status === 404) return true;
+        if (!res.ok) return true;
+        return (await res.json()) === true;
+      } catch {
+        // Sin red: se enseña. Es lo contrario que con el video, y a propósito.
+        return true;
+      }
+    })();
+
+    consulta.then((si) => {
+      if (si) funciones.set(memoria, consulta);
+    });
+    return consulta;
+  };
+
   /* ---- Quitar un recuerdo (Edge Function `media-borrar`) -------------------
    * Va por la función y no por PostgREST porque hacen falta dos cosas que desde
    * el navegador no se pueden: comprobar la llave de autor contra la huella
@@ -1062,6 +1097,8 @@ let firmarMedios: ((evento: string, rutas: string[]) => Promise<Record<string, s
  * al que preguntar qué se contrató (ver `eventoTieneFuncion`).
  */
 let preguntarFuncion: ((evento: string, clave: string) => Promise<boolean>) | null = null;
+let preguntarCaracteristica: ((evento: string, clave: string) => Promise<boolean>) | null =
+  null;
 
 /**
  * Devuelve el proveedor de sincronización activo: SERVIDOR si están puestas las
@@ -1304,6 +1341,30 @@ export async function eventoTieneFuncion(evento: string, clave: string): Promise
   obtenerSync(); // asegura que el proveedor esté construido
   if (!preguntarFuncion) return false;
   return preguntarFuncion(evento, clave);
+}
+
+/**
+ * ¿Este evento tiene encendida una CARACTERÍSTICA fina? (`album.descargas`,
+ * `muro.fotos`… — migración 0027).
+ *
+ * ⚠️ LA DUDA SE RESUELVE AL REVÉS QUE EN `eventoTieneFuncion`, y es a propósito.
+ * El paquete de video CUESTA dinero, así que ante la duda se esconde. Estas
+ * características NO cuestan: vienen incluidas en su módulo salvo que el salón
+ * las venda aparte. Esconderlas ante la duda le quitaría al invitado algo que
+ * su evento sí incluye —en la demo, en modo local o con la red floja—, que es
+ * el error más caro de los dos.
+ *
+ * La herencia (sin fila propia manda el módulo) la resuelve la BASE, no aquí:
+ * `evento_tiene_caracteristica` es el único dueño de esa regla.
+ */
+export async function eventoTieneCaracteristica(
+  evento: string,
+  clave: string,
+): Promise<boolean> {
+  obtenerSync();
+  // Sin servidor (modo local) o en una vitrina: se enseña todo.
+  if (!preguntarCaracteristica || esVitrina(evento)) return true;
+  return preguntarCaracteristica(evento, clave);
 }
 
 /* ================================================================== */

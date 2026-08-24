@@ -3,6 +3,8 @@
 import * as React from "react";
 import { Plus, ThumbsUp, Check, Music, ExternalLink, Loader2 } from "lucide-react";
 import { Button, Card, cn } from "@salones/ui";
+import { useCaracteristica } from "@salones/experiencia";
+import { CARACTERISTICAS_CONOCIDAS } from "@salones/core";
 import { useCanciones } from "@/lib/use-canciones";
 import { evento, porVotos, plataformaDeLink, EstadoCancion } from "@/lib/playlist";
 
@@ -11,6 +13,8 @@ const campo =
 
 export function PedirCliente() {
   const { canciones, cargado, yaVote, agregar, votar } = useCanciones();
+  // El salon puede vender la playlist SIN votos: solo se piden canciones.
+  const conVotos = useCaracteristica(CARACTERISTICAS_CONOCIDAS.PlaylistVotos);
   const [form, setForm] = React.useState({ titulo: "", artista: "", link: "", nombre: "" });
   const [error, setError] = React.useState("");
   const [agregada, setAgregada] = React.useState(false);
@@ -159,6 +163,7 @@ export function PedirCliente() {
                   <button
                     onClick={() => void votarCancion(c.id)}
                     disabled={votado}
+                    hidden={!conVotos}
                     className={cn(
                       "flex shrink-0 items-center gap-1.5 rounded-[var(--radius)] border px-3 py-2 text-sm font-medium transition-colors",
                       votado

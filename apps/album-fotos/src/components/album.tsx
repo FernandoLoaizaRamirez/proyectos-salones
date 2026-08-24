@@ -37,6 +37,8 @@ import {
   type Archivo,
 } from "@/lib/album-data";
 import { useTieneVideo } from "@/lib/video";
+import { useCaracteristica } from "@salones/experiencia";
+import { CARACTERISTICAS_CONOCIDAS } from "@salones/core";
 
 export function Album() {
   /*
@@ -67,6 +69,8 @@ export function Album() {
   const [anfitrion, setAnfitrion] = React.useState(false);
   /** ¿Se contrató el paquete de video? Si no, aquí solo se suben fotos. */
   const conVideo = useTieneVideo();
+  // El salon puede vender el album SIN descargas (plan Basico).
+  const conDescargas = useCaracteristica(CARACTERISTICAS_CONOCIDAS.AlbumDescargas);
   /**
    * La firma de ESTE teléfono. Con ella se sabe qué recuerdos son suyos, que es
    * lo único que puede quitar un invitado. Arranca en null: hasta saberla, no se
@@ -386,7 +390,7 @@ export function Album() {
             <span className="font-semibold text-foreground">{archivos.length}</span>{" "}
             {archivos.length === 1 ? "recuerdo" : "recuerdos"} en el álbum
           </p>
-          {archivos.length > 0 ? (
+          {archivos.length > 0 && conDescargas ? (
             descarga ? (
               <div className="flex items-center gap-2">
                 <span className="text-sm text-muted-foreground">

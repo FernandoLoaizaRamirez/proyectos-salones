@@ -3,7 +3,8 @@
 import * as React from "react";
 import { Camera, X, Send, Check, PenLine, MessageCircle, Loader2 } from "lucide-react";
 import { Button, Card, cn, AvisoParticipacion } from "@salones/ui";
-import { useEventoReal } from "@salones/experiencia";
+import { useCaracteristica, useEventoReal } from "@salones/experiencia";
+import { CARACTERISTICAS_CONOCIDAS } from "@salones/core";
 import {
   obtenerSync,
   estaConectado,
@@ -33,6 +34,8 @@ export function FirmaForm() {
     hashtag: "",
     organizador: evento.organizador,
   });
+  // El salon puede vender el muro SOLO con mensajes, sin fotos.
+  const conFotos = useCaracteristica(CARACTERISTICAS_CONOCIDAS.MuroFotos);
   const [nombre, setNombre] = React.useState("");
   const [texto, setTexto] = React.useState("");
   /**
@@ -224,7 +227,8 @@ export function FirmaForm() {
           />
         </div>
 
-        <div>
+        {/* Sin la caracteristica `muro.fotos`, el muro es solo de mensajes. */}
+        <div className={conFotos ? undefined : "hidden"}>
           <label className="mb-1.5 block text-sm font-medium">Foto (opcional)</label>
           {vistaPrevia ? (
             <div className="relative overflow-hidden rounded-[var(--radius)] border border-border">

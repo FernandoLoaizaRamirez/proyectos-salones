@@ -92,9 +92,12 @@ describe("TEMA_DEMO coincide con la semilla 0026 (la base)", () => {
     }
   });
 
-  it("el monograma y la frase del evento demo también", () => {
+  it("el monograma, la frase y la PORTADA del evento demo también", () => {
     expect(sql).toContain(String(EVENTO_DEMO.monograma));
     expect(sql).toContain(String(EVENTO_DEMO.frase));
+    // La portada es la que de verdad se ve: si una copia cambia y la otra no,
+    // la vitrina y el evento demo enseñarían fotos distintas.
+    expect(sql).toContain(String(EVENTO_DEMO.portadaUrl));
   });
 
   it("el evento demo se llama igual en la base que en la vitrina", () => {

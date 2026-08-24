@@ -55,14 +55,26 @@ on conflict (tenant_id) do update set
 -- `events` con codigo='demo' existe desde la 0002; las vitrinas demo-xxxxxx no
 -- están en `events` a propósito y toman estos mismos valores de la constante
 -- `EVENTO_DEMO` de @salones/ui — atada por la misma prueba de paridad.)
-insert into event_branding (event_id, monograma, frase)
-select id, 'A·R', 'Nos encantará celebrar contigo'
+insert into event_branding (event_id, monograma, frase, portada_ref)
+select id, 'A·R', 'Nos encantará celebrar contigo',
+       'https://salones-teal.vercel.app/img/portada.jpg'
 from events
 where codigo = 'demo'
 on conflict (event_id) do update set
   monograma   = excluded.monograma,
   frase       = excluded.frase,
+  portada_ref = excluded.portada_ref,
   actualizado = now();
+
+-- LA PORTADA ES LA DEL PROPIO SITIO (una ceremonia en una hacienda de piedra
+-- mexicana, la misma que encabeza salones-teal). Dos razones:
+--   · COHERENCIA: el invitado que llega desde el sitio reconoce el lugar; la
+--     portada del portal y la del salón cuentan la misma historia.
+--   · COSTO: se sirve desde Vercel, no desde el almacén de Supabase, así que
+--     no gasta del cupo de descarga que comparten todas las bodas.
+-- Es una URL http(s) a propósito: `evento-config` solo reenvía esas (una
+-- referencia interna del almacén se resuelve firmada, y eso llega con el
+-- editor de portada del panel).
 
 -- --------------------------------------------------------------------------
 -- Y el EVENTO demo se llama como la boda que cuenta la demo.

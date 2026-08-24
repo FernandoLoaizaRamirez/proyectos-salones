@@ -33,10 +33,18 @@ export const TEMA_DEMO: TemaSalon = {
   esquema: "claro",
 };
 
-/** La personalización del evento demo (Boda Ana & Rodrigo). */
+/**
+ * La personalización del evento demo (Boda Ana & Rodrigo).
+ *
+ * La PORTADA es la del propio sitio del salón: el invitado que llega desde
+ * salones-teal reconoce el lugar, y la foto se sirve desde Vercel —no desde el
+ * almacén de Supabase—, así que no gasta del cupo de descarga que comparten
+ * todas las bodas. La misma URL vive en la semilla 0026, atada por prueba.
+ */
 export const EVENTO_DEMO: TemaEvento = {
   monograma: "A·R",
   frase: "Nos encantará celebrar contigo",
+  portadaUrl: "https://salones-teal.vercel.app/img/portada.jpg",
 };
 
 /** Nombre y fecha del evento demo — los mismos de las muestras de las apps. */

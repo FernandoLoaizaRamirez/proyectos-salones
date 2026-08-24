@@ -122,7 +122,7 @@ export function HeroEvento({ evento, tema }: { evento: string; tema: TemaResuelt
   const suave = sobreFoto ? "text-white/80" : "text-muted-foreground";
 
   return (
-    <section className="relative isolate overflow-hidden">
+    <section className="relative isolate overflow-hidden px-4 sm:px-6">
       {portada ? (
         <>
           {/* <img> a propósito: la portada viene de la base en runtime y
@@ -133,14 +133,30 @@ export function HeroEvento({ evento, tema }: { evento: string; tema: TemaResuelt
             aria-hidden
             className="absolute inset-0 -z-10 size-full object-cover"
           />
-          <div className="absolute inset-0 -z-10 bg-gradient-to-b from-black/55 via-black/45 to-black/70" />
+          <div className="absolute inset-0 -z-10 bg-[#1a120f]/35" />
         </>
       ) : null}
 
+      {/*
+       * EL TEXTO VA SOBRE UN PANEL, no suelto sobre la foto.
+       *
+       * POR QUÉ, medido: con la portada de la demo (una ceremonia de día, con
+       * cielo), el texto blanco sobre el velo daba 1.95:1 en las zonas claras
+       * —el mínimo legible es 4.5:1—. Y el salón puede subir CUALQUIER foto,
+       * incluida una casi blanca, así que ningún velo uniforme lo arregla sin
+       * apagar la imagen entera.
+       *
+       * La cuenta: velo 35% + panel 75% deja el peor caso imaginable (una foto
+       * blanca) en 4.83:1. Con la portada real queda muy por encima. El panel
+       * lleva desenfoque para que se lea como un cristal esmerilado y no como
+       * un recuadro pegado encima.
+       */}
       <div
         className={[
           "px-6 py-16 text-center sm:py-24",
-          sobreFoto ? "text-white" : "bg-surface",
+          sobreFoto
+            ? "mx-auto my-10 max-w-2xl rounded-[var(--radius)] bg-[#1a120f]/75 text-white backdrop-blur-sm sm:my-14"
+            : "bg-surface",
         ].join(" ")}
       >
         {monograma ? (

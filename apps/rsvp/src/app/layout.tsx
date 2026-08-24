@@ -3,8 +3,14 @@ import { ThemeProvider } from "@salones/ui";
 import { evento } from "@/lib/rsvp";
 import "./globals.css";
 
+/*
+ * EL TITULO NO NOMBRA NINGUNA BODA. Antes decia el nombre de la muestra
+ * quemada: al compartir el enlace de una boda REAL, la pestana y la vista
+ * previa del mensaje ensenaban el nombre de OTRA pareja. El nombre del evento
+ * si se ve dentro, en la cinta, sacado del evento de verdad.
+ */
 export const metadata: Metadata = {
-  title: `Confirmación de asistencia · ${evento.nombre}`,
+  title: "Confirmación de asistencia",
   description: "Confirma tu asistencia al evento en línea, en un clic.",
 };
 

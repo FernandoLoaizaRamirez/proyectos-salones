@@ -1,10 +1,15 @@
 import type { Metadata } from "next";
 import { ThemeProvider } from "@salones/ui";
-import { evento } from "@/lib/evento";
 import "./globals.css";
 
+/*
+ * EL TITULO NO NOMBRA NINGUNA BODA. Antes decia el nombre de la muestra
+ * quemada: al compartir el enlace de una boda REAL, la pestana y la vista
+ * previa del mensaje ensenaban el nombre de OTRA pareja. El nombre del evento
+ * si se ve dentro, en la cinta, sacado del evento de verdad.
+ */
 export const metadata: Metadata = {
-  title: `Pases con QR · ${evento.nombre}`,
+  title: "Pases con QR",
   description: "Pases de invitado con código QR y control de acceso en la entrada.",
 };
 

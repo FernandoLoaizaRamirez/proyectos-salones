@@ -1,10 +1,15 @@
 import type { Metadata } from "next";
 import { ThemeProvider } from "@salones/ui";
-import { evento } from "@/lib/mesas";
 import "./globals.css";
 
+/*
+ * EL TITULO NO NOMBRA NINGUNA BODA. Antes decia el nombre de la muestra
+ * quemada: al compartir el enlace de una boda REAL, la pestana y la vista
+ * previa del mensaje ensenaban el nombre de OTRA pareja. El nombre del evento
+ * si se ve dentro, en la cinta, sacado del evento de verdad.
+ */
 export const metadata: Metadata = {
-  title: `Acomodo de mesas · ${evento.nombre}`,
+  title: "Acomodo de mesas",
   description:
     "Organiza quién se sienta en cada mesa arrastrando a tus invitados. Comparte el acomodo por un enlace de solo lectura.",
 };

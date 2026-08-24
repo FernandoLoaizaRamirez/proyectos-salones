@@ -1225,6 +1225,35 @@ function vitrinaPropia(): string {
 }
 
 /**
+ * La vitrina de ESTE visitante, estrenándola si hace falta.
+ *
+ * Es la hermana pública de `vitrinaPropia`, sin su cautela: aquella devuelve el
+ * "demo" compartido mientras no le conste que la base admite vitrinas (la sonda
+ * de la 0022), y esa espera tiene sentido cuando se lee un enlace, pero no
+ * cuando el visitante llega SIN código y hay que darle uno.
+ *
+ * POR QUÉ IMPORTA: el "demo" compartido se enseña MEDIO VACÍO a propósito —sus
+ * ejemplos no se siembran porque los ids de `items` son globales y chocarían
+ * entre visitantes—. Quien cae ahí ve un muro sin mensajes y fotos sueltas de
+ * pruebas. La vitrina propia sí se siembra sola, y es la que vende.
+ *
+ * Devuelve "demo" solo si el navegador no deja guardar (modo privado): se
+ * pierde la mejora, no la demo.
+ */
+export function estrenarVitrina(): string {
+  if (!hayNavegador()) return "demo";
+  try {
+    const guardada = window.localStorage.getItem(K_VITRINA);
+    if (guardada && CODIGO_EVENTO.test(guardada)) return guardada;
+    const nueva = PREFIJO_VITRINA + Math.random().toString(36).slice(2, 8);
+    window.localStorage.setItem(K_VITRINA, nueva);
+    return nueva;
+  } catch {
+    return "demo";
+  }
+}
+
+/**
  * Pregunta UNA vez si la base ya admite vitrinas por visitante y lo apunta.
  * Se llama sola al crear el proveedor de servidor; no bloquea a nadie y su
  * respuesta se aplica en la siguiente carga de la página.

@@ -11,6 +11,7 @@
 import type { Metadata } from "next";
 import { resolverConfigEvento } from "@/lib/config-evento";
 import { PortalHome } from "@/components/portal-home";
+import { EstrenaVitrina } from "@/components/estrena-vitrina";
 
 /** Solo letras, números y guiones, como el resto de la suite. */
 const CODIGO_VALIDO = /^[a-z0-9-]{1,60}$/i;
@@ -64,6 +65,18 @@ export default async function Page({
   searchParams: Promise<{ e?: string }>;
 }) {
   const { e } = await searchParams;
-  const config = await resolverConfigEvento(codigoDe(e));
-  return <PortalHome config={config} />;
+  const codigo = codigoDe(e);
+  const config = await resolverConfigEvento(codigo);
+  /*
+   * Quien llega SIN código estrena su propia vitrina (ver EstrenaVitrina): la
+   * compartida se enseña medio vacía a propósito y es la peor carta de
+   * presentación. Mientras tanto se pinta el portal normal, así que no hay
+   * pantalla en blanco ni parpadeo.
+   */
+  return (
+    <>
+      {e ? null : <EstrenaVitrina />}
+      <PortalHome config={config} />
+    </>
+  );
 }

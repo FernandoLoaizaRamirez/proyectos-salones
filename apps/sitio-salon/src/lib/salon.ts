@@ -238,3 +238,81 @@ export const puertaInvitado = {
    */
   ejemplo: "El código de tu invitación",
 };
+
+/*
+ * LA EXPERIENCIA DIGITAL DEL EVENTO — el argumento que ningún salón de la
+ * competencia puede copiar de un folleto.
+ *
+ * De los ocho salones de gama alta que revisamos (México, España, California,
+ * Argentina), NINGUNO le ofrece nada al invitado: sus webs terminan en un
+ * formulario de contacto. Esta sección es lo que nos distingue, y por eso va
+ * DENTRO del argumento de venta, no escondida al final.
+ *
+ * REGLA DE ESCRITURA: aquí se cuentan VIVENCIAS, no funciones. Nadie contrata
+ * un "módulo de RSVP"; la gente quiere "saber cuántos vienen sin perseguir a
+ * nadie por WhatsApp". Si una línea de estas se puede leer en un catálogo de
+ * software, está mal escrita.
+ */
+export type Vivencia = { titulo: string; texto: string; icono: string };
+
+export const experienciaEventos = {
+  eyebrow: "La experiencia digital",
+  titulo: "Tu evento no termina cuando se apagan las luces",
+  texto:
+    "Cada celebración en la hacienda viene con su propio espacio digital. Tus invitados confirman, encuentran su mesa, comparten las fotos de la noche y te dejan mensajes que vas a poder leer al día siguiente. Todo desde su teléfono, sin instalar nada.",
+  /* El orden es el de la fiesta: antes, en la puerta, y durante la noche. */
+  vivencias: [
+    {
+      titulo: "Su invitación, en el teléfono",
+      texto: "Con la fecha, el mapa y el itinerario. Se abre con un toque y no se pierde.",
+      icono: "Mail",
+    },
+    {
+      titulo: "Confirman en un momento",
+      texto: "Sabes cuántos vienen sin perseguir a nadie por WhatsApp.",
+      icono: "CalendarCheck",
+    },
+    {
+      titulo: "Cada quien encuentra su mesa",
+      texto: "Llegan, buscan su nombre y saben dónde sentarse. Sin filas en la entrada.",
+      icono: "Armchair",
+    },
+    {
+      titulo: "Las fotos de todos, en un álbum",
+      texto: "Las que tomaron tus invitados, juntas, sin tener que pedirlas una por una.",
+      icono: "Camera",
+    },
+    {
+      titulo: "Mensajes que se quedan",
+      texto: "El libro de firmas de siempre, pero que no se moja ni se pierde en la mudanza.",
+      icono: "BookHeart",
+    },
+    {
+      titulo: "La música que ustedes eligen",
+      texto: "Tus invitados piden canciones y votan; el DJ ve la lista en vivo.",
+      icono: "ListMusic",
+    },
+    {
+      titulo: "Fotos con el marco del evento",
+      texto: "Una cabina de fotos sin cabina: la cámara de su propio teléfono.",
+      icono: "Aperture",
+    },
+    {
+      titulo: "Juegos que rompen el hielo",
+      texto: "Trivia y bingo para que las mesas se hablen entre sí.",
+      icono: "Gamepad2",
+    },
+    {
+      titulo: "Brindis grabados en video",
+      texto: "Quien no se atrevió con el micrófono, igual te deja su mensaje.",
+      icono: "Wine",
+    },
+  ] as Vivencia[],
+  cta: "Vive la experiencia",
+  ctaNota: "Entra como si fueras invitado a una boda en la hacienda.",
+  /*
+   * La nota honesta: no todos los paquetes traen todo. Decirlo aquí evita la
+   * conversación incómoda de después, y de paso enseña que se puede elegir.
+   */
+  nota: "Las experiencias que incluye tu celebración dependen del paquete que elijas.",
+};

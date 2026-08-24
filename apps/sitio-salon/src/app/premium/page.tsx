@@ -11,6 +11,7 @@ import { GaleriaPremium } from "@/components/premium/galeria-premium";
 import { PaquetesPremium } from "@/components/premium/paquetes-premium";
 import { TestimoniosPremium } from "@/components/premium/testimonios-premium";
 import { ContactoPremium } from "@/components/premium/contacto-premium";
+import { ExperienciaEventos } from "@/components/experiencia-eventos";
 import { PuertaInvitado } from "@/components/puerta-invitado";
 import { Footer } from "@/components/footer";
 import { WhatsappFab } from "@/components/whatsapp-fab";
@@ -41,6 +42,8 @@ export default function PremiumPage() {
         <PaquetesPremium />
         <TestimoniosPremium />
         <ContactoPremium />
+        {/* El bloque digital: primero se vende la experiencia, luego se entra. */}
+        <ExperienciaEventos />
         <PuertaInvitado />
       </main>
       <Footer />

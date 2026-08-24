@@ -20,7 +20,7 @@ import {
   PREFIJO_VITRINA as PREFIJO_SITIO,
   conVitrina,
 } from "../../apps/sitio-salon/src/lib/vitrina";
-import { puertaInvitado } from "../../apps/sitio-salon/src/lib/salon";
+import { experienciaEventos, puertaInvitado } from "../../apps/sitio-salon/src/lib/salon";
 
 /**
  * El prefijo de @salones/sync se lee del ARCHIVO, no se importa.
@@ -80,5 +80,46 @@ describe("El texto de ejemplo del campo", () => {
     // evento no existe: el cliente se topaba con "No encontramos este evento".
     expect(puertaInvitado.ejemplo).not.toMatch(/^Ej\./i);
     expect(puertaInvitado.ejemplo).not.toMatch(/\b[a-z]+-[a-z]+-[a-z]+\b/);
+  });
+});
+
+describe('La seccion "La experiencia de tus eventos"', () => {
+  /**
+   * El CTA "Vive la experiencia" es el que pulsa un SALON cuando le enseñamos
+   * el producto. Si mandara a `?e=demo` (la compartida) encontraría el muro
+   * vacío y la playlist con dos restos de pruebas — la peor primera impresión
+   * posible, y la razón por la que existe este archivo.
+   */
+  it("el CTA se arma con `conVitrina`, no con un enlace pelado", () => {
+    const fuente = readFileSync(
+      fileURLToPath(
+        new URL("../../apps/sitio-salon/src/components/experiencia-eventos.tsx", import.meta.url),
+      ),
+      "utf8",
+    );
+    expect(fuente).toContain("conVitrina(PORTAL_BASE, vitrina)");
+    expect(fuente).toContain("leerOInventarVitrina");
+    // Y jamás un `?e=demo` escrito a mano, que es la forma de romperlo sin
+    // darse cuenta. Se miran solo las líneas de CÓDIGO: los comentarios de
+    // este archivo explican precisamente por qué ese enlace no debe usarse.
+    const codigo = fuente
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/\/\/.*$/gm, "")
+      .replace(/\{\/\*[\s\S]*?\*\/\}/g, "");
+    expect(codigo).not.toMatch(/\?e=demo(?![-\w])/);
+  });
+
+  it("cuenta vivencias, no funciones de software", () => {
+    expect(experienciaEventos.vivencias.length).toBeGreaterThanOrEqual(6);
+    for (const v of experienciaEventos.vivencias) {
+      expect(v.titulo.length).toBeGreaterThan(0);
+      expect(v.texto.length).toBeGreaterThan(0);
+      // Nada de jerga: si una linea dice "modulo" o "app", esta mal escrita.
+      expect(v.titulo + " " + v.texto).not.toMatch(/\b(m[oó]dulo|app|plataforma|software)\b/i);
+    }
+  });
+
+  it("dice claro que el paquete manda (sin letra chica)", () => {
+    expect(experienciaEventos.nota).toMatch(/paquete/i);
   });
 });

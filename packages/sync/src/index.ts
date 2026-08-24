@@ -1104,11 +1104,20 @@ export function estaConectado(): boolean {
  *   quien lo escanee cae en SU vitrina, que es justo lo que el salón quiere
  *   enseñar cuando prueba la demo delante de un cliente.
  */
+/**
+ * El formato de un código de evento: letras, números y guiones, máximo 60.
+ * Es EL regex — la base (`evento-config`), el portal y este paquete validan
+ * el mismo formato; exportarlo evita que las copias se separen en silencio
+ * (una copia desactualizada aquí devolvería "no-encontrado" y una boda real
+ * pintaría el tema demo).
+ */
+export const CODIGO_EVENTO = /^[a-z0-9-]{1,60}$/i;
+
 export function eventoActual(porDefecto = "demo"): string {
   if (!hayNavegador()) return porDefecto;
   const e = new URLSearchParams(window.location.search).get("e");
   // Solo letras, números y guiones, para que el código viaje limpio en el enlace.
-  if (e && /^[a-z0-9-]{1,60}$/i.test(e)) return e;
+  if (e && CODIGO_EVENTO.test(e)) return e;
   return porDefecto === "demo" ? vitrinaPropia() : porDefecto;
 }
 
@@ -1169,7 +1178,7 @@ function vitrinaPropia(): string {
   try {
     if (window.localStorage.getItem(K_SOPORTE) !== "1") return "demo";
     const guardada = window.localStorage.getItem(K_VITRINA);
-    if (guardada && /^[a-z0-9-]{1,60}$/i.test(guardada)) return guardada;
+    if (guardada && CODIGO_EVENTO.test(guardada)) return guardada;
     const nueva = PREFIJO_VITRINA + Math.random().toString(36).slice(2, 8);
     window.localStorage.setItem(K_VITRINA, nueva);
     return nueva;
@@ -1748,4 +1757,110 @@ export function sufijoAnfitrion(evento: string = eventoActual()): string {
   const clave = claveAnfitrion(evento);
   if (!clave) return sufijoEvento();
   return `?e=${evento}&a=${clave}`;
+}
+
+/* ================================================================== */
+/* La config pública de un evento (Edge Function `evento-config`)      */
+/* ================================================================== */
+
+/**
+ * Lo que contesta `evento-config` — los datos CRUDOS: el que llama corre los
+ * motores (`resolveEntitlements` de @salones/core, `resolverTema` de
+ * @salones/ui). Aquí NO se resuelve nada: este paquete es la costura con el
+ * servidor, no un motor.
+ */
+export type ConfigEventoCruda = {
+  evento: {
+    codigo: string;
+    nombre: string;
+    estado: string;
+    fecha?: string | null;
+    tipo?: string | null;
+  };
+  plan: { id: string; nombre: string; funciones: string[] };
+  overridesTenant: Record<string, boolean>;
+  overridesEvento: Record<string, boolean>;
+  /** La marca del salón dueño (tenant_branding), o null → tema por defecto. */
+  branding: {
+    nombre: string;
+    logoUrl?: string;
+    sitioUrl?: string;
+    primario?: string;
+    primarioTexto?: string;
+    acento?: string;
+    radio?: string;
+    fondo?: string;
+    tinta?: string;
+    fuentes?: string;
+    esquema?: string;
+  } | null;
+  /**
+   * La personalización del EVENTO (event_branding), o null → la del salón.
+   * OPCIONAL a propósito: la función desplegada ANTES de este cambio no manda
+   * el campo (llega `undefined`, no `null`), y un tipo que prometiera `null`
+   * invitaría a `config.brandingEvento !== null` — que compila limpio y
+   * revienta en la ventana entre desplegar apps y redesplegar la función.
+   */
+  brandingEvento?: {
+    primario?: string;
+    acento?: string;
+    portadaUrl?: string;
+    monograma?: string;
+    frase?: string;
+    fuentes?: string;
+  } | null;
+};
+
+export type RespuestaConfigCruda =
+  | { estado: "ok"; config: ConfigEventoCruda }
+  | { estado: "no-encontrado" }
+  | { estado: "sin-servidor" };
+
+/**
+ * Pide la config pública de un evento a la Edge Function `evento-config`.
+ *
+ * Es EL camino para que una app de cliente conozca el tema y las funciones de
+ * un evento real sin recompilar. Reglas, las mismas de toda la costura:
+ *
+ *   · SIN variables de Supabase (modo local) → "sin-servidor": quien llama usa
+ *     su tema demo. NO se pregunta por las vitrinas: `evento-config` les
+ *     contesta 404 a propósito (no viven en `events`, migración 0022), así que
+ *     quien llama debe cortarles el camino ANTES con `esVitrina()` — ahorra la
+ *     invocación en el tráfico mayoritario y evita confundir 404s.
+ *   · 404 → "no-encontrado" (el código está mal escrito o el evento se cerró).
+ *   · Cualquier otro fallo (red caída, función sin desplegar) → "sin-servidor":
+ *     NUNCA lanza. Una pantalla de fiesta que no abre es peor que una con el
+ *     tema de la casa.
+ */
+export async function configEventoCruda(evento: string): Promise<RespuestaConfigCruda> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !anon) return { estado: "sin-servidor" };
+  if (!CODIGO_EVENTO.test(evento)) return { estado: "no-encontrado" };
+
+  try {
+    const res = await fetch(
+      `${url.replace(/\/$/, "")}/functions/v1/evento-config?e=${encodeURIComponent(evento)}`,
+      {
+        headers: {
+          apikey: anon,
+          // La llave "legacy" (JWT, empieza con eyJ) también viaja como Bearer;
+          // con las llaves nuevas (sb_publishable_…) basta el apikey.
+          ...(anon.startsWith("eyJ") ? { Authorization: `Bearer ${anon}` } : {}),
+        },
+      },
+    );
+    if (res.status === 404) return { estado: "no-encontrado" };
+    if (!res.ok) return { estado: "sin-servidor" };
+    const config = (await res.json()) as ConfigEventoCruda;
+    // Un 200 con cuerpo que no es la config (proxy raro, HTML de un portal
+    // cautivo) no debe guardarse en caché ni llegar a quien pinta: se trata
+    // como servidor caído, que es lo que en la práctica es.
+    if (!config || typeof config !== "object" || typeof config.evento?.codigo !== "string") {
+      return { estado: "sin-servidor" };
+    }
+    return { estado: "ok", config };
+  } catch {
+    return { estado: "sin-servidor" };
+  }
 }

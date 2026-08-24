@@ -16,12 +16,22 @@ NEXT_PUBLIC_BRAND_NAME="Nombre del Salón del Cliente"
 Edita `packages/ui/src/styles/tokens.css`. Cambia los valores de:
 
 - `--primary` / `--primary-fg` → color principal de la marca.
+- `--accent` / `--accent-fg` → color de acento (detalles, foco).
 - `--bg` / `--fg` → fondo y texto.
-- `--font-sans` → tipografía.
+- `--surface` → franjas y fondos destacados (se deriva sola de fondo y texto).
+- `--font-sans` → tipografía del texto corrido.
+- `--font-display` / `--font-script` → tipografía editorial (títulos,
+  monogramas y frases de la experiencia del invitado).
 - `--radius` → qué tan redondeadas se ven las esquinas.
 
 Hay un bloque para tema claro (`:root`) y otro para tema oscuro (`.dark`).
-Al cambiarlos, **toda la suite se recolorea sola**.
+Al cambiarlos, **toda la suite se recolorea sola**… con dos excepciones que no
+leen estos tokens: `apps/sitio-salon` y `apps/invitaciones` tienen su paleta
+propia en su `globals.css` (a propósito: son piezas de diseño cerradas).
+
+> Desde el rediseño, la marca REAL de cada salón no vive aquí sino en la base
+> (`tenant_branding`, y por evento `event_branding`): estos tokens son solo el
+> tema neutro de fábrica sobre el que aquélla se pinta en runtime.
 
 ## 3. Desplegar
 

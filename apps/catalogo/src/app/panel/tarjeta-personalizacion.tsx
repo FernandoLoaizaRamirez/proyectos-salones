@@ -210,7 +210,13 @@ export function TarjetaPersonalizacion() {
             </span>
             <div className="min-w-0">
               <p className="truncate font-semibold">{branding.nombre}</p>
-              <p className="text-xs" style={{ color: "var(--accent, var(--muted-fg))" }}>
+              {/* El acento del SALÓN si lo tiene; si no, el gris apagado.
+                  Antes esto era `var(--accent, var(--muted-fg))` y el fallback
+                  detectaba la ausencia — pero desde que tokens.css define
+                  --accent (rediseño), esa variable SIEMPRE existe y el
+                  fallback pintaba el rosa del tema base en salones sin acento.
+                  La decisión se toma en JS, que sí sabe si hay acento. */}
+              <p className="text-xs" style={{ color: branding.acento ?? "var(--muted-fg)" }}>
                 Bodas · XV años · Eventos
               </p>
             </div>
@@ -225,7 +231,7 @@ export function TarjetaPersonalizacion() {
 
           <div
             className="mt-4 rounded-[var(--radius)] border p-3"
-            style={{ borderColor: "var(--accent, var(--border))" }}
+            style={{ borderColor: branding.acento ?? "var(--border)" }}
           >
             <p className="text-sm font-medium">Paquete Distinción</p>
             <p className="text-xs text-muted-foreground">

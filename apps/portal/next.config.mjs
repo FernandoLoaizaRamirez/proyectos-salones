@@ -2,7 +2,7 @@
 const nextConfig = {
   reactStrictMode: true,
   // Compila como fuente los paquetes compartidos del monorepo.
-  transpilePackages: ["@salones/ui", "@salones/core", "@salones/sync"],
+  transpilePackages: ["@salones/ui", "@salones/core", "@salones/sync", "@salones/directorio"],
 };
 
 export default nextConfig;

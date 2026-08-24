@@ -20,10 +20,16 @@
  * USO:
  *   node scripts/comprobar-apps-al-dia.mjs
  *
+ * ⚠️ Requiere `pnpm install` hecho: desde el rediseño las URLs vienen de
+ * `@salones/directorio` (la lista única del workspace). En un clon fresco o un
+ * worktree sin node_modules muere con ERR_MODULE_NOT_FOUND — instala primero.
+ *
  * Devuelve 0 si TODAS están al día, 1 si alguna no lo está (así también sirve
  * para automatizar). Ante la duda, dice que NO está lista: equivocarse hacia ese
  * lado cuesta una revisión de más; hacia el otro, una boda rota.
  */
+
+import { URLS } from "@salones/directorio";
 
 /**
  * Las que el corte de la 0009 puede dejar mudas si van atrasadas.
@@ -32,33 +38,33 @@
  * ese nombre ya está tomado por otra persona, Vercel le pega un sufijo al azar
  * (`album-fotos-gamma`, `rsvp-umber-pi`). Comprobado el 24 jul 2026:
  * `album-fotos.vercel.app` es de un desconocido — devuelve un "Ejemplo de
- * imágenes" que no tiene nada que ver con este proyecto. Estas salen de
- * `apps/catalogo/src/lib/catalogo.ts`, que es la lista que el catálogo enseña a
- * los clientes; si alguna cambia, se cambia ahí y aquí.
+ * imágenes" que no tiene nada que ver con este proyecto. Desde el rediseño
+ * salen de `@salones/directorio` — LA lista única que también consumen el
+ * catálogo y el portal: si una cambia, se cambia en UN lugar.
  */
 const APPS = [
-  ["muro", "https://proyectos-salones-muro.vercel.app"],
-  ["playlist", "https://proyectos-salones-playlist.vercel.app"],
-  ["dinámicas", "https://proyectos-salones-dinamicas.vercel.app"],
-  ["álbum", "https://album-fotos-gamma.vercel.app"],
-  ["rsvp", "https://rsvp-umber-pi.vercel.app"],
-  ["brindis", "https://proyectos-salones-brindis.vercel.app"],
+  ["muro", URLS.muro],
+  ["playlist", URLS.playlist],
+  ["dinámicas", URLS.dinamicas],
+  ["álbum", URLS["album-fotos"]],
+  ["rsvp", URLS.rsvp],
+  ["brindis", URLS.brindis],
   // Pases con QR usa sync desde el 6 ago 2026 (la lista y el registro de la
   // puerta). ⚠️ Se queda ATRASADA hasta que se le pongan sus dos variables de
   // Supabase en Vercel: sin ellas la app arranca en modo local y funciona, pero
   // la puerta vuelve a vivir en un solo aparato.
-  ["pases QR", "https://pases-qr.vercel.app"],
+  ["pases QR", URLS["pases-qr"]],
   // El portal y el catálogo muestran las fotos: les afecta el corte de la 0013.
   // El proyecto se llama `proyectos-salones-portal` (Vercel regeneró el nombre al
   // elegir la carpeta apps/portal; encaja con la convención de las otras apps).
   // ⚠️ Se mira `/muro`, NO la home: la home del portal (`/?e=demo`) no carga las
   // piezas de sync (los módulos se cargan por ruta), así que daría un falso
   // "ATRASADA". Cualquier ruta de módulo (muro/album) sí trae el código real.
-  ["portal", "https://proyectos-salones-portal.vercel.app", "/muro?e=demo"],
+  ["portal", URLS.portal, "/muro?e=demo"],
   // La PORTADA del catálogo es el escaparate comercial y no toca el servidor:
   // sus piezas de sync se cargan solo al entrar al panel. Preguntando por la
   // portada saldría un "NO" que no es verdad, así que se mira `/eventos`.
-  ["catálogo (panel)", "https://suite-salones.vercel.app", "/eventos"],
+  ["catálogo (panel)", URLS.catalogo, "/eventos"],
 ];
 
 const SENALES = {

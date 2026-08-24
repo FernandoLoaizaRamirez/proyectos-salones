@@ -15,6 +15,10 @@ import type { BrandingSalon } from "../branding";
  * <BrandingScope branding={{ nombre: "Salón X", primario: "oklch(0.5 0.13 245)" }}>
  *   <Button>Reservar</Button>
  * </BrandingScope>
+ *
+ * @deprecated Migra a `TemaScope` (recibe el `TemaResuelto` de `resolverTema`:
+ * salón + evento fusionados, superficie derivada, tipografía y saneo). Este
+ * componente se retira con sus últimos consumidores (Fases 2 y 5 del plan).
  */
 export function BrandingScope({
   branding,

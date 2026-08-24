@@ -29,6 +29,7 @@ import {
   Video,
 } from "lucide-react";
 import { AppMode } from "@salones/core";
+import { URLS } from "@salones/directorio";
 
 /** Tus datos como proveedor de la suite. CAMBIA por los tuyos. */
 export const vendedor = {
@@ -168,7 +169,7 @@ export const productos: Producto[] = [
     acento: "from-rose-500 to-pink-600",
     disponible: true,
     destacado: true,
-    demoUrl: "https://salones-teal.vercel.app",
+    demoUrl: URLS["sitio-salon"],
     // El sitio SOLO SE VENDE: es una página hecha a la medida de la marca del
     // salón, no algo que se preste por evento ni por mes. Los dos precios
     // mensuales quedan aquí porque el tipo los pide, pero no se muestran nunca.
@@ -199,7 +200,7 @@ export const productos: Producto[] = [
     icono: Camera,
     acento: "from-fuchsia-500 to-purple-600",
     disponible: true,
-    demoUrl: "https://album-fotos-gamma.vercel.app",
+    demoUrl: URLS["album-fotos"],
     precios: { MANAGED: 800, RENTAL: 950, OWNED: 9000 },
     notaGestionado:
       "Con el Servicio gestionado —así corre esta demo— cada foto sube sola al álbum común del evento: todos las ven y descargan en un mismo lugar. En Renta/Compra, cada quien guarda las suyas en su teléfono.",
@@ -213,7 +214,7 @@ export const productos: Producto[] = [
     icono: Mail,
     acento: "from-amber-500 to-orange-600",
     disponible: true,
-    demoUrl: "https://invitaciones-weld.vercel.app",
+    demoUrl: URLS.invitaciones,
     precios: { MANAGED: 600, RENTAL: 700, OWNED: 6500 },
   },
   {
@@ -225,7 +226,7 @@ export const productos: Producto[] = [
     icono: CalendarCheck,
     acento: "from-teal-500 to-emerald-600",
     disponible: true,
-    demoUrl: "https://rsvp-umber-pi.vercel.app",
+    demoUrl: URLS.rsvp,
     precios: { MANAGED: 500, RENTAL: 600, OWNED: 5500 },
     notaGestionado:
       "Con el Servicio gestionado —así corre esta demo— el tablero se actualiza solo con la confirmación de cada invitado, desde su propio teléfono. En Renta/Compra, cada respuesta te llega por WhatsApp.",
@@ -239,7 +240,7 @@ export const productos: Producto[] = [
     icono: QrCode,
     acento: "from-sky-500 to-blue-600",
     disponible: true,
-    demoUrl: "https://pases-qr.vercel.app",
+    demoUrl: URLS["pases-qr"],
     precios: { MANAGED: 700, RENTAL: 850, OWNED: 7500 },
   },
   {
@@ -251,7 +252,7 @@ export const productos: Producto[] = [
     icono: Armchair,
     acento: "from-violet-500 to-indigo-600",
     disponible: true,
-    demoUrl: "https://proyectos-salones-mesas.vercel.app",
+    demoUrl: URLS.mesas,
     precios: { MANAGED: 600, RENTAL: 700, OWNED: 6000 },
   },
   {
@@ -263,7 +264,7 @@ export const productos: Producto[] = [
     icono: BookHeart,
     acento: "from-rose-500 to-fuchsia-600",
     disponible: true,
-    demoUrl: "https://proyectos-salones-muro.vercel.app",
+    demoUrl: URLS.muro,
     precios: { MANAGED: 550, RENTAL: 650, OWNED: 5500 },
     notaGestionado:
       "Con el Servicio gestionado —así corre esta demo— los mensajes aparecen solos en la pared desde el teléfono de cada invitado. En Renta/Compra funciona en una tablet en la fiesta o por WhatsApp.",
@@ -277,7 +278,7 @@ export const productos: Producto[] = [
     icono: ListMusic,
     acento: "from-cyan-500 to-blue-600",
     disponible: true,
-    demoUrl: "https://proyectos-salones-playlist.vercel.app",
+    demoUrl: URLS.playlist,
     precios: { MANAGED: 600, RENTAL: 700, OWNED: 6000 },
     notaGestionado:
       "Con el Servicio gestionado —así corre esta demo— las peticiones y los votos llegan al DJ desde el teléfono de cada invitado. En Renta/Compra funciona en una tablet-kiosco en la fiesta.",
@@ -291,7 +292,7 @@ export const productos: Producto[] = [
     icono: Aperture,
     acento: "from-purple-500 to-pink-600",
     disponible: true,
-    demoUrl: "https://proyectos-salones-photobooth.vercel.app",
+    demoUrl: URLS.photobooth,
     precios: { MANAGED: 700, RENTAL: 850, OWNED: 7000 },
     // Photobooth funciona 100% hoy: cada invitado se toma su foto, elige el marco
     // y la descarga/comparte desde su teléfono. No necesita sistema central, así
@@ -306,7 +307,7 @@ export const productos: Producto[] = [
     icono: MapPinned,
     acento: "from-emerald-500 to-green-600",
     disponible: true,
-    demoUrl: "https://proyectos-salones-mi-mesa.vercel.app",
+    demoUrl: URLS["mi-mesa"],
     precios: { MANAGED: 500, RENTAL: 600, OWNED: 5000 },
   },
   {
@@ -318,7 +319,7 @@ export const productos: Producto[] = [
     icono: Gamepad2,
     acento: "from-yellow-500 to-orange-600",
     disponible: true,
-    demoUrl: "https://proyectos-salones-dinamicas.vercel.app",
+    demoUrl: URLS.dinamicas,
     precios: { MANAGED: 600, RENTAL: 700, OWNED: 6000 },
     notaGestionado:
       "Con el Servicio gestionado —así corre esta demo— el ranking de la trivia junta en vivo a todos los invitados. El bingo y el rompehielos funcionan en cada teléfono, sin necesidad de nada más.",
@@ -332,7 +333,7 @@ export const productos: Producto[] = [
     icono: Video,
     acento: "from-red-500 to-rose-600",
     disponible: true,
-    demoUrl: "https://proyectos-salones-brindis.vercel.app",
+    demoUrl: URLS.brindis,
     precios: { MANAGED: 700, RENTAL: 850, OWNED: 7000 },
     notaGestionado:
       "Con el Servicio gestionado —así corre esta demo— cada video sube solo a la galería del anfitrión, que además puede crear un video recuerdo que fusiona los brindis de todos en uno. En Renta/Compra, cada video te llega por WhatsApp.",

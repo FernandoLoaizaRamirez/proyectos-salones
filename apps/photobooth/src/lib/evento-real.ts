@@ -3,6 +3,12 @@
 /**
  * DE QUÉ EVENTO ES ESTE PHOTOBOOTH.
  *
+ * ⚠️ DEPRECADO: este molde ya se generalizó como `useEventoReal` de
+ * `@salones/experiencia` (con un arreglo encima: el fallo de red ya no se
+ * cachea para toda la sesión). Esta copia se retira cuando el photobooth
+ * adopte la cáscara compartida (Fase 4 del plan del rediseño). NO le añadas
+ * capacidades aquí: cualquier mejora va en el paquete.
+ *
  * El photobooth era el último silo de la suite: no sabía de qué evento era, y
  * los marcos de una boda real decían "Ana & Rodrigo" — los nombres quemados de
  * la muestra. Aquí aprende a leer el código del evento (`?e=`, igual que todas

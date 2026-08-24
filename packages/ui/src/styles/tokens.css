@@ -17,9 +17,20 @@
   --muted-fg: oklch(0.52 0.02 285);
   --border: oklch(0.9 0.008 300);
   --ring: oklch(0.58 0.16 350);
+  /* El acento: formaliza lo que brandingAVariables ya escribía sin que ningún
+     token lo definiera (solo surtía efecto a través de --ring). */
+  --accent: oklch(0.58 0.16 350);
+  --accent-fg: oklch(0.99 0 0);
+  /* Franja/superficie destacada (heros, cintas), un pelín más honda que --bg. */
+  --surface: color-mix(in oklab, var(--fg) 4%, var(--bg));
+  --surface-fg: var(--fg);
 
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial,
     sans-serif;
+  /* Tipografía editorial del tema (títulos y monogramas). Sin pareja elegida,
+     una serif del sistema; el script cae al display si la pareja no trae uno. */
+  --font-display: Georgia, "Times New Roman", serif;
+  --font-script: var(--font-display);
   --radius: 0.85rem;
 }
 
@@ -34,4 +45,6 @@
   --muted-fg: oklch(0.72 0.02 285);
   --border: oklch(0.32 0.02 285);
   --ring: oklch(0.7 0.15 350);
+  --accent: oklch(0.7 0.15 350);
+  --accent-fg: oklch(0.18 0.015 285);
 }

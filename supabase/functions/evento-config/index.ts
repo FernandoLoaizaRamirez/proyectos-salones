@@ -74,18 +74,74 @@ Deno.serve(async (req: Request) => {
       nombre: string;
       tenant_id: string;
       estado: string;
-    }>(`events?codigo=eq.${encodeURIComponent(codigo)}&select=id,nombre,tenant_id,estado&limit=1`);
+      fecha: string | null;
+      tipo: string | null;
+    }>(
+      `events?codigo=eq.${encodeURIComponent(codigo)}&select=id,nombre,tenant_id,estado,fecha,tipo&limit=1`,
+    );
     const evento = eventos[0];
     if (!evento) return json({ error: "evento no encontrado" }, 404);
 
-    // 2) El salón dueño y su plan.
-    const tenants = await rest<{ nombre: string; plan_id: string | null }>(
-      `tenants?id=eq.${evento.tenant_id}&select=nombre,plan_id&limit=1`,
-    );
+    // 2-5) Todo lo que depende SOLO del evento/tenant ya conocidos, EN
+    //    PARALELO: son viajes independientes a PostgREST y en serie sumaban
+    //    ~5 saltos de latencia al camino que el primer render del portal (y
+    //    ahora cada app del invitado) espera. Solo `plan_features` necesita
+    //    esperar (al plan del tenant); va después.
+    //
+    //    `select=*` en los dos brandings A PROPÓSITO: pedir las columnas de la
+    //    0025 por nombre haría fallar TODA la respuesta si la función se
+    //    desplegara antes de correr la migración (PostgREST 400 → 502 → el
+    //    portal entero degrada a demo). Con `*`, las columnas que existan
+    //    vienen y las que no, no — la función es segura de desplegar en
+    //    cualquier orden. Ambas tablas tienen UNA fila por dueño: el asterisco
+    //    no cuesta nada.
+    //
+    //    `event_branding` además va protegida (`.catch`): si la TABLA aún no
+    //    existe, el branding del evento simplemente no viene — jamás tumba la
+    //    respuesta entera.
+    type FilaBranding = {
+      nombre?: string | null;
+      logo_url?: string | null;
+      primario?: string | null;
+      primario_texto?: string | null;
+      acento?: string | null;
+      radio?: string | null;
+      sitio_url?: string | null;
+      fuentes?: string | null;
+      fondo?: string | null;
+      tinta?: string | null;
+      esquema?: string | null;
+    };
+    type FilaBrandingEvento = {
+      primario?: string | null;
+      acento?: string | null;
+      portada_ref?: string | null;
+      monograma?: string | null;
+      frase?: string | null;
+      fuentes?: string | null;
+    };
+
+    const [tenants, ovSalon, ovEvento, brandings, be] = await Promise.all([
+      rest<{ nombre: string; plan_id: string | null }>(
+        `tenants?id=eq.${evento.tenant_id}&select=nombre,plan_id&limit=1`,
+      ),
+      rest<{ feature_clave: string; habilitado: boolean }>(
+        `tenant_entitlements?tenant_id=eq.${evento.tenant_id}&select=feature_clave,habilitado`,
+      ),
+      rest<{ feature_clave: string; habilitado: boolean }>(
+        `event_overrides?event_id=eq.${evento.id}&select=feature_clave,habilitado`,
+      ),
+      rest<FilaBranding>(`tenant_branding?tenant_id=eq.${evento.tenant_id}&select=*&limit=1`),
+      rest<FilaBrandingEvento>(`event_branding?event_id=eq.${evento.id}&select=*&limit=1`)
+        .then((filas) => filas[0] ?? null)
+        .catch(() => null),
+    ]);
+
     const salon = tenants[0];
     const planId = salon?.plan_id ?? null;
+    const b = brandings[0];
 
-    // 3) Funciones que trae el plan.
+    // Funciones que trae el plan (necesita el plan_id del tenant).
     const funciones = planId
       ? (
           await rest<{ feature_clave: string }>(
@@ -94,30 +150,20 @@ Deno.serve(async (req: Request) => {
         ).map((f) => f.feature_clave)
       : [];
 
-    // 4) Overrides del salón y del evento (el evento manda; lo resuelve el portal).
-    const ovSalon = await rest<{ feature_clave: string; habilitado: boolean }>(
-      `tenant_entitlements?tenant_id=eq.${evento.tenant_id}&select=feature_clave,habilitado`,
-    );
-    const ovEvento = await rest<{ feature_clave: string; habilitado: boolean }>(
-      `event_overrides?event_id=eq.${evento.id}&select=feature_clave,habilitado`,
-    );
-
-    // 5) Branding del salón (puede no existir → el portal usa el tema por defecto).
-    const brandings = await rest<{
-      nombre: string | null;
-      logo_url: string | null;
-      primario: string | null;
-      primario_texto: string | null;
-      acento: string | null;
-      radio: string | null;
-    }>(
-      `tenant_branding?tenant_id=eq.${evento.tenant_id}` +
-        `&select=nombre,logo_url,primario,primario_texto,acento,radio&limit=1`,
-    );
-    const b = brandings[0];
+    // La portada: si es una referencia del almacén se resolverá a URL firmada
+    // cuando el panel la estrene (Fase 5); una URL http(s) externa pasa tal
+    // cual. Una referencia interna sin resolver NO se manda al navegador.
+    const portadaUrl =
+      be?.portada_ref && /^https?:\/\//i.test(be.portada_ref) ? be.portada_ref : undefined;
 
     return json({
-      evento: { codigo, nombre: evento.nombre, estado: evento.estado },
+      evento: {
+        codigo,
+        nombre: evento.nombre,
+        estado: evento.estado,
+        fecha: evento.fecha,
+        tipo: evento.tipo,
+      },
       plan: { id: planId ?? "sin-plan", nombre: planId ?? "Sin plan", funciones },
       overridesTenant: aMapa(ovSalon),
       overridesEvento: aMapa(ovEvento),
@@ -125,10 +171,25 @@ Deno.serve(async (req: Request) => {
         ? {
             nombre: b.nombre ?? salon?.nombre ?? evento.nombre,
             logoUrl: b.logo_url ?? undefined,
+            sitioUrl: b.sitio_url ?? undefined,
             primario: b.primario ?? undefined,
             primarioTexto: b.primario_texto ?? undefined,
             acento: b.acento ?? undefined,
             radio: b.radio ?? undefined,
+            fondo: b.fondo ?? undefined,
+            tinta: b.tinta ?? undefined,
+            fuentes: b.fuentes ?? undefined,
+            esquema: b.esquema ?? undefined,
+          }
+        : null,
+      brandingEvento: be
+        ? {
+            primario: be.primario ?? undefined,
+            acento: be.acento ?? undefined,
+            portadaUrl,
+            monograma: be.monograma ?? undefined,
+            frase: be.frase ?? undefined,
+            fuentes: be.fuentes ?? undefined,
           }
         : null,
     });

@@ -8,6 +8,7 @@ const nextConfig = {
     "@salones/payments",
     "@salones/legal",
     "@salones/sync",
+    "@salones/directorio",
   ],
 };
 

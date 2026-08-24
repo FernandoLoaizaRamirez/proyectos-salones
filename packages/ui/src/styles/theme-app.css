@@ -1,0 +1,46 @@
+/**
+ * El bloque `@theme inline` COMPARTIDO de la suite (Tailwind v4, CSS-first).
+ *
+ * Cada app copiaba este bloque a mano en su globals.css — la misma
+ * duplicación que las URLs, con las mismas consecuencias: al formalizar
+ * `--accent` hubo que descubrir que NINGUNA copia lo mapeaba.
+ *
+ * ⚠️ HOY (Fase 1) NADIE lo importa todavía: las apps se enganchan en SU fase
+ * del rediseño (el portal en la 2, las demás en la 4) sustituyendo su bloque
+ * copiado por este import. Hasta entonces, las utilidades nuevas
+ * (`bg-accent`, `bg-surface`, `font-display`) NO existen en las apps — un
+ * componente que las use antes de la Fase 2 se verá sin estilo en silencio.
+ * El import queda así, después de `@import "tailwindcss"` y de tokens.css:
+ *
+ *   @import "tailwindcss";
+ *   @import "../../../../packages/ui/src/styles/tokens.css";
+ *   @import "../../../../packages/ui/src/styles/theme-app.css";
+ *   @source "../../../../packages/ui/src";
+ *   @custom-variant dark (&:where(.dark, .dark *));
+ *
+ * (El @source y el @custom-variant se quedan en cada app: sus rutas y su
+ * alcance son locales al archivo que los declara.)
+ *
+ * `sitio-salon` NO lo importa (decisión del plan: su identidad es suya, y la
+ * herencia corre al revés — el tema demo REFLEJA al sitio).
+ */
+@theme inline {
+  --color-background: var(--bg);
+  --color-foreground: var(--fg);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-fg);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-fg);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-fg);
+  --color-surface: var(--surface);
+  --color-surface-foreground: var(--surface-fg);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-fg);
+  --color-border: var(--border);
+  --color-ring: var(--ring);
+  --font-sans: var(--font-sans);
+  --font-display: var(--font-display);
+  --font-script: var(--font-script);
+  --radius: var(--radius);
+}

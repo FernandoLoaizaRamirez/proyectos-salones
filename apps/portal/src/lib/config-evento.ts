@@ -23,8 +23,8 @@ import {
   type Plan,
   FEATURES_CONOCIDAS as F,
 } from "@salones/core";
-import { esVitrina } from "@salones/sync";
-import type { BrandingSalon } from "@salones/ui";
+import { esVitrina, type ConfigEventoCruda } from "@salones/sync";
+import type { BrandingSalon, TemaEvento } from "@salones/ui";
 
 /** De dónde salió la config que se está mostrando. */
 export type EstadoConfig = "ok" | "demo" | "no-encontrado";
@@ -40,6 +40,16 @@ export type ConfigEvento = {
   entitlements: Entitlements;
   /** Branding del salón dueño, o null → tema por defecto. */
   branding: BrandingSalon | null;
+  /**
+   * La personalización del EVENTO (event_branding, migración 0025): color,
+   * portada, monograma, frase. Null → manda la del salón. La consume el
+   * rediseño del portal (Fase 2) vía `resolverTema`.
+   */
+  brandingEvento: TemaEvento | null;
+  /** Fecha ISO del evento (yyyy-mm-dd), si el salón la capturó. */
+  fecha: string | null;
+  /** Tipo del evento (boda/xv/…), si el salón lo capturó. */
+  tipo: string | null;
   estado: EstadoConfig;
 };
 
@@ -64,14 +74,13 @@ const PLAN_DEMO: Plan = {
   ],
 };
 
-/** Lo que devuelve la Edge Function `evento-config`. */
-type RespuestaConfig = {
-  evento: { codigo: string; nombre: string; estado: string };
-  plan: { id: string; nombre: string; funciones: string[] };
-  overridesTenant: Record<string, boolean>;
-  overridesEvento: Record<string, boolean>;
-  branding: BrandingSalon | null;
-};
+/**
+ * Lo que devuelve la Edge Function `evento-config` — EL MISMO tipo que usa
+ * `configEventoCruda` de @salones/sync (import solo de tipo, cero runtime).
+ * Antes el portal tipeaba su propia copia del contrato: un campo nuevo entraba
+ * a la función y a sync pero no aquí, y el `as` lo perdía en silencio.
+ */
+type RespuestaConfig = ConfigEventoCruda;
 
 /** Config de demostración (sin datos de servidor). */
 function configDemo(codigo: string): ConfigEvento {
@@ -88,6 +97,9 @@ function configDemo(codigo: string): ConfigEvento {
     salon: null,
     entitlements: resolveEntitlements(PLAN_DEMO),
     branding: null,
+    brandingEvento: null,
+    fecha: null,
+    tipo: null,
     estado: "demo",
   };
 }
@@ -128,6 +140,9 @@ export async function resolverConfigEvento(codigo: string): Promise<ConfigEvento
         salon: null,
         entitlements: {},
         branding: null,
+        brandingEvento: null,
+        fecha: null,
+        tipo: null,
         estado: "no-encontrado",
       };
     }
@@ -141,6 +156,9 @@ export async function resolverConfigEvento(codigo: string): Promise<ConfigEvento
       salon: datos.branding?.nombre ?? null,
       entitlements: resolveEntitlements(datos.plan, datos.overridesTenant, datos.overridesEvento),
       branding: datos.branding,
+      brandingEvento: datos.brandingEvento ?? null,
+      fecha: datos.evento.fecha ?? null,
+      tipo: datos.evento.tipo ?? null,
       estado: "ok",
     };
   } catch {

@@ -3,6 +3,11 @@
 /**
  * DE QUÉ EVENTO SON ESTOS PASES.
  *
+ * ⚠️ DEPRECADO: el molde de esta familia ya se generalizó como `useEventoReal`
+ * de `@salones/experiencia`. Esta copia se retira cuando pases-qr adopte la
+ * cáscara compartida (Fase 4 del plan del rediseño). NO le añadas capacidades
+ * aquí: cualquier mejora va en el paquete.
+ *
  * Los pases eran de los últimos rincones con los nombres quemados de la
  * muestra: el boleto de una boda real decía "Boda Ana & Rodrigo". Aquí la app
  * aprende a leer el código del evento (`?e=`, igual que todas las apps) y a

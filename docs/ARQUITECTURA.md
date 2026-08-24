@@ -15,15 +15,17 @@
 
 ### Cimientos (`packages/`)
 
-Los **cinco que existen hoy** en `packages/`:
+Los **siete que existen hoy** en `packages/`:
 
 | Paquete | Qué es | Estado |
 | --- | --- | --- |
 | `@salones/config` | Reglas comunes (TypeScript, formato). Garantiza que todo se escriba igual. | ✅ |
-| `@salones/ui` | Sistema de diseño: colores, tipografía, botones, tema claro/oscuro, marca. Desde la Fase 3, el branding de cada salón se aplica **en runtime** por variables CSS. | ✅ |
+| `@salones/ui` | Sistema de diseño: colores, tipografía, botones, tema claro/oscuro, marca. Desde la Fase 3, el branding de cada salón se aplica **en runtime** por variables CSS. Con el rediseño (ago 2026) trae además el **motor de temas** salón→evento (`src/tema/`: `resolverTema`, saneo, contraste, allowlist de fuentes) y la **cáscara** de la experiencia (`AppShell`, `CintaExperiencia`, `PieExperiencia`, `TemaScope`). Presentación pura: **jamás hace red**. | ✅ |
 | `@salones/core` | Vocabulario común de datos (`Evento`, `Invitado`, `Mesa`…), más la **tenencia** (`Tenant`, `Role`) y el motor puro de `resolveEntitlements`. | ✅ |
-| `@salones/sync` | El "lugar central". Una sola interfaz (`ProveedorSync`) con dos implementaciones: **local** (`localStorage`, modo demo/renta/compra) y **servidor** (Supabase por REST, modo gestionado). Se elige sola según haya credenciales. | ✅ |
+| `@salones/sync` | El "lugar central". Una sola interfaz (`ProveedorSync`) con dos implementaciones: **local** (`localStorage`, modo demo/renta/compra) y **servidor** (Supabase por REST, modo gestionado). Se elige sola según haya credenciales. También `configEventoCruda()` (la config pública de un evento vía `evento-config`). | ✅ |
 | `@salones/payments` | Stripe: mapeo de planes y lógica pura del webhook. El paquete es lógica pura; **el interruptor está en quien lo llama** — la ruta `apps/catalogo/.../stripe/webhook`, que corta antes de tocar Stripe si `PAGOS_ACTIVOS !== "true"`. Hoy está en `false`: **no cobra nada**. | ✅ |
+| `@salones/directorio` | **LA lista única** de dónde vive cada app (URLs de producción) y los manifests de los módulos de la experiencia. JS plano (`.mjs` + `.d.ts`): lo importan el catálogo, el portal y el script de comprobación — una URL se cambia en UN lugar. Paquete propio a propósito (no en `config`): así cambiar una URL cuesta 2 builds de Vercel, no 14. | ✅ |
+| `@salones/experiencia` | Los hooks de cliente de la experiencia del invitado: `useTemaEvento()` (el tema del evento con caché) y `useEventoReal()` (nombre/fecha/hashtag reales de la colección `invitacion`). Es el cableado entre `sync` (red) y `ui` (presentación) — existe para que `ui` no dependa de `sync`. ⚠️ La app que lo consuma debe añadirlo a su `package.json` **y a `transpilePackages`** de su `next.config.mjs`. | ✅ |
 
 Y los que **nunca se construyeron**, para que no se busquen:
 

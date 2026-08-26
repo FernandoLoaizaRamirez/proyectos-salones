@@ -1,0 +1,14 @@
+# Qué NO se sube al desplegar desde la terminal (`vercel --prod`).
+#
+# POR QUÉ EXISTE: el despliegue por terminal empaqueta la carpeta entera, y en
+# un monorepo con 14 apps eso son gigas de `node_modules` y de compilaciones
+# previas. La CLI se queda sin memoria antes de terminar de subir
+# ("Array buffer allocation failed", medido el 24 ago 2026).
+#
+# Nada de esto hace falta en el servidor: Vercel instala las dependencias y
+# compila él mismo. Para los despliegues por Git tampoco cambia nada, porque
+# ahí clona el repositorio y estas carpetas ni existen.
+node_modules
+.next
+.turbo
+.git

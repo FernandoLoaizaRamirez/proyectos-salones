@@ -61,6 +61,17 @@ export function MuroModulo({ evento, nombreEvento }: { evento: string; nombreEve
   const [enviando, setEnviando] = React.useState(false);
   const [error, setError] = React.useState("");
   const [enviado, setEnviado] = React.useState<Mensaje | null>(null);
+  const graciasRef = React.useRef<HTMLDivElement>(null);
+
+  /*
+   * El formulario es alto y la tarjeta de gracias es corta: al cambiar uno por
+   * otra la página encoge y el celular se queda donde estaba, así que el
+   * "¡Gracias!" terminaba por ENCIMA del borde de arriba y el invitado no veía
+   * nunca su confirmación. Se trae a la vista, con hueco para la cinta pegajosa.
+   */
+  React.useEffect(() => {
+    if (enviado) graciasRef.current?.scrollIntoView({ block: "start", behavior: "smooth" });
+  }, [enviado]);
   const [mensajes, setMensajes] = React.useState<Mensaje[]>([]);
 
   const quitarFoto = React.useCallback(() => {
@@ -279,6 +290,7 @@ export function MuroModulo({ evento, nombreEvento }: { evento: string; nombreEve
   return (
     <div className="space-y-8">
       {enviado ? (
+        <div ref={graciasRef} className="scroll-mt-24">
         <Card className="mx-auto w-full max-w-md p-8 text-center">
           <div className="mx-auto grid size-14 place-items-center rounded-full bg-green-500/15 text-green-600">
             <Check className="size-7" />
@@ -304,6 +316,7 @@ export function MuroModulo({ evento, nombreEvento }: { evento: string; nombreEve
             </p>
           ) : null}
         </Card>
+        </div>
       ) : (
         <Card className="mx-auto w-full max-w-md p-6 sm:p-8">
           <div className="text-center">

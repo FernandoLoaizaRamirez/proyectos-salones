@@ -120,8 +120,11 @@ export function CintaExperiencia({
             <MarcaVisual logoUrl={tema.salon.logoUrl} inicial={inicial} />
           )}
 
-          <div className="min-w-0 leading-tight">
-            <div className="truncate font-[family-name:var(--font-display)] text-sm font-semibold">
+          {/* `py-1` para que el bloque se pueda tocar (medía 16 px por renglón) y
+              el nombre del salón en dos renglones antes de recortarse: con
+              `truncate` a secas, "Hacienda Santa Renata" no cabía por 20 px. */}
+          <div className="min-w-0 py-1 leading-tight">
+            <div className="line-clamp-2 font-[family-name:var(--font-display)] text-sm font-semibold sm:line-clamp-1">
               {tema.salon.nombre}
             </div>
             {tema.evento?.nombre ? (
@@ -147,9 +150,15 @@ export function CintaExperiencia({
                 onClick={() => setAbierto((v) => !v)}
                 aria-expanded={abierto}
                 aria-haspopup="menu"
-                className="inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                aria-label="Experiencias"
+                /*
+                 * En el celular esta palabra se llevaba 119 px de los 342 y el
+                 * nombre del salón —lo que se le está vendiendo— salía como
+                 * "Hacienda Sa…" en TODAS las pantallas. Aquí queda en icono.
+                 */
+                className="inline-flex min-h-9 items-center gap-1 rounded-full px-2 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:px-3"
               >
-                Experiencias
+                <span className="hidden sm:inline">Experiencias</span>
                 <ChevronDown className={cn("size-4 transition-transform", abierto && "rotate-180")} />
               </button>
               {abierto ? (

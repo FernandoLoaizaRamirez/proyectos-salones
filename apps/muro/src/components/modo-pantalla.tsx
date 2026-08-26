@@ -76,7 +76,10 @@ export function ModoPantalla({
             texto en dos renglones pegados al borde. */}
         <div className="min-w-0">
           <div className="text-sm font-medium text-primary">Muro de mensajes</div>
-          <div className="truncate text-2xl font-semibold tracking-tight">{evento.nombre}</div>
+          {/* Dos renglones antes que puntos suspensivos: en el proyector el
+              nombre de la boda es lo que tiene que lucir, y salía "Boda Ana &
+              Rodri…". */}
+          <div className="line-clamp-2 text-2xl font-semibold tracking-tight">{evento.nombre}</div>
         </div>
         <div className="flex items-center gap-3">
           {onQuitar && actual ? (
@@ -110,7 +113,7 @@ export function ModoPantalla({
               <img
                 src={actual.foto}
                 alt=""
-                className="max-h-[46vh] w-full rounded-2xl object-cover shadow-lg md:w-2/5"
+                className="max-h-[32vh] w-full rounded-2xl object-cover shadow-lg sm:max-h-[46vh] md:w-2/5"
               />
             ) : null}
             {/* `min-w-0` + `break-words`: si un invitado pega una liga o

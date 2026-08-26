@@ -1771,7 +1771,10 @@ function dibujarMarco(ctx: CanvasRenderingContext2D, marco: Marco) {
     // lienzo en 1080): nombre en 956 y fecha en 1004.
     if (marco.etiqueta) {
       ctx.fillStyle = "#1b1b1b";
-      ctx.font = "600 52px ui-sans-serif, system-ui, sans-serif";
+      // Encoge si hace falta, como ya hacen Galería, Cine y Editorial: con un
+      // tamaño fijo, "Ana & Rodrigo" cabía pero un nombre de boda real se salía
+      // del PNG y llegaba cortado a la foto que el invitado se lleva.
+      ctx.font = fuenteQueQuepa(ctx, marco.etiqueta, L * 0.8, 52, "ui-sans-serif, system-ui, sans-serif", "600");
       ctx.fillText(marco.etiqueta, L / 2, area.y + area.h + 70);
     }
     if (marco.sub) {
@@ -1873,7 +1876,7 @@ export function descargar(dataUrl: string, nombre = "photobooth") {
 export async function compartir(
   dataUrl: string,
   textos: Pick<TextosMarcos, "nombre" | "hashtag"> = evento,
-): Promise<boolean> {
+): Promise<boolean | "cancelado"> {
   try {
     const blob = await (await fetch(dataUrl)).blob();
     const file = new File([blob], "photobooth.png", { type: "image/png" });
@@ -1886,7 +1889,15 @@ export async function compartir(
       return true;
     }
     return false;
-  } catch {
+  } catch (e) {
+    /*
+     * Cerrar la hoja de compartir NO es un fallo: el invitado se arrepintió. Se
+     * distingue del "este navegador no sabe compartir" porque llega como
+     * AbortError. Antes caían los dos en el mismo saco, así que arrepentirse le
+     * descargaba la foto sin pedirla y le enseñaba un aviso naranja que además
+     * mentía sobre su navegador.
+     */
+    if (e instanceof Error && e.name === "AbortError") return "cancelado";
     return false;
   }
 }

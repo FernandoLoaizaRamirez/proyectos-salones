@@ -108,8 +108,18 @@ export function MuroCliente() {
      */
     if (sync.nombre === "local" || esVitrinaPropia(eventoId)) {
       sync.listar<Mensaje>(eventoId, COLECCION_MENSAJES).then((items) => {
-        if (items.length === 0) {
-          for (const m of mensajesIniciales()) {
+        /*
+         * Se siembra si FALTAN los ejemplos, no solo si la colección está
+         * vacía: quien entraba primero a firmar dejaba su mensaje ahí, la
+         * colección ya no estaba vacía y los 8 ejemplos no llegaban nunca — la
+         * pared se quedaba con un solo mensaje justo después de participar.
+         */
+        const ejemplos = mensajesIniciales();
+        const faltan = ejemplos.filter(
+          (m) => !items.some((x) => x.id === idDeEjemplo(m.id, eventoId)),
+        );
+        if (faltan.length > 0) {
+          for (const m of faltan) {
             void sync.guardar(eventoId, COLECCION_MENSAJES, {
               ...m,
               id: idDeEjemplo(m.id, eventoId),
@@ -181,7 +191,7 @@ export function MuroCliente() {
           onClick={() => exportarRecuerdo(mensajes)}
           disabled={mensajes.length === 0}
         >
-          <Download className="size-4" /> Exportar recuerdo
+          <Download className="size-4" /> Descargar los mensajes
         </Button>
         <span className="ml-auto text-sm text-muted-foreground">
           {mensajes.length} mensaje{mensajes.length === 1 ? "" : "s"}

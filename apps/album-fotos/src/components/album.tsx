@@ -107,7 +107,17 @@ export function Album() {
     void albumEstaCerrado(eventoActual()).then(setCerrado);
     void albumEsPrivado(eventoActual()).then(setPrivado);
     if (!estaConectado()) return;
-    return obtenerSync().suscribir<Archivo>(eventoActual(), COLECCION_FOTOS, setArchivos);
+    /*
+     * En una VITRINA las muestras se quedan detrás de lo real. El suscriptor
+     * reemplaza la lista entera con lo que trae el servidor, y en una vitrina
+     * recién estrenada eso es NADA: borraba los ejemplos que acababa de pintar
+     * el estado inicial y el salón abría la demo del álbum y la veía vacía.
+     * Y al subir su primera foto tampoco se le vacía: entra en un álbum lleno.
+     */
+    const enVitrina = esVitrina();
+    return obtenerSync().suscribir<Archivo>(eventoActual(), COLECCION_FOTOS, (filas) =>
+      setArchivos(enVitrina ? [...filas, ...fotosEjemplo] : filas),
+    );
   }, []);
 
   // Lo que se guarda en la base es una REFERENCIA; la dirección con la que se

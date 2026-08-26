@@ -301,6 +301,21 @@ export function CatalogoCliente() {
   // después de este componente: el colchón se pone al final del <body> entero,
   // no aquí, o la barra taparía los enlaces legales para siempre.
   const hayBarra = nSel > 0;
+  /*
+   * Al encender la barra por primera vez, la vista baja lo que mide: aparecía
+   * de golpe ENCIMA del botón que se acababa de tocar, así que no se veía que
+   * pasó a "Agregado" y quien volvía a tocar en el mismo sitio acababa pulsando
+   * "Solicitar cotización".
+   */
+  const barraYaEstuvo = React.useRef(false);
+  React.useEffect(() => {
+    if (!hayBarra || barraYaEstuvo.current) return;
+    barraYaEstuvo.current = true;
+    const barra = document.querySelector<HTMLElement>("[data-barra-cotizacion]");
+    const alto = barra?.offsetHeight ?? 0;
+    if (alto > 0) window.scrollBy({ top: alto, behavior: "smooth" });
+  }, [hayBarra]);
+
   React.useEffect(() => {
     document.body.style.paddingBottom = hayBarra
       ? "calc(9.5rem + env(safe-area-inset-bottom))"
@@ -331,7 +346,11 @@ export function CatalogoCliente() {
             que la pila pegajosa no crezca y tape los títulos al saltar. El velo
             de la derecha (solo en celular) es la señal de que hay más: sin él,
             el tercer chip se veía cortado a la mitad y parecía un error. */}
-        <div className="sticky top-[61px] z-20 -mx-6 mb-8">
+        {/* `3.8rem`, no `61px`: el encabezado mide relleno + botón, todo en
+            rem, así que crece con la letra del celular. Con un número fijo, en
+            un teléfono con letra grande —muy común entre dueños de salón— los
+            chips se metían DEBAJO del encabezado y se leían partidos. */}
+        <div className="sticky top-[3.8rem] z-20 -mx-6 mb-8">
           <nav
             aria-label="Etapas de la fiesta"
             className="flex justify-start gap-2 overflow-x-auto bg-background/90 px-6 py-2 backdrop-blur [scrollbar-width:none] sm:justify-center [&::-webkit-scrollbar]:hidden"
@@ -346,6 +365,13 @@ export function CatalogoCliente() {
               </a>
             ))}
           </nav>
+          {/* Velos a los DOS lados: con solo el de la derecha, en cuanto se
+              deslizaba la tira el primer chip quedaba cortado a media palabra
+              contra el filo, sin nada que avisara que había más de ese lado. */}
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-y-0 left-0 w-10 bg-gradient-to-r from-background to-transparent sm:hidden"
+          />
           <span
             aria-hidden="true"
             className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-background to-transparent sm:hidden"
@@ -734,11 +760,16 @@ export function CatalogoCliente() {
               </ul>
               {nSel > 0 ? (
                 <>
-                  <div className="mt-4 flex items-baseline justify-between gap-3 border-t border-border pt-4">
+                  {/* Apilado en celular: los dos textos competían por 342 px y
+                      el renglón más importante de la página —el total— salía
+                      partido en seis pedazos, con "vez" sola contra el borde.
+                      El modelo ya se dice en la barra de abajo. */}
+                  <div className="mt-4 flex flex-col items-start gap-1 border-t border-border pt-4 sm:flex-row sm:items-baseline sm:justify-between sm:gap-3">
                     <span className="font-medium">
-                      Total estimado{soloUnico ? "" : ` (${modeloInfo.nombre})`}
+                      Total estimado
+                      {soloUnico ? "" : <span className="hidden sm:inline"> ({modeloInfo.nombre})</span>}
                     </span>
-                    <span className="text-right font-semibold">{textoTotal}</span>
+                    <span className="font-semibold sm:text-right">{textoTotal}</span>
                   </div>
                   <a
                     href={urlCotizar}
@@ -791,7 +822,10 @@ export function CatalogoCliente() {
 
       {/* Barra de selección fija (aparece al elegir algo) */}
       {nSel > 0 ? (
-        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 backdrop-blur">
+        <div
+          data-barra-cotizacion
+          className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 backdrop-blur"
+        >
           <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-3 px-6 py-4 sm:flex-row">
             <div className="text-center text-sm sm:text-left">
               <span className="font-medium">{nSel}</span>{" "}

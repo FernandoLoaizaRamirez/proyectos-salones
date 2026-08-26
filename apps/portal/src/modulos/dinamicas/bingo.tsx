@@ -101,7 +101,11 @@ export function Bingo({ evento }: { evento: string }) {
                   : "border-border text-muted-foreground hover:bg-muted",
               )}
             >
-              <span className={cn("flex size-full items-center justify-center", on && "pb-3")}>
+              {/* El mismo relleno esté marcada o no: con `pb-3` solo al marcar,
+                  la casilla más larga ("Zapatos fuera para bailar") perdía 12 px
+                  justo cuando aparecía la palomita y la última palabra se le
+                  montaba encima. */}
+              <span className="flex size-full items-center justify-center pb-3">
                 {c.texto}
               </span>
               {on ? <Check className="absolute bottom-1 right-1 size-3.5 text-primary" /> : null}

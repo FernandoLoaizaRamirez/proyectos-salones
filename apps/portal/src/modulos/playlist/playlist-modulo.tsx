@@ -189,6 +189,13 @@ export function PlaylistModulo({
     if (!perfil && c.pedidaPor) guardarPerfil(evento, { nombre: c.pedidaPor });
 
     setMisVotos((v) => (v.includes(c.id) ? v : [...v, c.id]));
+    /*
+     * Y se pinta YA, sin esperar al sondeo (~3 s). Antes el botón decía
+     * "¡Agregada! Vota más abajo" mientras la lista seguía diciendo "6 en cola"
+     * y la canción no aparecía: el aviso caducaba antes que la prueba, así que
+     * el invitado con prisa creía que no había pasado nada.
+     */
+    setCanciones((previas) => (previas.some((x) => x.id === c.id) ? previas : [...previas, c]));
     // El nombre se queda puesto: lo normal es que la siguiente canción la pida
     // la misma persona.
     setForm((f) => ({ titulo: "", artista: "", link: "", nombre: f.nombre }));
@@ -316,7 +323,7 @@ export function PlaylistModulo({
                           href={c.link}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="ml-2 inline-flex items-center gap-1 text-primary hover:underline"
+                          className="ml-2 inline-flex min-h-7 items-center gap-1 py-1 text-primary hover:underline"
                         >
                           <ExternalLink className="size-3" /> {plataforma}
                         </a>

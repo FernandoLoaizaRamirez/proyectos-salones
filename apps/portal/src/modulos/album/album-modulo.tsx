@@ -337,8 +337,14 @@ export function AlbumModulo({
    * no gastan cupo y no ensucian los datos de nadie.
    */
   const ejemplos = React.useMemo(() => (esVitrina(evento) ? fotosEjemplo() : []), [evento]);
-  const mostrando = fotos.length > 0 ? fotos : ejemplos;
-  const sonEjemplos = fotos.length === 0 && ejemplos.length > 0;
+  /*
+   * En la vitrina las muestras se quedan DETRÁS de lo real. Antes se cambiaban
+   * por las fotos en cuanto había una: el dueño subía su primera foto para ver
+   * cómo se siente y el álbum se le vaciaba de golpe —de una retícula llena a
+   * una foto suelta—, justo en el momento de lucirse.
+   */
+  const mostrando = esVitrina(evento) ? [...fotos, ...ejemplos] : fotos;
+  const sonEjemplos = ejemplos.length > 0;
 
   // Si el álbum cambia con el visor abierto (llegó una foto nueva, se borró la
   // que se estaba viendo), el índice no puede quedar apuntando al vacío.

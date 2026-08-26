@@ -171,7 +171,9 @@ export function RsvpModulo({ evento, nombreEvento }: { evento: string; nombreEve
         </h2>
         <p className="mt-2 text-muted-foreground">
           {confirmo
-            ? `Te esperamos, ${mia.nombre}: quedaron registradas ${personasTexto(mia.personas)}.`
+            ? `Te esperamos, ${mia.nombre}: ${
+                mia.personas === 1 ? "quedó registrada 1 persona" : `quedaron registradas ${personasTexto(mia.personas)}`
+              }.`
             : `Qué pena que no puedas acompañarnos, ${mia.nombre}. ¡Gracias de todos modos!`}
         </p>
         <Button variant="outline" className="mt-6" onClick={() => setEditando(true)}>
@@ -272,10 +274,12 @@ export function RsvpModulo({ evento, nombreEvento }: { evento: string; nombreEve
 
         {error ? <p className="text-sm text-red-600 dark:text-red-400">{error}</p> : null}
 
-        <div className="flex gap-2">
-          {/* Confirmar dice con quién vive y cuántos son: también es un dato suyo. */}
-          <AvisoParticipacion accion="confirmar tu asistencia" className="text-center" />
+        {/* Confirmar dice con quién vive y cuántos son: también es un dato suyo.
+            Va ENCIMA del botón, no a su lado: metido en la misma fila se
+            espachurraba en una columnita de tres palabras por renglón. */}
+        <AvisoParticipacion accion="confirmar tu asistencia" className="text-center" />
 
+        <div className="flex gap-2">
           <Button type="submit" className="flex-1" disabled={guardando}>
             {guardando ? (
               <>

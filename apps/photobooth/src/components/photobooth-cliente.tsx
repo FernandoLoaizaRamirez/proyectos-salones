@@ -164,6 +164,8 @@ export function PhotoboothCliente() {
     setCompartiendo(true);
     const ok = await compartir(resultado, textos);
     setCompartiendo(false);
+    // Si cerró la hoja de compartir, no pasa nada: ni descarga ni aviso.
+    if (ok === "cancelado") return;
     if (!ok) {
       descargar(resultado, nombreDescarga(marcoId, textos.hashtag));
       setAviso("Tu navegador no permite compartir directo; descargamos la foto para que la envíes.");
@@ -236,7 +238,7 @@ export function PhotoboothCliente() {
           <div className="mx-auto grid size-14 place-items-center rounded-full bg-primary/10 text-primary">
             <Aperture className="size-7" />
           </div>
-          <h1 className="mt-4 text-2xl font-semibold tracking-tight">Photobooth</h1>
+          {/* El título "Photobooth" ya lo pone la página; aquí salía repetido. */}
           <p className="mt-1 text-muted-foreground">
             Tómate una foto con el marco de {textos.nombre} y descárgala o compártela al instante.
           </p>

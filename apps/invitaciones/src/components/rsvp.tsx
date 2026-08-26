@@ -70,6 +70,26 @@ export function Rsvp({
   }, [enviada]);
 
   /*
+   * Si este teléfono ya contestó, la invitación lo recibe con su respuesta y el
+   * botón de cambiarla — no con el formulario en blanco. Antes no quedaba
+   * rastro en pantalla: mucha gente volvía a llenarlo "por si acaso" y el salón
+   * acababa contando dos veces a la misma familia.
+   */
+  React.useEffect(() => {
+    try {
+      const crudo = localStorage.getItem(`${claveMia(codigo)}:respuesta`);
+      if (!crudo) return;
+      const previa = JSON.parse(crudo) as { asiste: boolean; personas: number; nombre: string };
+      setAsiste(previa.asiste);
+      if (previa.nombre) setNombre(previa.nombre);
+      if (previa.personas > 0) setPersonas(String(previa.personas));
+      setEnviada(true);
+    } catch {
+      /* sin almacenamiento o dato corrupto: se abre el formulario normal */
+    }
+  }, [codigo]);
+
+  /*
    * El enlace personal se lee DESPUÉS del primer pintado (viene del `#`), así
    * que no puede ser el estado inicial: cuando llega, se precargan nombre y
    * personas. El nombre solo se rellena si el campo sigue vacío —puede que ya
@@ -161,6 +181,11 @@ export function Rsvp({
       });
       try {
         localStorage.setItem(claveMia(codigo), id);
+        // Y QUÉ contestó, para poder recibirlo con su respuesta si vuelve.
+        localStorage.setItem(
+          `${claveMia(codigo)}:respuesta`,
+          JSON.stringify({ asiste, personas: asiste ? Number(personas) : 0, nombre: nombre.trim() }),
+        );
       } catch {
         /* la respuesta ya viajó; solo se pierde el recordatorio */
       }

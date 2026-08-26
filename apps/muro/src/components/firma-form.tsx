@@ -178,7 +178,10 @@ export function FirmaForm() {
         ) : null}
         <div className="mt-6 flex flex-col gap-2">
           <Button onClick={enviarWhatsApp} variant="outline" className="w-full">
-            <MessageCircle className="size-4" /> Enviar también al anfitrión por WhatsApp
+            {/* Etiqueta corta y icono `shrink-0`: la larga no cabía en 276 px y
+                flexbox aplastaba el icono a cero, dejando el texto pegado a los
+                dos bordes. */}
+            <MessageCircle className="size-4 shrink-0" /> Mandarlo también por WhatsApp
           </Button>
           <Button onClick={otro} className="w-full">
             <PenLine className="size-4" /> Escribir otro mensaje

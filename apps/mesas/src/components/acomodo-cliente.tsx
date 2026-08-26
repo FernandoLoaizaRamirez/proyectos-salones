@@ -47,7 +47,13 @@ import {
  */
 
 /** Máx. de caracteres del enlace para que su QR siga siendo fácil de escanear. */
-const UMBRAL_QR = 1200;
+/*
+ * Tope para que el QR se pueda ESCANEAR de verdad. Estaba en 1200 y con el
+ * acomodo de ejemplo (923 caracteres) salía un código de 117 módulos dibujado
+ * en 132 px: una mancha de puntos que ninguna cámara lee. Por encima de este
+ * tope ya existe el recuadro que ofrece el enlace y WhatsApp, que sí funcionan.
+ */
+const UMBRAL_QR = 300;
 
 const campo =
   "w-full rounded-[var(--radius)] border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/30";
@@ -931,7 +937,10 @@ export function AcomodoCliente() {
                     mil caracteres: impreso completo tapaba media pantalla con
                     una pared de letras. Se muestra recortado (nadie lo lee,
                     solo lo copia) y se puede desplegar si alguien lo quiere. */}
-                <p className="mb-3 max-h-16 overflow-y-auto break-all rounded-[var(--radius)] bg-muted px-3 py-2 text-xs text-muted-foreground">
+                {/* Alto múltiplo exacto de la línea (`leading-5`, dos líneas):
+                    con `max-h-16` la última fila se cortaba a media letra y
+                    parecía un error de dibujo, no un recorte a propósito. */}
+                <p className="mb-3 max-h-10 overflow-y-auto break-all rounded-[var(--radius)] bg-muted px-3 py-2 text-xs leading-5 text-muted-foreground">
                   {urlCompartir}
                 </p>
                 <div className="flex flex-col gap-2">

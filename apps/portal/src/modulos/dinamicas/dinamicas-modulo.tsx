@@ -60,7 +60,7 @@ export function DinamicasModulo({
       <div>
         <button
           onClick={() => setJuego(null)}
-          className="mb-4 inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+          className="-ml-2 min-h-9 rounded-[var(--radius)] px-2 py-2 mb-4 inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
         >
           <ArrowLeft className="size-4" /> Elegir otro juego
         </button>

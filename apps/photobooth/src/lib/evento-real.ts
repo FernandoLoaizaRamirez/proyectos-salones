@@ -115,10 +115,18 @@ export function useEventoReal(): {
     // hidratación. En la vitrina no hay nada más que hacer: el estado inicial
     // YA es la muestra.
     const codigo = eventoActual();
-    if (esVitrina(codigo)) return;
-    // El código se fija de inmediato: aunque la lectura tarde o falle, el
-    // botón de guardar en el álbum tiene que apuntar al evento correcto.
+    // El código se fija SIEMPRE y lo PRIMERO: aunque la lectura tarde o falle,
+    // el botón de guardar en el álbum tiene que apuntar al evento correcto.
+    //
+    // ⚠️ Antes esto iba DESPUÉS del `return` de las vitrinas, y por eso en la
+    // vitrina propia de cada visitante (`demo-xxxxxx`) el código se quedaba en
+    // el "demo" compartido del estado inicial: el photobooth decía "Ya está en
+    // el álbum del evento" y la foto caía en el montón común, así que el dueño
+    // abría SU álbum y no estaba. Lo que no hace falta en una vitrina es
+    // CONSULTAR sus textos —la muestra ya es el estado inicial—, no fijar el
+    // código.
     setEstado((prev) => ({ ...prev, codigo }));
+    if (esVitrina(codigo)) return;
     void consultar(codigo).then((datos) => {
       if (vivo) setEstado({ codigo, ...datos });
     });

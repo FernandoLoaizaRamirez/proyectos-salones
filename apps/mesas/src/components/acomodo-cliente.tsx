@@ -618,8 +618,21 @@ export function AcomodoCliente() {
         onCancelar={() => setConfirmarReinicio(false)}
       />
 
+      {/*
+        * El aviso va FIJO sobre la pantalla, no en el flujo de la página.
+        *
+        * Vivía aquí arriba, junto a los contadores, y quien acomodaba estaba
+        * abajo, en la lista de invitados: al intentar sentar a alguien en una
+        * mesa llena, el menú volvía solo a "Sin mesa" y no pasaba nada visible
+        * —el "No caben 4 lugares en Mesa principal" quedaba a pantallas de
+        * distancia—. Parecía que el menú estuviera roto.
+        */}
       {aviso ? (
-        <div className="mt-4 rounded-[var(--radius)] border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-sm text-amber-700 dark:text-amber-400">
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed inset-x-4 bottom-4 z-50 rounded-[var(--radius)] border border-amber-500/30 bg-amber-500/95 px-4 py-2.5 text-sm text-amber-950 shadow-lg backdrop-blur sm:inset-x-auto sm:left-1/2 sm:max-w-md sm:-translate-x-1/2"
+        >
           {aviso}
         </div>
       ) : null}

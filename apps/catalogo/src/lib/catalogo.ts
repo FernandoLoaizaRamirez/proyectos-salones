@@ -226,7 +226,15 @@ export const productos: Producto[] = [
     icono: CalendarCheck,
     acento: "from-teal-500 to-emerald-600",
     disponible: true,
-    demoUrl: `${URLS.rsvp}/confirmar`,
+    /*
+     * OJO con el destino: `/confirmar` de la app de RSVP lee al invitado del
+     * HASH del enlace, y el catálogo solo puede repartir su código de vitrina
+     * como consulta (`?e=`). Sin hash, esa pantalla SIEMPRE cae en "Este enlace
+     * no es válido": el salón tocaba "Ver demo" y veía la app rota. El portal
+     * enseña la misma pantalla del invitado y funciona sin hash — y es la ruta
+     * que el propio directorio declara como `rutaInterna` para rsvp.
+     */
+    demoUrl: `${URLS.portal}/rsvp`,
     precios: { MANAGED: 500, RENTAL: 600, OWNED: 5500 },
     notaGestionado:
       "Con el Servicio gestionado —así corre esta demo— el tablero se actualiza solo con la confirmación de cada invitado, desde su propio teléfono. En Renta/Compra, cada respuesta te llega por WhatsApp.",
@@ -240,7 +248,13 @@ export const productos: Producto[] = [
     icono: QrCode,
     acento: "from-sky-500 to-blue-600",
     disponible: true,
-    demoUrl: `${URLS["pases-qr"]}/pase`,
+    /*
+     * Mismo caso que el RSVP: `/pase` saca el boleto del HASH, así que desde el
+     * catálogo salía una página DESNUDA con "Este pase no es válido" — y, al
+     * abrirse en pestaña nueva, en un celular no hay ni botón de regresar. La
+     * raíz sí abre la demo completa (invitados, pases con QR y la entrada).
+     */
+    demoUrl: URLS["pases-qr"],
     precios: { MANAGED: 700, RENTAL: 850, OWNED: 7500 },
   },
   {

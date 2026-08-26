@@ -55,6 +55,19 @@ export function Rsvp({
   const [aviso, setAviso] = React.useState("");
   const [enviando, setEnviando] = React.useState(false);
   const [enviada, setEnviada] = React.useState(false);
+  const cajaRef = React.useRef<HTMLDivElement>(null);
+
+  /*
+   * Al confirmar, el formulario entero (opciones, nombre, cuántos, mensaje)
+   * desaparece y la tarjeta se queda en tres renglones. Como la página ya
+   * estaba desplazada abajo, ese encogimiento la dejaba mirando la SECCIÓN
+   * SIGUIENTE: el invitado tocaba "Enviar confirmación" y acababa leyendo "La
+   * fiesta sigue en tu teléfono", sin ver nunca el "¡Gracias!". Se trae la
+   * tarjeta a la vista para que la respuesta se lea donde se estaba mirando.
+   */
+  React.useEffect(() => {
+    if (enviada) cajaRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+  }, [enviada]);
 
   /*
    * El enlace personal se lee DESPUÉS del primer pintado (viene del `#`), así
@@ -85,7 +98,27 @@ export function Rsvp({
       .filter(Boolean)
       .join("\n");
 
+  /**
+   * Lo que hay que tener contestado antes de mandar nada. Vive aparte porque lo
+   * usan los DOS botones: antes solo lo comprobaba "Enviar confirmación", así
+   * que quien tocaba "WhatsApp" primero —creyendo que así se confirmaba— le
+   * mandaba al salón un mensaje con el nombre en blanco y sin decir si va o no.
+   */
+  const faltaAlgo = (): boolean => {
+    if (asiste === null) {
+      setAviso("Elige una opción para continuar.");
+      return true;
+    }
+    if (!nombre.trim()) {
+      setAviso("Escribe tu nombre para que sepan quién eres.");
+      return true;
+    }
+    setAviso("");
+    return false;
+  };
+
   const porWhatsApp = () => {
+    if (faltaAlgo()) return;
     const tel = inv.rsvp.whatsapp.replace(/\D/g, "");
     if (!tel) return;
     window.open(
@@ -97,15 +130,7 @@ export function Rsvp({
   };
 
   const enviar = async () => {
-    if (asiste === null) {
-      setAviso("Elige una opción para continuar.");
-      return;
-    }
-    if (!nombre.trim()) {
-      setAviso("Escribe tu nombre para que sepan quién eres.");
-      return;
-    }
-    setAviso("");
+    if (faltaAlgo()) return;
     setEnviando(true);
 
     // El mismo id de este teléfono en este evento: volver a contestar CORRIGE
@@ -153,7 +178,7 @@ export function Rsvp({
     <section id="rsvp">
       <Rincon donde="sd" />
       <div className="env">
-        <div className="caja rev">
+        <div className="caja rev" ref={cajaRef}>
           <p className="eyebrow">Te esperamos</p>
           <h2 className="titulo">Confirma tu asistencia</h2>
           <p className="texto">

@@ -233,7 +233,13 @@ export function MuroCliente() {
                     className="mb-4 w-full rounded-[calc(var(--radius)-0.25rem)] object-cover"
                   />
                 ) : null}
-                <p className="whitespace-pre-line text-[15px] leading-relaxed">{m.texto}</p>
+                {/* `break-words`: basta con que UN invitado pegue una liga para que, sin
+                    esto, la pared entera se ensanche y el celular la encoja (medido:
+                    de 390 a 571 px con una liga de Drive). El gemelo del proyector
+                    ya lo llevaba. */}
+                <p className="whitespace-pre-line break-words text-[15px] leading-relaxed">
+                  {m.texto}
+                </p>
                 <div className="mt-4 flex items-center justify-between gap-2">
                   <span className="truncate font-medium text-primary">— {m.nombre}</span>
                   <span className="shrink-0 text-xs text-muted-foreground">

@@ -28,7 +28,20 @@ body {
  */
 @media (prefers-reduced-motion: no-preference) {
   main {
-    animation: entrar 0.35s ease-out both;
+    /*
+     * `backwards`, NO `both`. Con `both` la animación deja pegado su fotograma
+     * final y el navegador conserva una `transform` de matriz identidad sobre
+     * el <main> — y CUALQUIER transform convierte al elemento en el marco de
+     * referencia de sus hijos `position: fixed`.
+     *
+     * Consecuencia que se veía: en /album, con la página desplazada, el visor
+     * de la foto y el aviso de "¿Quitar esta foto?" se colocaban respecto al
+     * <main> en vez de a la pantalla y salían cientos de píxeles ARRIBA, fuera
+     * de la vista: el invitado tocaba una foto, la pantalla se oscurecía y no
+     * aparecía nada. `backwards` conserva la entrada y, al acabar, devuelve el
+     * elemento a su estilo normal (sin transform).
+     */
+    animation: entrar 0.35s ease-out backwards;
   }
 }
 

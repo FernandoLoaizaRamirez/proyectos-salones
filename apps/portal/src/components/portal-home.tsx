@@ -22,9 +22,10 @@ import {
 } from "@salones/ui";
 import { tieneFuncion, codificarInvitadoEnlace } from "@salones/core";
 import { ArrowUpRight } from "lucide-react";
-import { MODULOS, enlaceModulo, esInterno } from "@/lib/modulos";
+import { GRUPOS, MODULOS, enlaceModulo, esInterno } from "@/lib/modulos";
 import { CapturaPerfil } from "@/components/captura-perfil";
 import { HeroEvento } from "@/components/hero-evento";
+import { LoTuyo } from "@/components/lo-tuyo";
 import { EventoNoEncontrado } from "@/components/pantallas";
 import { usePerfil } from "@/lib/perfil";
 import type { ConfigEvento } from "@/lib/config-evento";
@@ -53,7 +54,19 @@ export function PortalHome({ config }: { config: ConfigEvento }) {
   const experiencias: ExperienciaEnlace[] = disponibles.map((m) => ({
     nombre: m.nombre,
     href: enlaceModulo(m, config.codigo),
+    grupo: m.grupoNombre,
   }));
+
+  /*
+   * LAS SECCIONES DE LA CELEBRACIÓN. Con 9 tarjetas una rejilla corrida
+   * aguantaba; con 14 ya no se navega. Se agrupa como se vive: lo tuyo antes
+   * de la fiesta, la fiesta, y la información práctica. Una sección sin
+   * módulos contratados simplemente no se pinta.
+   */
+  const secciones = GRUPOS.map((g) => ({
+    ...g,
+    modulos: disponibles.filter((m) => m.grupo === g.clave),
+  })).filter((g) => g.modulos.length > 0);
 
   return (
     <TemaScope tema={config.tema} className="flex min-h-screen flex-col">
@@ -71,6 +84,9 @@ export function PortalHome({ config }: { config: ConfigEvento }) {
         <HeroEvento evento={config.codigo} tema={config.tema} />
 
         <div className="mx-auto w-full max-w-3xl px-6 py-14">
+          {/* Lo personal primero: tu confirmación, tu mesa, lo que sigue. */}
+          <LoTuyo config={config} />
+
           <h2 className="font-[family-name:var(--font-display)] text-2xl font-semibold tracking-tight">
             Nuestra celebración
           </h2>
@@ -78,52 +94,59 @@ export function PortalHome({ config }: { config: ConfigEvento }) {
             Todo lo del evento, en un solo lugar. Elige por dónde empezar.
           </p>
 
-          {disponibles.length > 0 ? (
-            <div className="mt-8 grid gap-3 sm:grid-cols-2">
-              {disponibles.map((m) => {
-                const href = enlaceModulo(m, config.codigo);
-                const interno = esInterno(m);
-                const contenido = (
-                  <>
-                    {/*
-                     * El icono va en el color del SALÓN, no en un degradado
-                     * propio. Antes cada módulo traía el suyo (from-amber-500,
-                     * from-teal-500, from-fuchsia-500...): nueve degradados
-                     * distintos en una sola pantalla, encima del color de la
-                     * marca. Se veía a plantilla, justo lo contrario de lo que
-                     * se vende. Lo que distingue a cada experiencia es su ICONO
-                     * y su NOMBRE; el color es de la casa.
-                     */}
-                    <span className="inline-flex size-11 shrink-0 items-center justify-center rounded-[var(--radius)] bg-primary/10 text-primary ring-1 ring-primary/15 transition group-hover:bg-primary/15">
-                      <m.icono className="size-5" />
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <h3 className="flex items-center gap-1 font-medium">
-                        {m.nombre}
-                        {interno ? null : (
-                          <ArrowUpRight className="size-4 text-muted-foreground transition group-hover:text-foreground" />
-                        )}
-                      </h3>
-                      <p className="text-sm text-muted-foreground">{m.descripcion}</p>
-                    </div>
-                  </>
-                );
+          {secciones.length > 0 ? (
+            secciones.map((seccion) => (
+              <section key={seccion.clave} className="mt-8">
+                <h3 className="text-[0.7rem] font-medium uppercase tracking-[0.22em] text-muted-foreground">
+                  {seccion.nombre}
+                </h3>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  {seccion.modulos.map((m) => {
+                    const href = enlaceModulo(m, config.codigo);
+                    const interno = esInterno(m);
+                    const contenido = (
+                      <>
+                        {/*
+                         * El icono va en el color del SALÓN, no en un degradado
+                         * propio. Antes cada módulo traía el suyo (from-amber-500,
+                         * from-teal-500, from-fuchsia-500...): nueve degradados
+                         * distintos en una sola pantalla, encima del color de la
+                         * marca. Se veía a plantilla, justo lo contrario de lo que
+                         * se vende. Lo que distingue a cada experiencia es su ICONO
+                         * y su NOMBRE; el color es de la casa.
+                         */}
+                        <span className="inline-flex size-11 shrink-0 items-center justify-center rounded-[var(--radius)] bg-primary/10 text-primary ring-1 ring-primary/15 transition group-hover:bg-primary/15">
+                          <m.icono className="size-5" />
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <h4 className="flex items-center gap-1 font-medium">
+                            {m.nombre}
+                            {interno ? null : (
+                              <ArrowUpRight className="size-4 text-muted-foreground transition group-hover:text-foreground" />
+                            )}
+                          </h4>
+                          <p className="text-sm text-muted-foreground">{m.descripcion}</p>
+                        </div>
+                      </>
+                    );
 
-                // Migrado → se queda en el portal. Aún no → puente a su app,
-                // llevándose la identidad en el fragmento. En la MISMA pestaña:
-                // la cinta de allá ya trae el camino de vuelta, y abrir pestañas
-                // nuevas es la señal más fuerte de "esto es otra aplicación".
-                return interno ? (
-                  <Link key={m.clave} href={href} className={CLASES_TARJETA}>
-                    {contenido}
-                  </Link>
-                ) : (
-                  <a key={m.clave} href={`${href}${hashPerfil}`} className={CLASES_TARJETA}>
-                    {contenido}
-                  </a>
-                );
-              })}
-            </div>
+                    // Migrado → se queda en el portal. Aún no → puente a su app,
+                    // llevándose la identidad en el fragmento. En la MISMA pestaña:
+                    // la cinta de allá ya trae el camino de vuelta, y abrir pestañas
+                    // nuevas es la señal más fuerte de "esto es otra aplicación".
+                    return interno ? (
+                      <Link key={m.clave} href={href} className={CLASES_TARJETA}>
+                        {contenido}
+                      </Link>
+                    ) : (
+                      <a key={m.clave} href={`${href}${hashPerfil}`} className={CLASES_TARJETA}>
+                        {contenido}
+                      </a>
+                    );
+                  })}
+                </div>
+              </section>
+            ))
           ) : (
             <p className="mt-8 text-sm text-muted-foreground">
               Las experiencias de este evento se están preparando.

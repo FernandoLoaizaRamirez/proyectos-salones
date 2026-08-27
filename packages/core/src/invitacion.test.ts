@@ -209,3 +209,21 @@ describe("Agregar a mi calendario", () => {
     expect(enlaceCalendario({ titulo: "Boda", fechaISO: "" })).toBe("");
   });
 });
+
+describe("las preguntas frecuentes del evento (campo nuevo, 26 ago)", () => {
+  it("se normalizan y conservan pregunta y respuesta", () => {
+    const inv = normalizarInvitacion({
+      faq: [{ pregunta: "¿Hay estacionamiento?", respuesta: "Sí, sin costo." }],
+    });
+    expect(inv.faq).toHaveLength(1);
+    expect(inv.faq[0]!.pregunta).toBe("¿Hay estacionamiento?");
+    expect(inv.faq[0]!.respuesta).toBe("Sí, sin costo.");
+  });
+
+  it("una invitación guardada ANTES del campo (o con basura) cae a lista vacía", () => {
+    // Las invitaciones reales ya guardadas no traen `faq`: no pueden romperse.
+    expect(normalizarInvitacion({ novia: "Ana", novio: "Rodrigo" }).faq).toEqual([]);
+    expect(normalizarInvitacion({ faq: "basura" }).faq).toEqual([]);
+    expect(normalizarInvitacion({ faq: [{ pregunta: 42 }] }).faq).toEqual([]);
+  });
+});

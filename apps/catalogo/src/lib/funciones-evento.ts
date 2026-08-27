@@ -63,6 +63,12 @@ export const EXPERIENCIAS: Experiencia[] = [
     caracteristicas: [],
   },
   {
+    clave: FEATURES_CONOCIDAS.Pase,
+    nombre: "Mi pase",
+    descripcion: "El boleto con QR de cada invitado, dentro del portal.",
+    caracteristicas: [],
+  },
+  {
     clave: FEATURES_CONOCIDAS.Mesas,
     nombre: "Mi mesa",
     descripcion: "Cada quien encuentra dónde se sienta.",
@@ -126,6 +132,30 @@ export const EXPERIENCIAS: Experiencia[] = [
     clave: FEATURES_CONOCIDAS.Brindis,
     nombre: "Brindis en video",
     descripcion: "Mensajes grabados para los festejados.",
+    caracteristicas: [],
+  },
+  {
+    clave: FEATURES_CONOCIDAS.Cronograma,
+    nombre: "Cronograma",
+    descripcion: "El plan de la celebración, hora por hora.",
+    caracteristicas: [],
+  },
+  {
+    clave: FEATURES_CONOCIDAS.Lugar,
+    nombre: "Lugar y cómo llegar",
+    descripcion: "Las sedes con mapa, direcciones y calendario.",
+    caracteristicas: [],
+  },
+  {
+    clave: FEATURES_CONOCIDAS.Vestimenta,
+    nombre: "Código de vestimenta",
+    descripcion: "Qué ponerse y la paleta de colores sugerida.",
+    caracteristicas: [],
+  },
+  {
+    clave: FEATURES_CONOCIDAS.Faq,
+    nombre: "Preguntas frecuentes",
+    descripcion: "Las dudas de siempre, contestadas una sola vez.",
     caracteristicas: [],
   },
 ];

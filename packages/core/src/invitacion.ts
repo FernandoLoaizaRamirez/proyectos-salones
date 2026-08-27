@@ -92,6 +92,13 @@ export const TiendaSchema = z.object({
 });
 export type Tienda = z.infer<typeof TiendaSchema>;
 
+/** Una pregunta frecuente del evento ("¿hay estacionamiento?"). */
+export const PreguntaFrecuenteSchema = z.object({
+  pregunta: z.string().default(""),
+  respuesta: z.string().default(""),
+});
+export type PreguntaFrecuente = z.infer<typeof PreguntaFrecuenteSchema>;
+
 /**
  * LA INVITACIÓN ENTERA.
  *
@@ -170,6 +177,15 @@ export const InvitacionSchema = z.object({
   vestimentaColores: z.array(z.string()).default([]),
 
   itinerario: z.array(MomentoSchema).default([]),
+
+  /**
+   * Las preguntas frecuentes del evento. Se capturan aquí (la invitación es el
+   * contenido del evento que edita el salón) y las pinta el módulo "Preguntas
+   * frecuentes" del portal. Vacías = el módulo enseña su aviso de "en
+   * preparación"; las invitaciones guardadas antes de este campo se normalizan
+   * a lista vacía sin romperse.
+   */
+  faq: z.array(PreguntaFrecuenteSchema).default([]),
 
   /**
    * FOTOS DE REPUESTO del anfitrión. No son el álbum de los invitados (eso es
@@ -361,9 +377,10 @@ export function fechaCorta(fechaISO: string): string {
 /**
  * Lee una hora escrita a mano ("5:00 p.m.", "17:00", "8 pm") y la devuelve en
  * 24 h. El salón la teclea como quiera —y así se enseña, tal cual la escribió—;
- * esto solo hace falta para armar el enlace del calendario.
+ * hace falta para armar el enlace del calendario y para que el cronograma sepa
+ * qué momento sigue.
  */
-function leerHora(texto: string): { h: number; m: number } | null {
+export function leerHora(texto: string): { h: number; m: number } | null {
   const m = /(\d{1,2})[:.]?(\d{2})?\s*(a\.?\s?m\.?|p\.?\s?m\.?)?/i.exec(texto.trim());
   if (!m) return null;
   let h = Number(m[1]);

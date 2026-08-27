@@ -24,7 +24,7 @@
 import * as React from "react";
 import { AppShell, type ExperienciaEnlace, type TemaResuelto } from "@salones/ui";
 import { tieneFuncion } from "@salones/core";
-import { MODULOS, URLS } from "@salones/directorio";
+import { MODULOS, URLS, grupoDeModulo } from "@salones/directorio";
 import { useTemaEvento } from "./use-tema-evento";
 
 /** El sufijo `?e=` que propaga el evento (vacío en la demo compartida). */
@@ -74,6 +74,7 @@ export function CascaraEvento({
     nombre: m.nombre,
     href: enlaceDeExperiencia(m.clave, codigo, portalBase),
     actual: m.clave === modulo,
+    grupo: grupoDeModulo(m).nombre,
   }));
 
   // La siguiente parada del recorrido, en el orden de la historia del invitado.

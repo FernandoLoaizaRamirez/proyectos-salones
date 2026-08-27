@@ -50,6 +50,16 @@ export const FEATURES_CONOCIDAS = {
   Photobooth: "photobooth",
   /** El brindis con video recuerdo, montable en el portal. */
   Brindis: "brindis",
+  /** El pase QR del invitado, visible dentro del portal ("Mi pase"). */
+  Pase: "pase",
+  /** El plan de la celebración hora por hora (sale del itinerario capturado). */
+  Cronograma: "cronograma",
+  /** Las sedes del evento con mapa y direcciones. */
+  Lugar: "lugar",
+  /** El código de vestimenta con su paleta sugerida. */
+  Vestimenta: "vestimenta",
+  /** Las preguntas frecuentes del evento, para el invitado. */
+  Faq: "faq",
 } as const;
 
 export const FeatureSchema = z.object({

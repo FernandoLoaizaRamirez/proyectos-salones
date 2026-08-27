@@ -127,3 +127,19 @@ describe("idPaseDeInvitado: el id de la fila del pase", () => {
     expect(idPaseDeInvitado("PS-a1b2c3d4")).toBe("PS-a1b2c3d4");
   });
 });
+
+describe("el contenido del QR del pase (la receta única de la puerta y el portal)", () => {
+  it("respeta los ids de la puerta y prefija los del panel", async () => {
+    const { contenidoQRPase, QR_PASE_PREFIJO } = await import("./index");
+    // Un pase creado en la puerta (SR-…) va TAL CUAL: los QR impresos valen.
+    expect(contenidoQRPase("SR-1042")).toBe("PASE-SR:SR-1042");
+    // Un invitado del panel (UUID) va como la fila de su pase: PS-<uuid>.
+    expect(contenidoQRPase("3f2b8c1a-0000-4000-8000-000000000001")).toBe(
+      "PASE-SR:PS-3f2b8c1a-0000-4000-8000-000000000001",
+    );
+    // Aplicarla dos veces no doble-prefija (misma promesa que idPaseDeInvitado).
+    expect(contenidoQRPase("PS-abc")).toBe("PASE-SR:PS-abc");
+    // El prefijo es un CONTRATO con el escáner ya desplegado: no puede cambiar.
+    expect(QR_PASE_PREFIJO).toBe("PASE-SR:");
+  });
+});

@@ -12,7 +12,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { MODULOS, URLS, baseDeModulo } from "@salones/directorio";
+import { GRUPOS, MODULOS, URLS, baseDeModulo } from "@salones/directorio";
 
 const leer = (relativa: string) =>
   readFileSync(fileURLToPath(new URL(`../../${relativa}`, import.meta.url)), "utf8");
@@ -31,17 +31,42 @@ describe("el directorio", () => {
     }
   });
 
-  it("los 9 módulos apuntan a apps que existen en el directorio", () => {
-    expect(MODULOS).toHaveLength(9);
+  it("los 14 módulos apuntan a apps que existen en el directorio", () => {
+    expect(MODULOS).toHaveLength(14);
     for (const m of MODULOS) {
       expect(URLS[m.app], m.clave).toBeDefined();
       expect(baseDeModulo(m)).toBe(URLS[m.app]);
     }
   });
 
-  it("los módulos internos del portal siguen siendo los 6 migrados", () => {
+  it("los módulos internos del portal son los 6 migrados + los 5 que nacieron dentro", () => {
     const internos = MODULOS.filter((m) => m.rutaInterna).map((m) => m.clave);
-    expect(internos).toEqual(["rsvp", "mesas", "album", "muro", "playlist", "dinamicas"]);
+    expect(internos).toEqual([
+      "rsvp",
+      "pase",
+      "mesas",
+      "album",
+      "muro",
+      "playlist",
+      "dinamicas",
+      "cronograma",
+      "lugar",
+      "vestimenta",
+      "faq",
+    ]);
+  });
+
+  it("cada módulo pertenece a una sección que existe, y ninguna sección queda vacía", () => {
+    const claves = GRUPOS.map((g) => g.clave);
+    for (const m of MODULOS) {
+      expect(claves, `el grupo "${m.grupo}" de ${m.clave} no existe`).toContain(m.grupo);
+    }
+    for (const g of GRUPOS) {
+      expect(
+        MODULOS.some((m) => m.grupo === g.clave),
+        `la sección "${g.clave}" no tiene módulos`,
+      ).toBe(true);
+    }
   });
 
   it("cada clave de módulo existe en FEATURES_CONOCIDAS de core", () => {

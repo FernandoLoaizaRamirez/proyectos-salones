@@ -122,3 +122,19 @@ export function idPaseDeInvitado(id: string): string {
   if (id.startsWith("SR-") || id.startsWith("PS-")) return id;
   return `PS-${id}`;
 }
+
+/**
+ * EL CONTENIDO DEL CÓDIGO QR DEL PASE — una sola receta para toda la suite.
+ *
+ * El QR impreso o en pantalla lleva `PASE-SR:<id de la fila del pase>`, y lo
+ * leen el escáner de la puerta (apps/pases-qr) y ahora también el módulo
+ * "Mi pase" del portal. Vive aquí para que un QR pintado en el portal sea
+ * EXACTAMENTE el mismo que espera la puerta: si cada app armara el suyo, el
+ * primer desacuerdo se descubriría con la fila de invitados esperando.
+ */
+export const QR_PASE_PREFIJO = "PASE-SR:";
+
+/** El texto que va dentro del QR del pase de un invitado. */
+export function contenidoQRPase(idInvitado: string): string {
+  return `${QR_PASE_PREFIJO}${idPaseDeInvitado(idInvitado)}`;
+}

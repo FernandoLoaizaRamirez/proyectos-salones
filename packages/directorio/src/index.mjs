@@ -41,15 +41,29 @@ export const URLS = {
 };
 
 /**
+ * LAS SECCIONES DE LA EXPERIENCIA, en el orden en que se viven: lo tuyo antes
+ * de la fiesta, la fiesta misma, y la información práctica. El portal agrupa
+ * sus tarjetas y el menú "Experiencias" con esta lista; los módulos declaran a
+ * cuál pertenecen con `grupo`.
+ */
+export const GRUPOS = [
+  { clave: "asistencia", nombre: "Mi asistencia" },
+  { clave: "fiesta", nombre: "Vive el evento" },
+  { clave: "informacion", nombre: "Información" },
+];
+
+/**
  * LOS MÓDULOS DE LA EXPERIENCIA DEL INVITADO, en el orden de la HISTORIA de la
- * celebración: primero lo de antes de la fiesta (la invitación, confirmar,
- * encontrar su mesa) y luego la fiesta misma (fotos, mensajes, música, juegos,
- * photobooth, brindis). El portal pinta sus tarjetas y el menú "Experiencias"
- * de aquí; el pie usa este orden para el "Siguiente →".
+ * celebración: primero lo de antes de la fiesta (la invitación, confirmar, el
+ * pase, encontrar su mesa), luego la fiesta misma (fotos, mensajes, música,
+ * juegos, photobooth, brindis) y al final la información práctica (cronograma,
+ * lugar, vestimenta, preguntas). El portal pinta sus tarjetas y el menú
+ * "Experiencias" de aquí; el pie usa este orden para el "Siguiente →".
  *
  * `clave` es la MISMA de features/entitlements (el contrato comercial).
  * `rutaInterna` = el módulo ya vive DENTRO del portal (strangler-fig);
- * sin ella, es un PUENTE a su app (`app` + `rutaInvitado`).
+ * sin ella, es un PUENTE a su app (`app` + `rutaInvitado`). Los módulos que
+ * NACIERON dentro del portal (pase e información) llevan `app: "portal"`.
  */
 export const MODULOS = [
   {
@@ -59,6 +73,7 @@ export const MODULOS = [
     icono: "Mail",
     app: "invitaciones",
     rutaInvitado: "/",
+    grupo: "asistencia",
   },
   {
     clave: "rsvp",
@@ -68,6 +83,17 @@ export const MODULOS = [
     app: "rsvp",
     rutaInvitado: "/",
     rutaInterna: "/rsvp",
+    grupo: "asistencia",
+  },
+  {
+    clave: "pase",
+    nombre: "Mi pase",
+    descripcion: "Tu boleto con QR para la entrada del evento.",
+    icono: "QrCode",
+    app: "portal",
+    rutaInvitado: "/",
+    rutaInterna: "/pase",
+    grupo: "asistencia",
   },
   {
     clave: "mesas",
@@ -77,6 +103,7 @@ export const MODULOS = [
     app: "mi-mesa",
     rutaInvitado: "/",
     rutaInterna: "/mesas",
+    grupo: "asistencia",
   },
   {
     clave: "album",
@@ -86,6 +113,7 @@ export const MODULOS = [
     app: "album-fotos",
     rutaInvitado: "/",
     rutaInterna: "/album",
+    grupo: "fiesta",
   },
   {
     clave: "muro",
@@ -95,6 +123,7 @@ export const MODULOS = [
     app: "muro",
     rutaInvitado: "/firmar",
     rutaInterna: "/muro",
+    grupo: "fiesta",
   },
   {
     clave: "playlist",
@@ -104,6 +133,7 @@ export const MODULOS = [
     app: "playlist",
     rutaInvitado: "/pedir",
     rutaInterna: "/playlist",
+    grupo: "fiesta",
   },
   {
     clave: "dinamicas",
@@ -113,6 +143,7 @@ export const MODULOS = [
     app: "dinamicas",
     rutaInvitado: "/jugar",
     rutaInterna: "/dinamicas",
+    grupo: "fiesta",
   },
   {
     clave: "photobooth",
@@ -121,6 +152,7 @@ export const MODULOS = [
     icono: "Aperture",
     app: "photobooth",
     rutaInvitado: "/",
+    grupo: "fiesta",
   },
   {
     clave: "brindis",
@@ -129,8 +161,54 @@ export const MODULOS = [
     icono: "Wine",
     app: "brindis",
     rutaInvitado: "/",
+    grupo: "fiesta",
+  },
+  {
+    clave: "cronograma",
+    nombre: "Cronograma",
+    descripcion: "El plan de la celebración, hora por hora.",
+    icono: "CalendarClock",
+    app: "portal",
+    rutaInvitado: "/",
+    rutaInterna: "/cronograma",
+    grupo: "informacion",
+  },
+  {
+    clave: "lugar",
+    nombre: "Lugar y cómo llegar",
+    descripcion: "Las sedes del evento, con mapa y direcciones.",
+    icono: "MapPin",
+    app: "portal",
+    rutaInvitado: "/",
+    rutaInterna: "/lugar",
+    grupo: "informacion",
+  },
+  {
+    clave: "vestimenta",
+    nombre: "Código de vestimenta",
+    descripcion: "Qué ponerte y la paleta de colores sugerida.",
+    icono: "Shirt",
+    app: "portal",
+    rutaInvitado: "/",
+    rutaInterna: "/vestimenta",
+    grupo: "informacion",
+  },
+  {
+    clave: "faq",
+    nombre: "Preguntas frecuentes",
+    descripcion: "Estacionamiento, niños, regalos: lo que todos preguntan.",
+    icono: "CircleHelp",
+    app: "portal",
+    rutaInvitado: "/",
+    rutaInterna: "/faq",
+    grupo: "informacion",
   },
 ];
+
+/** El grupo de un módulo, con su nombre de cara al invitado. */
+export function grupoDeModulo(modulo) {
+  return GRUPOS.find((g) => g.clave === modulo.grupo) ?? GRUPOS[0];
+}
 
 /** La base (dominio) de la app que sirve un módulo como puente. */
 export function baseDeModulo(modulo) {

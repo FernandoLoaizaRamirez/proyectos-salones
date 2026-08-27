@@ -59,6 +59,7 @@ export async function contextoModulo(
     nombre: m.nombre,
     href: enlaceModulo(m, codigo),
     actual: m.clave === clave,
+    grupo: m.grupoNombre,
   }));
 
   /*

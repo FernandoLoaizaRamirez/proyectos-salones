@@ -8,7 +8,12 @@
  * quedaba sin batería se perdía quién había entrado, y dos personas escaneando
  * en dos puertas veían listas distintas.
  */
-import { codificarPaseEnlace, decodificarPaseEnlace, idPaseDeInvitado } from "@salones/core";
+import {
+  codificarPaseEnlace,
+  contenidoQRPase,
+  decodificarPaseEnlace,
+  idPaseDeInvitado,
+} from "@salones/core";
 
 /**
  * Las dos colecciones del evento.
@@ -88,15 +93,15 @@ export const invitadosIniciales: Invitado[] = [
 /**
  * Texto que se guarda dentro del código QR del pase.
  *
- * El id pasa por `idPaseDeInvitado` (@salones/core): para los pases creados
- * aquí (`SR-…`) no cambia NADA — se respetan tal cual y los QR ya impresos
- * siguen valiendo. Para un pase armado desde el panel del salón, cuyo id es el
- * UUID del invitado, el QR lleva `PS-<uuid>`: el id de su FILA en la colección
- * "pases" (el UUID a pelo ya es su renglón en "respuestas", y la llave
- * primaria de `items` es global — ver la nota de las colecciones de arriba).
+ * La receta vive en @salones/core (`contenidoQRPase`), compartida con el módulo
+ * "Mi pase" del portal: el QR que el invitado enseña desde el portal es
+ * EXACTAMENTE el que espera el escáner de la puerta. El id pasa por
+ * `idPaseDeInvitado`: los pases creados aquí (`SR-…`) se respetan tal cual y
+ * los QR ya impresos siguen valiendo; los del panel (UUID) van como `PS-<uuid>`
+ * (el id de su FILA en la colección "pases" — ver la nota de arriba).
  */
 export function contenidoQR(inv: Invitado): string {
-  return `PASE-SR:${idPaseDeInvitado(inv.id)}`;
+  return contenidoQRPase(inv.id);
 }
 
 /** Extrae el id del pase a partir del texto leído por el escáner. */

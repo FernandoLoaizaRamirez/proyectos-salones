@@ -66,6 +66,38 @@ export const INVITACION_DEMO: Invitacion = normalizarInvitacion({
   vestimentaNota: "Se sugiere reservar el color blanco para la novia.",
   vestimentaColores: ["#B33A6A", "#7C8B6F", "#E8D8C3", "#3A2B31"],
 
+  faq: [
+    {
+      pregunta: "¿A qué hora debo llegar?",
+      respuesta:
+        "La ceremonia empieza a las 6:00 p.m. en punto. Te sugerimos llegar media hora antes para encontrar tu lugar con calma.",
+    },
+    {
+      pregunta: "¿Hay estacionamiento?",
+      respuesta:
+        "Sí: la hacienda cuenta con estacionamiento para invitados, sin costo. Sigue las señales al llegar.",
+    },
+    {
+      pregunta: "¿Puedo llevar niños?",
+      respuesta: "Esta celebración está reservada para adultos. Gracias por comprender.",
+    },
+    {
+      pregunta: "¿Qué me pongo?",
+      respuesta:
+        "Etiqueta rigurosa, y se sugiere reservar el color blanco para la novia. En el código de vestimenta está la paleta sugerida.",
+    },
+    {
+      pregunta: "¿Puedo llevar acompañante?",
+      respuesta:
+        "Los lugares están contados por invitación. Tu invitación dice cuántos lugares ampara; ante la duda, pregunta a los organizadores.",
+    },
+    {
+      pregunta: "¿Dónde comparto mis fotos de la noche?",
+      respuesta:
+        "En el álbum del evento, aquí mismo en el portal: lo que tomes esa noche se junta con las fotos de todos los invitados.",
+    },
+  ],
+
   itinerario: [
     {
       hora: "6:00 p.m.",

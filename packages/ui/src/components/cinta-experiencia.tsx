@@ -31,6 +31,13 @@ export type ExperienciaEnlace = {
   href: string;
   /** La experiencia en la que el invitado ya está (se marca, no se enlaza). */
   actual?: boolean;
+  /**
+   * El nombre de la sección a la que pertenece ("Mi asistencia", "Vive el
+   * evento", "Información"). Cuando dos experiencias seguidas cambian de
+   * sección, el menú pinta un rotulito entre ellas. Sin él, la lista corrida
+   * de siempre.
+   */
+  grupo?: string;
 };
 
 export function CintaExperiencia({
@@ -164,29 +171,43 @@ export function CintaExperiencia({
               {abierto ? (
                 <nav
                   role="menu"
-                  className="absolute right-0 top-full z-50 mt-2 w-56 overflow-hidden rounded-[var(--radius)] border border-border bg-card py-1 shadow-lg"
+                  className="absolute right-0 top-full z-50 mt-2 max-h-[70vh] w-56 overflow-y-auto rounded-[var(--radius)] border border-border bg-card py-1 shadow-lg"
                 >
-                  {experiencias.map((x) =>
-                    x.actual ? (
-                      <span
-                        key={x.nombre}
-                        aria-current="page"
-                        className="flex items-center justify-between px-4 py-2 text-sm font-medium text-primary"
-                      >
-                        {x.nombre}
-                        <Check className="size-4" />
-                      </span>
-                    ) : (
-                      <a
-                        key={x.nombre}
-                        role="menuitem"
-                        href={x.href}
-                        className="block px-4 py-2 text-sm transition-colors hover:bg-muted"
-                      >
-                        {x.nombre}
-                      </a>
-                    ),
-                  )}
+                  {experiencias.map((x, i) => (
+                    <React.Fragment key={x.nombre}>
+                      {/* El rotulito de la sección, cuando cambia respecto a la
+                          experiencia anterior. Con 14 módulos, una lista corrida
+                          ya no se navega; con 3 secciones, sí. */}
+                      {x.grupo && x.grupo !== experiencias[i - 1]?.grupo ? (
+                        <div
+                          aria-hidden
+                          className={cn(
+                            "px-4 pb-1 pt-2 text-[0.65rem] font-medium uppercase tracking-[0.14em] text-muted-foreground",
+                            i > 0 && "mt-1 border-t border-border",
+                          )}
+                        >
+                          {x.grupo}
+                        </div>
+                      ) : null}
+                      {x.actual ? (
+                        <span
+                          aria-current="page"
+                          className="flex items-center justify-between px-4 py-2 text-sm font-medium text-primary"
+                        >
+                          {x.nombre}
+                          <Check className="size-4" />
+                        </span>
+                      ) : (
+                        <a
+                          role="menuitem"
+                          href={x.href}
+                          className="block px-4 py-2 text-sm transition-colors hover:bg-muted"
+                        >
+                          {x.nombre}
+                        </a>
+                      )}
+                    </React.Fragment>
+                  ))}
                 </nav>
               ) : null}
             </div>

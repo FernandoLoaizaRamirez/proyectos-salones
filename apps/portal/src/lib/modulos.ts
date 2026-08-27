@@ -17,14 +17,29 @@ import {
   Armchair,
   BookHeart,
   CalendarCheck,
+  CalendarClock,
   Camera,
+  CircleHelp,
   Gamepad2,
   ListMusic,
   Mail,
+  MapPin,
   PartyPopper,
+  QrCode,
+  Shirt,
   Wine,
 } from "lucide-react";
-import { MODULOS as DIRECTORIO, baseDeModulo, type ModuloDirectorio } from "@salones/directorio";
+import {
+  GRUPOS,
+  MODULOS as DIRECTORIO,
+  baseDeModulo,
+  grupoDeModulo,
+  type GrupoClave,
+  type ModuloDirectorio,
+} from "@salones/directorio";
+
+export { GRUPOS };
+export type { GrupoClave };
 
 export type ModuloManifest = {
   /** Clave de la función vendible (debe existir en `features` / entitlements). */
@@ -44,12 +59,17 @@ export type ModuloManifest = {
    * Cuando existe, manda sobre el puente: el invitado se queda en el portal.
    */
   rutaInterna?: string;
+  /** La sección de la experiencia (clave del directorio). */
+  grupo: GrupoClave;
+  /** El nombre de la sección, de cara al invitado ("Mi asistencia"…). */
+  grupoNombre: string;
 };
 
 /** Nombre del directorio → componente de lucide. */
 const ICONOS: Record<string, ComponentType<{ className?: string }>> = {
   Mail,
   CalendarCheck,
+  QrCode,
   Armchair,
   Camera,
   BookHeart,
@@ -57,6 +77,10 @@ const ICONOS: Record<string, ComponentType<{ className?: string }>> = {
   Gamepad2,
   Aperture,
   Wine,
+  CalendarClock,
+  MapPin,
+  Shirt,
+  CircleHelp,
 };
 
 function aManifest(m: ModuloDirectorio): ModuloManifest {
@@ -70,6 +94,8 @@ function aManifest(m: ModuloDirectorio): ModuloManifest {
     urlBase: baseDeModulo(m),
     rutaInvitado: m.rutaInvitado,
     rutaInterna: m.rutaInterna,
+    grupo: m.grupo,
+    grupoNombre: grupoDeModulo(m).nombre,
   };
 }
 

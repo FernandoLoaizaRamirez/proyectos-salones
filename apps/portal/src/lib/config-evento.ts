@@ -78,6 +78,7 @@ const PLAN_DEMO: Plan = {
   funciones: [
     F.Invitacion,
     F.Rsvp,
+    F.Pase,
     F.Mesas,
     F.Album,
     F.Muro,
@@ -85,6 +86,10 @@ const PLAN_DEMO: Plan = {
     F.Dinamicas,
     F.Photobooth,
     F.Brindis,
+    F.Cronograma,
+    F.Lugar,
+    F.Vestimenta,
+    F.Faq,
   ],
 };
 

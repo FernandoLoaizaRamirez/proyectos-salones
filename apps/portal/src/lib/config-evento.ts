@@ -68,9 +68,10 @@ export type ConfigEvento = {
 };
 
 /**
- * Plan DEMO (cuando no hay servidor): la SUITE COMPLETA del invitado. La demo
- * es lo que se le renta a los salones como prueba, y una vitrina a medias no
- * vende; en los eventos reales manda su plan, no esta lista.
+ * Plan DEMO (cuando no hay servidor): la SUITE COMPLETA del invitado — las 14
+ * experiencias desde la Etapa 1 (26 ago 2026). La demo es lo que se le renta a
+ * los salones como prueba, y una vitrina a medias no vende; en los eventos
+ * reales manda su plan, no esta lista.
  */
 const PLAN_DEMO: Plan = {
   id: "demo",

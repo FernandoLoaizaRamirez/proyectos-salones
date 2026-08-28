@@ -4,6 +4,7 @@ import {
   Camera,
   Check,
   ChevronDown,
+  KeyRound,
   MessageCircle,
   PartyPopper,
   QrCode,
@@ -220,6 +221,55 @@ export default function Page() {
             Eso que acabas de hacer es exactamente lo que haría cada invitado en tu salón. Sin
             instalar nada.
           </p>
+        </div>
+      </section>
+
+      {/* La CUENTA DE MUESTRA: el otro lado del mostrador. La demo del invitado
+          enseña la fiesta; esta enseña EL NEGOCIO — crear eventos, encender
+          experiencias una por una, vestir una boda con la marca propia. Es una
+          caja de arena aparte ("Salón de Muestra"): el aislamiento por salón de
+          la base impide que un visitante raye la demo real o vea a otro salón. */}
+      <section className="border-b border-border">
+        <div className="mx-auto max-w-4xl px-6 py-14 text-center md:py-20">
+          <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">
+            Y ahora, pásate del otro lado del mostrador
+          </h2>
+          <p className="mx-auto mt-3 max-w-2xl text-muted-foreground">
+            Esto es lo que TÚ verías cada día: crea un evento, enciende las experiencias una por
+            una, viste la boda con tu marca y mira cómo el portal de los invitados cambia al
+            instante. Es un salón de prueba solo para curiosos: nada de lo que hagas ahí toca la
+            demo de verdad.
+          </p>
+
+          <div className="mx-auto mt-8 max-w-md rounded-xl border border-border bg-card p-6 text-left shadow-sm">
+            <p className="flex items-center gap-2 text-sm font-medium">
+              <KeyRound className="size-4 text-primary" /> La cuenta de muestra
+            </p>
+            <dl className="mt-3 space-y-2 text-sm">
+              <div className="flex items-center justify-between gap-3">
+                <dt className="text-muted-foreground">Correo</dt>
+                <dd>
+                  <code className="rounded bg-muted px-2 py-0.5">muestra@suite-salones.app</code>
+                </dd>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <dt className="text-muted-foreground">Contraseña</dt>
+                <dd>
+                  <code className="rounded bg-muted px-2 py-0.5">salon-de-muestra</code>
+                </dd>
+              </div>
+            </dl>
+            <Link
+              href="/entrar"
+              className={cn(buttonVariants({ size: "lg" }), "mt-5 w-full")}
+            >
+              Entrar al panel de muestra
+            </Link>
+            <p className="mt-3 text-xs text-muted-foreground">
+              La cuenta es compartida entre visitantes y se reinicia de vez en cuando: no captures
+              ahí datos reales de tu salón.
+            </p>
+          </div>
         </div>
       </section>
 

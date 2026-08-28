@@ -21,8 +21,7 @@ export default function Entrar() {
   const [cargando, setCargando] = React.useState(false);
   const [error, setError] = React.useState("");
 
-  const entrar = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const iniciar = async (correo: string, contrasena: string) => {
     setError("");
     const supabase = obtenerSupabase();
     if (!supabase) {
@@ -30,13 +29,21 @@ export default function Entrar() {
       return;
     }
     setCargando(true);
-    const { error: err } = await supabase.auth.signInWithPassword({ email, password });
+    const { error: err } = await supabase.auth.signInWithPassword({
+      email: correo,
+      password: contrasena,
+    });
     setCargando(false);
     if (err) {
       setError("Correo o contraseña incorrectos.");
       return;
     }
     router.push("/panel");
+  };
+
+  const entrar = (e: React.FormEvent) => {
+    e.preventDefault();
+    void iniciar(email, password);
   };
 
   return (
@@ -88,6 +95,26 @@ export default function Entrar() {
             )}
           </Button>
         </form>
+
+        {/*
+         * LA CUENTA DE MUESTRA (0029): un salón curioso entra de un toque.
+         * Las credenciales son PÚBLICAS a propósito (también salen en la
+         * portada del catálogo): la cuenta vive en su propio salón de prueba
+         * y el aislamiento por salón de la base la encierra ahí.
+         */}
+        <div className="mt-5 border-t border-border pt-4 text-center">
+          <p className="text-xs text-muted-foreground">¿Solo quieres verlo por dentro?</p>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="mt-2"
+            disabled={cargando}
+            onClick={() => void iniciar("muestra@suite-salones.app", "salon-de-muestra")}
+          >
+            Entrar con la cuenta de muestra
+          </Button>
+        </div>
       </Card>
     </main>
   );

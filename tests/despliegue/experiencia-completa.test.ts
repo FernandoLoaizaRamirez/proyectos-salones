@@ -145,6 +145,29 @@ describe("La marca por evento ya tiene editor (Etapa 2)", () => {
   });
 });
 
+describe("La cuenta de muestra (0029): las credenciales públicas, atadas", () => {
+  const sql = leer("supabase", "migrations", "0029_cuenta_de_muestra.sql");
+  const catalogo = leer("apps", "catalogo", "src", "app", "page.tsx");
+  const entrar = leer("apps", "catalogo", "src", "app", "entrar", "page.tsx");
+
+  it("la migración crea la caja de arena con dueño y claims", () => {
+    expect(sql).toContain("'salon-de-muestra', gen_salt('bf')");
+    expect(sql).toContain('"rol":"owner"');
+    expect(sql).toContain("aa000000-0000-4000-8000-000000000001");
+    expect(sql).toContain("'boda-de-muestra'");
+  });
+
+  it("el catálogo y la pantalla de entrar enseñan LAS MISMAS credenciales que la 0029", () => {
+    // Si alguien rota la contraseña en la migración y olvida las pantallas,
+    // las credenciales públicas quedan rotas EN SILENCIO delante de un salón.
+    for (const credencial of ["muestra@suite-salones.app", "salon-de-muestra"]) {
+      expect(sql, `${credencial} falta en la 0029`).toContain(credencial);
+      expect(catalogo, `${credencial} falta en el catálogo`).toContain(credencial);
+      expect(entrar, `${credencial} falta en /entrar`).toContain(credencial);
+    }
+  });
+});
+
 describe("El QR del portal es el de la puerta (un solo contrato)", () => {
   it("la receta vive en core y las dos pantallas la usan; nadie arma el texto a mano", () => {
     const core = leer("packages", "core", "src", "pase-enlace.ts");

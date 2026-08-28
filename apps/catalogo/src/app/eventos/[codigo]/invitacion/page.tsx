@@ -50,6 +50,7 @@ import {
   type Invitacion,
   type Momento,
   type Padrino,
+  type PreguntaFrecuente,
   type Sede,
   type Tienda,
 } from "@salones/core";
@@ -936,6 +937,35 @@ export default function InvitacionDelEvento({
             )}
           />
         </div>
+      </Bloque>
+
+      <Bloque
+        titulo="Preguntas frecuentes"
+        descripcion="Las dudas de siempre —estacionamiento, niños, regalos, horas— contestadas una vez en vez de cien por WhatsApp. Se enseñan en la experiencia 'Preguntas frecuentes' del portal del invitado; si las dejas vacías, esa pantalla avisa que se publicarán pronto."
+      >
+        <Lista<PreguntaFrecuente>
+          items={inv.faq}
+          onChange={(v) => set("faq", v)}
+          nuevo={() => ({ pregunta: "", respuesta: "" })}
+          etiquetaAgregar="Agregar pregunta"
+          vacio="Sin preguntas todavía."
+          render={(p, cambiar) => (
+            <div className="space-y-2">
+              <input
+                className={CAMPO}
+                value={p.pregunta}
+                onChange={(e) => cambiar({ ...p, pregunta: e.target.value })}
+                placeholder="¿Hay estacionamiento?"
+              />
+              <textarea
+                className={`${CAMPO} min-h-16 resize-y`}
+                value={p.respuesta}
+                onChange={(e) => cambiar({ ...p, respuesta: e.target.value })}
+                placeholder="Sí: el recinto cuenta con estacionamiento para invitados, sin costo."
+              />
+            </div>
+          )}
+        />
       </Bloque>
 
       <Bloque

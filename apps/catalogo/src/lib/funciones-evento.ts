@@ -249,3 +249,40 @@ export async function apagar(
 export function claveEsDetalle(clave: string): boolean {
   return moduloDe(clave) !== clave;
 }
+
+/**
+ * APAGAR UNA CARACTERÍSTICA de verdad: escribir la fila en `false`.
+ *
+ * Es la asimetría de la 0027, y es a propósito: para una EXPERIENCIA, apagar
+ * es BORRAR la fila (vuelve a mandar el plan — ver `apagar`). Pero una
+ * característica hereda del MÓDULO cuando no consta (así se diseñó la
+ * herencia), así que borrarla no la apaga: la regresa a "va con el módulo".
+ * Vender "el álbum sí, pero sin descargas" exige la fila en `false` — que es
+ * exactamente lo que el candado del servidor (`evento_tiene_caracteristica`)
+ * respeta.
+ *
+ * Para VOLVER A INCLUIRLA se usa `apagar` (borrar la fila): la característica
+ * regresa a heredar del módulo, sin dejar filas `true` regadas que algún día
+ * nadie entienda.
+ *
+ * Se relee tras escribir, como todo aquí: la RLS niega en silencio.
+ */
+export async function apagarCaracteristica(
+  supabase: SupabaseClient,
+  eventId: string,
+  clave: string,
+): Promise<boolean> {
+  const { error } = await supabase
+    .from(TABLA)
+    .upsert(
+      { event_id: eventId, feature_clave: clave, habilitado: false },
+      { onConflict: "event_id,feature_clave" },
+    );
+  if (error) return false;
+  const { data } = await supabase
+    .from(TABLA)
+    .select("habilitado")
+    .eq("event_id", eventId)
+    .eq("feature_clave", clave);
+  return data?.length === 1 && data[0]?.habilitado === false;
+}

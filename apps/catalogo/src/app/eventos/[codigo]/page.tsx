@@ -63,6 +63,7 @@ import {
   leerOverridesEvento,
   type EstadoPaquete,
 } from "@/lib/paquete-evento";
+import { ExperienciasEvento } from "./experiencias-evento";
 
 /** Cada cuánto se vuelven a leer los contadores (ms). */
 const REFRESCO_MS = 20000;
@@ -429,6 +430,17 @@ export default function PanelEvento({ params }: { params: Promise<{ codigo: stri
           </div>
         </div>
       </Card>
+
+      {/* ── Las experiencias, una por una (Etapa 2) ───────────────────────
+          El paquete de arriba es el ATAJO (cuatro de golpe); esta tarjeta es
+          el plan a la medida: cada experiencia con su interruptor, agrupadas
+          como las ve el invitado. Ambas escriben en event_overrides y cada
+          una relee lo suyo tras guardar. */}
+      <ExperienciasEvento
+        codigo={codigo}
+        eventId={evento.id}
+        puedeCambiar={puedeCambiarPaquete}
+      />
 
       {/* ── Llave de anfitrión ────────────────────────────────────────────
           Es lo ÚNICO que permite quitar contenido de un evento (migración

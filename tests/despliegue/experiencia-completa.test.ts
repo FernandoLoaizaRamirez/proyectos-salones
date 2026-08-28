@@ -88,6 +88,34 @@ describe("Cada módulo del directorio existe de punta a punta", () => {
   }
 });
 
+describe("El motor de experiencias ya tiene volante (Etapa 2)", () => {
+  it("la pantalla del evento monta la tarjeta, y la tarjeta usa el motor y pinta lo RESUELTO", () => {
+    // El hallazgo original del mapa: funciones-evento.ts era "motor sin
+    // volante" — 221 líneas probadas que ninguna pantalla importaba. Este
+    // candado impide volver a ese estado sin que el CI lo grite.
+    const pagina = leer("apps", "catalogo", "src", "app", "eventos", "[codigo]", "page.tsx");
+    const tarjeta = leer(
+      "apps",
+      "catalogo",
+      "src",
+      "app",
+      "eventos",
+      "[codigo]",
+      "experiencias-evento.tsx",
+    );
+    expect(pagina).toContain("ExperienciasEvento");
+    expect(tarjeta).toContain("funciones-evento");
+    // Se pinta lo que VE el invitado (el motor de core), no lo que pedimos.
+    expect(tarjeta).toContain("resolveEntitlements");
+  });
+
+  it("apagar una característica escribe `false` (borrarla NO la apaga: hereda del módulo)", () => {
+    const motor = leer("apps", "catalogo", "src", "lib", "funciones-evento.ts");
+    expect(motor).toContain("export async function apagarCaracteristica");
+    expect(motor).toMatch(/habilitado:\s*false/);
+  });
+});
+
 describe("El QR del portal es el de la puerta (un solo contrato)", () => {
   it("la receta vive en core y las dos pantallas la usan; nadie arma el texto a mano", () => {
     const core = leer("packages", "core", "src", "pase-enlace.ts");

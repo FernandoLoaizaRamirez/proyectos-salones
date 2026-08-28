@@ -28,7 +28,9 @@ insert into tenant_branding
 values
   ('d0000000-0000-4000-8000-000000000001',
    'Hacienda Santa Renata',
-   null,
+   -- El escudo de la casa (27 ago 2026): el arco con su clave y el S·R.
+   -- Vive en el sitio (Vercel), no en el almacén — igual que la portada.
+   'https://salones-teal.vercel.app/img/logo.png',
    '#7a2e3b',              -- vino (el --primary del sitio)
    '#fbf9f5',              -- crema clarísima (texto sobre el vino)
    '#c9a96e',              -- oro (el --ring / acento del sitio)
@@ -40,6 +42,7 @@ values
    'claro')
 on conflict (tenant_id) do update set
   nombre         = excluded.nombre,
+  logo_url       = excluded.logo_url,
   primario       = excluded.primario,
   primario_texto = excluded.primario_texto,
   acento         = excluded.acento,

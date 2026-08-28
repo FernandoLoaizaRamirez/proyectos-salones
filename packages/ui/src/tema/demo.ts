@@ -23,6 +23,13 @@ import { resolverTema } from "./resolver";
 export const TEMA_DEMO: TemaSalon = {
   nombre: "Hacienda Santa Renata",
   sitioUrl: "https://salones-teal.vercel.app",
+  /*
+   * El escudo de la casa: el arco de la hacienda con su clave y el monograma
+   * S·R (crema y oro sobre vino, Cormorant). Se sirve desde el sitio en Vercel
+   * —igual que la portada— para no gastar del cupo de descarga del almacén, y
+   * vive también en la semilla 0026, atado por la prueba de paridad.
+   */
+  logoUrl: "https://salones-teal.vercel.app/img/logo.png",
   primario: "#7a2e3b", // vino — el --primary del sitio
   primarioTexto: "#fbf9f5", // crema clarísima sobre el vino
   acento: "#c9a96e", // oro — el --ring del sitio

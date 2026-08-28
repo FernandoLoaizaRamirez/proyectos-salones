@@ -78,6 +78,7 @@ describe("TEMA_DEMO coincide con la semilla 0026 (la base)", () => {
   it("cada valor de la constante aparece en el SQL de la semilla", () => {
     for (const valor of [
       TEMA_DEMO.nombre,
+      TEMA_DEMO.logoUrl,
       TEMA_DEMO.primario,
       TEMA_DEMO.primarioTexto,
       TEMA_DEMO.acento,

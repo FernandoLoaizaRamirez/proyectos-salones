@@ -195,6 +195,18 @@ if (carpetaApp === "/" || !existsSync(join(RAIZ, carpetaApp))) {
 // `scripts/` reconstruye las 14. Si algún día conviene arreglarlo de raíz, hay
 // que dejar de fiarse de `VERCEL_GIT_PREVIOUS_SHA` y preguntarle a la API de
 // Vercel cuál fue el último despliegue READY de ESTA app.
+//
+// ⚠️ CUARTO EPISODIO, 24-27 ago 2026 — Y NO ERA EL PORTERO NI LA CUOTA.
+// Todo push por Git salía "Deployment was blocked" en las 14 apps. La causa
+// la dijo el panel de Vercel con todas sus letras: el plan Hobby no admite
+// "colaboradores" en repos PRIVADOS, y esa cuenta no reconocía como suyo al
+// autor de los commits — el repo se había vuelto privado y hasta el botón
+// Redeploy exigía el Pro. Se descartó con experimento que fuera el coautor
+// de los commits (un commit sin trailer también se bloqueó). LA SALIDA:
+// el repo volvió a ser PÚBLICO el 27 ago (verificado antes que no hubiera
+// ni una llave en el código; las llaves viven en Vercel/Supabase). Si algún
+// día vuelve a hacerse privado, esto vuelve a morder: o Pro, o público, o
+// publicar por CLI con la sesión de la cuenta dueña (`loaiza-s-projects`).
 const anterior = process.env.VERCEL_GIT_PREVIOUS_SHA;
 const actual = process.env.VERCEL_GIT_COMMIT_SHA || "HEAD";
 if (!anterior) construir("primera construcción de esta app (no hay con qué comparar)");

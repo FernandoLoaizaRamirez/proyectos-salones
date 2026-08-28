@@ -116,6 +116,35 @@ describe("El motor de experiencias ya tiene volante (Etapa 2)", () => {
   });
 });
 
+describe("La marca por evento ya tiene editor (Etapa 2)", () => {
+  it("la pantalla existe, escribe event_branding y previsualiza con el motor real", () => {
+    // El otro hueco del mapa: event_branding con tabla, RLS y evento-config
+    // listos, pero cuya única fila la puso la semilla de la demo (0026).
+    const pagina = leer(
+      "apps",
+      "catalogo",
+      "src",
+      "app",
+      "eventos",
+      "[codigo]",
+      "personalizacion",
+      "page.tsx",
+    );
+    const lib = leer("apps", "catalogo", "src", "lib", "branding-evento.ts");
+    // La vista previa usa el MISMO motor del portal, no una copia.
+    expect(pagina).toContain("resolverTema");
+    expect(pagina).toContain("branding-evento");
+    expect(lib).toContain('from("event_branding")');
+    // La portada de la vista previa sale del tema YA RESUELTO (el esUrlSegura
+    // del motor), no de un regex propio más flojo que enseñe aquí una foto
+    // que el portal después descarta.
+    expect(pagina).toContain("tema.evento!.portadaUrl");
+    // Y el puesto de mando enlaza al editor.
+    const evento = leer("apps", "catalogo", "src", "app", "eventos", "[codigo]", "page.tsx");
+    expect(evento).toContain("/personalizacion");
+  });
+});
+
 describe("El QR del portal es el de la puerta (un solo contrato)", () => {
   it("la receta vive en core y las dos pantallas la usan; nadie arma el texto a mano", () => {
     const core = leer("packages", "core", "src", "pase-enlace.ts");

@@ -370,6 +370,13 @@ export function TarjetaPersonalizacion() {
           <TemaScope
             tema={resuelto}
             className="mt-2 rounded-[var(--radius)] border border-border p-5"
+            /*
+             * El panel corre en OSCURO y los colores del tema van en
+             * light-dark(): sin fijar el esquema, esta vista previa enseñaba
+             * la paleta nocturna derivada cuando el invitado abre en CLARO.
+             * Mismo arreglo que la vista previa de la marca por evento.
+             */
+            style={{ colorScheme: resuelto.esquema === "oscuro" ? "dark" : "light" }}
           >
             <div className="flex items-center gap-3">
               <span className="grid size-10 shrink-0 place-items-center rounded-[var(--radius)] bg-primary font-[family-name:var(--font-display)] text-sm font-bold text-primary-foreground">

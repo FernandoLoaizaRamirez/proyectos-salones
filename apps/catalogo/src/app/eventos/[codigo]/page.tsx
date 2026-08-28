@@ -27,6 +27,7 @@ import {
   KeyRound,
   Package,
   PackageCheck,
+  Paintbrush,
   RefreshCw,
   SearchX,
   Share2,
@@ -427,6 +428,30 @@ export default function PanelEvento({ params }: { params: Promise<{ codigo: stri
             <p className="mt-3 text-xs text-muted-foreground">
               El portal del invitado tarda hasta un minuto en reflejarlo.
             </p>
+          </div>
+        </div>
+      </Card>
+
+      {/* ── La marca del evento (Etapa 2) ─────────────────────────────────
+          Configuración, igual que la invitación y el paquete: el color, la
+          portada y la frase de ESTA boda encima de la marca del salón. */}
+      <Card className="mt-8 p-6">
+        <div className="flex items-start gap-4">
+          <span className="grid size-11 shrink-0 place-items-center rounded-[var(--radius)] bg-primary/10 text-primary">
+            <Paintbrush className="size-5" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <h2 className="font-semibold">La marca de este evento</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              El color, la foto de portada, el monograma y la frase de esta celebración. Lo que no
+              se toque, hereda la marca del salón.
+            </p>
+            <Link
+              href={`/eventos/${encodeURIComponent(codigo)}/personalizacion`}
+              className="mt-4 inline-block"
+            >
+              <Button size="sm">Personalizar el evento</Button>
+            </Link>
           </div>
         </div>
       </Card>

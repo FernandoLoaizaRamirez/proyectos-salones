@@ -71,7 +71,8 @@ export type ConfigEvento = {
  * Plan DEMO (cuando no hay servidor): la SUITE COMPLETA del invitado — las 14
  * experiencias desde la Etapa 1 (26 ago 2026). La demo es lo que se le renta a
  * los salones como prueba, y una vitrina a medias no vende; en los eventos
- * reales manda su plan, no esta lista.
+ * reales manda su plan, no esta lista. La lista la vigila la prueba de paridad
+ * de tests/despliegue/experiencia-completa.test.ts.
  */
 const PLAN_DEMO: Plan = {
   id: "demo",

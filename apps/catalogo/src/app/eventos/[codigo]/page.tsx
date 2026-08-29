@@ -52,6 +52,7 @@ import {
   PANTALLAS,
   APPS_CON_LLAVE,
   baseDeApp,
+  enlaceOrganizador,
   enlacePantalla,
   enlacePortal,
   esInterna,
@@ -558,6 +559,55 @@ export default function PanelEvento({ params }: { params: Promise<{ codigo: stri
                 <strong>tus enlaces de anfitrión</strong> (los del botón de arriba). Cada app los
                 recuerda por separado, así que hay que abrirlo una vez en cada una.
               </p>
+
+              {/* ── EL PORTAL DEL ORGANIZADOR (la casa de los novios) ─────
+                  El enlace que el salón le manda a su CLIENTE: su evento del
+                  lado de quien organiza — cómo va, quién confirmó y sus
+                  herramientas — con su llave ya puesta. PRIVADO: quien lo
+                  tenga puede borrar. */}
+              {enlaceOrganizador(codigo, evento.clave_anfitrion) ? (
+                <div className="mt-4 rounded-[var(--radius)] border border-primary/25 bg-primary/5 p-4">
+                  <h3 className="text-sm font-medium">El portal de tus clientes</h3>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Mándales este enlace a los novios o festejados: su evento del lado de quien
+                    organiza — cómo va, quién confirmó y sus herramientas. Es privado: lleva su
+                    llave.
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <Button
+                      size="sm"
+                      onClick={() =>
+                        copiar(enlaceOrganizador(codigo, evento.clave_anfitrion!), "organizador")
+                      }
+                    >
+                      {copiado === "organizador" ? (
+                        <>
+                          <Check className="size-4" /> ¡Copiado!
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="size-4" /> Copiar el enlace del organizador
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        window.open(
+                          `https://wa.me/?text=${encodeURIComponent(
+                            `Este es el portal de SU evento (${evento.nombre}): cómo va, quién confirmó y sus herramientas de organizador.\n${enlaceOrganizador(codigo, evento.clave_anfitrion!)}\n\n⚠️ Es privado: no lo compartan con los invitados.`,
+                          )}`,
+                          "_blank",
+                          "noopener,noreferrer",
+                        )
+                      }
+                    >
+                      <MessageCircle className="size-4" /> Enviar por WhatsApp
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
             </div>
           </div>
         </Card>

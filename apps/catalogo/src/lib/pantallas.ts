@@ -198,3 +198,17 @@ export function enlacePortal(codigo: string): string {
   const base = (process.env.NEXT_PUBLIC_PORTAL_URL ?? "").replace(/\/$/, "");
   return base ? `${base}/?e=${encodeURIComponent(codigo)}` : "";
 }
+
+/**
+ * EL ENLACE DEL PORTAL DEL ORGANIZADOR — la casa de los novios, con su llave.
+ *
+ * ⚠️ PRIVADO: lleva la llave de anfitrión (quien lo tenga puede borrar). El
+ * salón se lo manda SOLO a quien organiza, nunca a los invitados. Con abrirlo
+ * una vez, la moderación del álbum y el muro queda activa en ese navegador.
+ */
+export function enlaceOrganizador(codigo: string, clave: string): string {
+  const base = (process.env.NEXT_PUBLIC_PORTAL_URL ?? "").replace(/\/$/, "");
+  return base
+    ? `${base}/organizador?e=${encodeURIComponent(codigo)}&a=${encodeURIComponent(clave)}`
+    : "";
+}

@@ -13,6 +13,7 @@
  * resueltos: una función apagada NO aparece. Los módulos ya migrados abren
  * DENTRO del portal; los que aún no, hacen de puente a su app actual.
  */
+import * as React from "react";
 import Link from "next/link";
 import {
   CintaExperiencia,
@@ -28,6 +29,7 @@ import { HeroEvento } from "@/components/hero-evento";
 import { LoTuyo } from "@/components/lo-tuyo";
 import { EventoNoEncontrado } from "@/components/pantallas";
 import { usePerfil } from "@/lib/perfil";
+import { apuntarActividad } from "@/lib/actividad";
 import type { ConfigEvento } from "@/lib/config-evento";
 
 const CLASES_TARJETA =
@@ -46,6 +48,12 @@ export function PortalHome({ config }: { config: ConfigEvento }) {
   const hashPerfil = perfil
     ? `#${codificarInvitadoEnlace({ id: perfil.id ?? "", nombre: perfil.nombre, cupos: perfil.cupos ?? 1 })}`
     : "";
+
+  // El latido: se abrió la portada de un evento real (0031 — cuenta, jamás
+  // espía). Una vez por visita; las vitrinas se saltan solas en el helper.
+  React.useEffect(() => {
+    apuntarActividad(config.codigo, "portal");
+  }, [config.codigo]);
 
   // Enlace roto o código mal escrito: mejor decirlo claro que fingir un portal.
   if (config.estado === "no-encontrado") return <EventoNoEncontrado />;

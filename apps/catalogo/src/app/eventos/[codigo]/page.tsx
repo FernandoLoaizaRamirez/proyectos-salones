@@ -65,6 +65,7 @@ import {
   type EstadoPaquete,
 } from "@/lib/paquete-evento";
 import { ExperienciasEvento } from "./experiencias-evento";
+import { ClienteEvento } from "./cliente-evento";
 
 /** Cada cuánto se vuelven a leer los contadores (ms). */
 const REFRESCO_MS = 20000;
@@ -431,6 +432,11 @@ export default function PanelEvento({ params }: { params: Promise<{ codigo: stri
           </div>
         </div>
       </Card>
+
+      {/* ── El cliente (Etapa 3): de quién es este evento ─────────────────
+          Va junto a la invitación: son la MISMA conversación con la persona
+          que contrata. La ficha completa vive en /panel/clientes. */}
+      <ClienteEvento eventId={evento.id} clientIdInicial={evento.client_id ?? null} />
 
       {/* ── La marca del evento (Etapa 2) ─────────────────────────────────
           Configuración, igual que la invitación y el paquete: el color, la

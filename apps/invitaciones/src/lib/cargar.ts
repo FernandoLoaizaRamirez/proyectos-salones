@@ -27,6 +27,7 @@ import {
   type Invitacion,
 } from "@salones/core";
 import { eventoActual, obtenerSync, resolverMedios, esVitrina } from "@salones/sync";
+import { apuntarActividad } from "./actividad";
 import { INVITACION_DEMO } from "./invitacion";
 
 export type EstadoInvitacion =
@@ -79,6 +80,9 @@ export function useInvitacion(): EstadoInvitacion {
       if (!vivo) return;
 
       if (inv && invitacionTieneContenido(inv)) {
+        // El latido: se abrió la invitación de un evento real (0031 — cuenta,
+        // jamás espía; fuego-y-olvido).
+        apuntarActividad(codigo, "invitacion");
         setEstado({ fase: "lista", inv, codigo });
       } else if (esVitrina(codigo)) {
         setEstado({ fase: "muestra", inv: INVITACION_DEMO, codigo });

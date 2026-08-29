@@ -125,7 +125,7 @@ describe("El cliente", () => {
     // Y la ficha del evento tiene que TRAER esa llave, o lo anterior es papel
     // mojado: `obtenerEvento` usa las columnas con `clave_anfitrion`.
     expect(leer("apps", "catalogo", "src", "lib", "eventos.ts")).toMatch(
-      /COLUMNAS_FICHA = `\$\{COLUMNAS\},clave_anfitrion`/,
+      /COLUMNAS_FICHA = `\$\{COLUMNAS\},clave_anfitrion/,
     );
   });
 

@@ -12,6 +12,7 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
+  BarChart3,
   KeyRound,
   LogOut,
   Loader2,
@@ -20,6 +21,7 @@ import {
   CalendarDays,
   PackageCheck,
   Stethoscope,
+  Users,
 } from "lucide-react";
 import { Button, Card } from "@salones/ui";
 import { obtenerSupabase } from "@/lib/supabase";
@@ -141,6 +143,32 @@ export default function Panel() {
           </p>
         </div>
         <Link href="/evento">
+          <Button size="sm">Abrir</Button>
+        </Link>
+      </Card>
+
+      <Card className="mt-4 flex items-center gap-4 p-6">
+        <Users className="size-8 shrink-0 text-primary" />
+        <div className="min-w-0 flex-1">
+          <h2 className="font-semibold">Clientes</h2>
+          <p className="text-sm text-muted-foreground">
+            Quién contrata cada evento, con su teléfono a un toque.
+          </p>
+        </div>
+        <Link href="/panel/clientes">
+          <Button size="sm">Abrir</Button>
+        </Link>
+      </Card>
+
+      <Card className="mt-4 flex items-center gap-4 p-6">
+        <BarChart3 className="size-8 shrink-0 text-primary" />
+        <div className="min-w-0 flex-1">
+          <h2 className="font-semibold">Reportes</h2>
+          <p className="text-sm text-muted-foreground">
+            Los números de todos tus eventos juntos, y a Excel de un toque.
+          </p>
+        </div>
+        <Link href="/panel/reportes">
           <Button size="sm">Abrir</Button>
         </Link>
       </Card>

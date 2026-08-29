@@ -145,6 +145,85 @@ describe("La marca por evento ya tiene editor (Etapa 2)", () => {
   });
 });
 
+describe("La Etapa 3: clientes, reportes y actividad, de punta a punta", () => {
+  it("la 0030 crea clientes con el aislamiento de siempre y sin borrados en cascada", () => {
+    const sql = leer("supabase", "migrations", "0030_clientes.sql");
+    expect(sql).toContain("create table if not exists clients");
+    expect(sql).toContain("app_tenant_id()");
+    // Borrar la ficha de una persona NO puede borrar su boda.
+    expect(sql).toContain("on delete set null");
+  });
+
+  it("la 0031 cuenta sin espiar: allowlist doble y escritura solo por la función", () => {
+    const sql = leer("supabase", "migrations", "0031_actividad.sql");
+    // La allowlist vive en el check de la tabla Y en la función.
+    expect(sql).toContain("check (tipo in ('portal', 'invitacion', 'rsvp', 'pase'))");
+    expect(sql).toContain("security definer");
+    // Nadie escribe directo: el único grant de la tabla es de LECTURA.
+    expect(sql).toContain("grant select on actividad to authenticated");
+    expect(sql).not.toMatch(/grant[^;]*insert[^;]*on actividad/i);
+    // Y la TABLA jamás lleva identidad: sus columnas son solo las cinco del
+    // contador. (Se revisa el bloque del create table, no la prosa de los
+    // comentarios — que justamente explican lo que NO se guarda.)
+    const tabla = sql.match(/create table if not exists actividad[\s\S]*?\);/)?.[0] ?? "";
+    expect(tabla).toBeTruthy();
+    expect(tabla).not.toMatch(/nombre|invitado|user_id|\bip\b|agente/i);
+  });
+
+  it("la 0032 ata el cliente a SU salón y la actividad a SU evento", () => {
+    const sql = leer("supabase", "migrations", "0032_candados_etapa3.sql");
+    // La FK compuesta: un evento no puede señalar al cliente de otro salón
+    // (las FK se saltan la RLS; esta es la red que sí aplica).
+    expect(sql).toContain("foreign key (client_id, tenant_id)");
+    expect(sql).toContain("references clients (id, tenant_id)");
+    // Y el set null SOLO anula client_id (sin la lista, tronaría el NOT NULL
+    // de tenant_id y borrar una ficha rompería su boda).
+    expect(sql).toContain("on delete set null (client_id)");
+    // La actividad cascadea con su evento (borrar/renombrar se la lleva).
+    expect(sql).toContain("references events (codigo)");
+    expect(sql).toContain("on update cascade");
+  });
+
+  it("las pantallas del panel existen y el reporte usa la receta CSV de la casa", () => {
+    for (const ruta of [
+      ["apps", "catalogo", "src", "app", "panel", "clientes", "page.tsx"],
+      ["apps", "catalogo", "src", "app", "panel", "reportes", "page.tsx"],
+      ["apps", "catalogo", "src", "app", "eventos", "[codigo]", "cliente-evento.tsx"],
+    ]) {
+      expect(existsSync(join(RAIZ, ...ruta)), ruta.join("/")).toBe(true);
+    }
+    const reportes = leer("apps", "catalogo", "src", "app", "panel", "reportes", "page.tsx");
+    // La lección del CSV (separador ;, BOM, escapado) vive en aCSV: nada de
+    // improvisar otro exportador que rompa "José" en Excel.
+    expect(reportes).toContain("aCSV");
+    expect(reportes).toContain("descargarCSV");
+  });
+
+  it("los latidos de actividad existen y jamás mandan identidad", () => {
+    const portal = leer("apps", "portal", "src", "lib", "actividad.ts");
+    const invitaciones = leer("apps", "invitaciones", "src", "lib", "actividad.ts");
+    for (const lib of [portal, invitaciones]) {
+      expect(lib).toContain("apuntar_actividad");
+      // Fuego-y-olvido: sobrevive al cambio de página y se traga los fallos.
+      expect(lib).toContain("keepalive");
+      // El CUERPO de la petición lleva SOLO evento y tipo, tal cual: si un
+      // día alguien le agrega un campo más, esta igualdad exacta truena.
+      expect(lib).toContain("body: JSON.stringify({ p_evento: evento, p_tipo: tipo })");
+    }
+    // Y quien late, late: portada, rsvp, pase e invitación.
+    expect(leer("apps", "portal", "src", "components", "portal-home.tsx")).toContain(
+      "apuntarActividad",
+    );
+    expect(leer("apps", "portal", "src", "modulos", "rsvp", "rsvp-modulo.tsx")).toContain(
+      "apuntarActividad",
+    );
+    expect(leer("apps", "portal", "src", "modulos", "pase", "pase-modulo.tsx")).toContain(
+      "apuntarActividad",
+    );
+    expect(leer("apps", "invitaciones", "src", "lib", "cargar.ts")).toContain("apuntarActividad");
+  });
+});
+
 describe("La cuenta de muestra (0029): las credenciales públicas, atadas", () => {
   const sql = leer("supabase", "migrations", "0029_cuenta_de_muestra.sql");
   const catalogo = leer("apps", "catalogo", "src", "app", "page.tsx");

@@ -29,6 +29,7 @@ import {
 } from "@salones/core";
 import { obtenerSync, esVitrina } from "@salones/sync";
 import { usePerfil } from "@/lib/perfil";
+import { apuntarActividad } from "@/lib/actividad";
 import { SEMILLA_ACOMODO, SEMILLA_MESAS } from "@/modulos/mesas/lib";
 import {
   COLECCION_PASES,
@@ -73,6 +74,12 @@ export function PaseModulo({ evento, nombreEvento }: { evento: string; nombreEve
   // En la vitrina, si no hay pase propio se enseña el de muestra (etiquetado).
   const esMuestra = !mio && esVitrina(evento);
   const pase = mio ?? (esMuestra ? PASE_EJEMPLO : null);
+
+  // El latido: un invitado vio SU pase de un evento real (0031 — cuenta,
+  // jamás espía: el contador no sabe de quién era el pase).
+  React.useEffect(() => {
+    if (mio) apuntarActividad(evento, "pase");
+  }, [evento, mio]);
 
   // La mesa del acomodo real corrige la congelada en el pase (solo el propio).
   React.useEffect(() => {

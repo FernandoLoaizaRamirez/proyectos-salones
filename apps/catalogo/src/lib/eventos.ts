@@ -26,6 +26,8 @@ export type EventoFila = {
    * de `events` acota por salón; nunca sale hacia el invitado.
    */
   clave_anfitrion?: string | null;
+  /** La ficha del cliente dueño de este evento (migración 0030), si se asignó. */
+  client_id?: string | null;
 };
 
 const COLUMNAS = "id,codigo,nombre,fecha,estado,creado";
@@ -35,7 +37,7 @@ const COLUMNAS = "id,codigo,nombre,fecha,estado,creado";
  * entrega. La LISTA no: no la necesita, y una llave que no se pide es una llave
  * que no se puede filtrar por accidente (un registro, una captura de pantalla).
  */
-const COLUMNAS_FICHA = `${COLUMNAS},clave_anfitrion`;
+const COLUMNAS_FICHA = `${COLUMNAS},clave_anfitrion,client_id`;
 
 /**
  * Los eventos del salón, del más nuevo al más viejo. NO filtra por tenant: lo

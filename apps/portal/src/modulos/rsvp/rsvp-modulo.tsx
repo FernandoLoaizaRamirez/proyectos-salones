@@ -27,6 +27,7 @@ import {
   type RespuestaItem,
 } from "./lib";
 import { guardarPerfil, usePerfil } from "@/lib/perfil";
+import { apuntarActividad } from "@/lib/actividad";
 
 const campo =
   "w-full rounded-[var(--radius)] border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/30";
@@ -125,6 +126,9 @@ export function RsvpModulo({ evento, nombreEvento }: { evento: string; nombreEve
 
     try {
       await obtenerSync().guardar(evento, COLECCION_RESPUESTAS, respuesta);
+      // El latido: llegó una confirmación de un evento real (0031 — cuenta,
+      // jamás espía: ni el nombre ni el id viajan al contador).
+      apuntarActividad(evento, "rsvp");
       if (sobranteRef.current && sobranteRef.current !== respuesta.id) {
         void obtenerSync().eliminar(evento, COLECCION_RESPUESTAS, sobranteRef.current);
         sobranteRef.current = null;

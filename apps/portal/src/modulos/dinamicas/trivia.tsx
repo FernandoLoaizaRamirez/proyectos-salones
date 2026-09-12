@@ -7,7 +7,7 @@
 import * as React from "react";
 import { ArrowRight, Armchair, Check, RefreshCw, Trophy, X } from "lucide-react";
 import { Button, Card, cn, AvisoParticipacion } from "@salones/ui";
-import { TRIVIA_PREGUNTAS, porPuntaje, puntosDeMesa } from "./lib";
+import { TRIVIA_PREGUNTAS, porPuntaje, puntosDeMesa, rankingPorMesa } from "./lib";
 import { useRanking } from "./use-ranking";
 import { acomodoDelEvento, type InvitadoMesa, type MesaEvento } from "@/modulos/mesas/lib";
 import { guardarPerfil, usePerfil } from "@/lib/perfil";
@@ -94,9 +94,9 @@ export function Trivia({ evento }: { evento: string }) {
   if (fase === "nombre") {
     return (
       <Card className="p-6">
-        <h2 className="text-xl font-semibold">Trivia de los novios</h2>
+        <h2 className="text-xl font-semibold">Es momento de jugar</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          {total} preguntas sobre la pareja. ¿Cuánto los conoces?
+          Trivia de la pareja: {total} preguntas. ¿Cuánto los conoces?
         </p>
         <form onSubmit={empezar} className="mt-4 space-y-3">
           <input
@@ -139,6 +139,8 @@ export function Trivia({ evento }: { evento: string }) {
     const posicion = ordenado.findIndex((j) => j.id === miId) + 1;
     const podio = ordenado.slice(0, 5);
     const miMesa = puntosDeMesa(nombre, rankingConMiJugada, mesas, acomodo);
+    const mesaRanking = rankingPorMesa(rankingConMiJugada, mesas, acomodo).slice(0, 3);
+    const medallas = ["🥇", "🥈", "🥉"];
     return (
       <Card className="p-6 text-center">
         <div className="mx-auto grid size-14 place-items-center rounded-full bg-primary/10 text-primary">
@@ -189,6 +191,31 @@ export function Trivia({ evento }: { evento: string }) {
                   <span className="shrink-0 text-muted-foreground">
                     {j.aciertos}/{j.total}
                   </span>
+                </li>
+              ))}
+            </ol>
+          </div>
+        ) : null}
+
+        {mesaRanking.length > 0 ? (
+          <div className="mt-6 text-left">
+            <h3 className="mb-2 text-sm font-semibold">Ranking por mesa</h3>
+            <ol className="space-y-1">
+              {mesaRanking.map((m, i) => (
+                <li
+                  key={m.mesa}
+                  className={cn(
+                    "flex items-center justify-between gap-3 rounded-[var(--radius)] px-3 py-2 text-sm",
+                    miMesa && m.mesa === miMesa.mesa
+                      ? "bg-primary/10 font-medium text-primary"
+                      : "bg-muted/50",
+                  )}
+                >
+                  <span className="flex min-w-0 items-center gap-2">
+                    <span className="shrink-0">{medallas[i]}</span>
+                    <span className="truncate">{m.mesa}</span>
+                  </span>
+                  <span className="shrink-0 text-muted-foreground">{m.puntos}</span>
                 </li>
               ))}
             </ol>

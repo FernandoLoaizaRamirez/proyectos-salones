@@ -45,9 +45,11 @@ export function Rompehielos({ evento }: { evento: string }) {
     <Card className="p-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-semibold">Encuentra a alguien que…</h2>
+          <h2 className="font-[family-name:var(--font-display)] text-xl font-semibold">
+            Encuentra a alguien que…
+          </h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Habla con los invitados y anota el nombre de quien cumple cada reto.
+            Rompe el hielo: acércate a la mesa de al lado y anota quién cumple cada reto.
           </p>
         </div>
         <button

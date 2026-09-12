@@ -26,21 +26,21 @@ const JUEGOS: {
   {
     id: "trivia",
     nombre: "Trivia de los novios",
-    descripcion: "¿Cuánto conoces a la pareja? Responde y sube al ranking.",
+    descripcion: "Pon a prueba lo que sabes de ellos y sube al ranking en vivo.",
     icono: Brain,
     acento: "text-primary",
   },
   {
     id: "bingo",
     nombre: "Bingo de la fiesta",
-    descripcion: "Marca los momentos de la fiesta y grita “bingo”.",
+    descripcion: "Marca cada momento según va pasando y grita “bingo”.",
     icono: LayoutGrid,
     acento: "text-green-600",
   },
   {
     id: "rompehielos",
     nombre: "Encuentra a alguien que…",
-    descripcion: "Conoce a otros invitados completando los retos.",
+    descripcion: "Anímate a platicar con quien tienes al lado. Así se conocen.",
     icono: Users,
     acento: "text-amber-600",
   },
@@ -73,8 +73,9 @@ export function DinamicasModulo({
 
   return (
     <div>
-      <p className="text-sm text-muted-foreground">
-        Elige un juego para animar {nombreEvento}.
+      <p className="font-[family-name:var(--font-display)] text-xl">Es momento de jugar</p>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Elige un juego y ayúdanos a animar {nombreEvento}.
       </p>
       <div className="mt-4 space-y-3">
         {JUEGOS.map((j) => {

@@ -128,7 +128,7 @@ export function MesasModulo({ evento }: { evento: string }) {
                 <div className="mx-auto mt-5 max-w-md text-left">
                   <p className="flex items-center justify-center gap-1.5 text-sm font-medium">
                     <Users className="size-4 text-primary" />
-                    {esMio ? "La compartes con" : "La comparte con"}
+                    {esMio ? "Esta noche compartes mesa con" : "Esta noche comparte mesa con"}
                   </p>
                   <ul className="mt-2 flex flex-wrap justify-center gap-1.5">
                     {companeros.map((c) => (
@@ -137,6 +137,9 @@ export function MesasModulo({ evento }: { evento: string }) {
                       </li>
                     ))}
                   </ul>
+                  <p className="mt-3 text-center text-xs text-muted-foreground">
+                    {esMio ? "Guárdenlos de vista: en las dinámicas de la noche, competirán como equipo." : "Su mesa competirá como equipo en las dinámicas de la noche."}
+                  </p>
                 </div>
               ) : null}
             </>
@@ -154,7 +157,7 @@ export function MesasModulo({ evento }: { evento: string }) {
           se quiere encontrar a alguien más. */}
       <Card className="p-6">
         <h3 className="font-semibold">
-          {protagonista ? "¿Buscas a alguien más?" : "Encuentra tu mesa"}
+          {protagonista ? "¿Buscas a alguien más?" : "¿Dónde te sientas esta noche?"}
         </h3>
         <p className="mt-1 text-sm text-muted-foreground">
           Escribe el nombre tal como aparece en la invitación.
@@ -200,7 +203,7 @@ export function MesasModulo({ evento }: { evento: string }) {
       <section>
         <h3 className="flex items-center gap-2 text-lg font-semibold">
           <Armchair className="size-5 text-primary" />
-          Las mesas del evento
+          Así se acomoda la noche
         </h3>
         <div className="mt-4 grid gap-3 sm:grid-cols-2 md:grid-cols-3">
           {mesasVista.map((m) => {

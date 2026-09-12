@@ -154,19 +154,19 @@ export function PaseModulo({ evento, nombreEvento }: { evento: string; nombreEve
     <div className="mx-auto max-w-sm">
       {esMuestra ? (
         <p className="mb-4 text-center text-sm text-muted-foreground">
-          Así se ve el pase de un invitado — cada quien recibe el suyo, con su nombre y su mesa.
+          Así se ve tu acceso — cada invitado recibe el suyo, con su nombre y su mesa.
         </p>
       ) : (
         <p className="mb-4 text-center text-sm text-muted-foreground">
-          Tu pase para {nombreEvento}
+          Tu acceso a {nombreEvento}
         </p>
       )}
 
       <BoletoPase pase={mesaViva !== null ? { ...pase, mesa: mesaViva } : pase} />
 
       <p className="mt-4 text-center text-xs text-muted-foreground">
-        Muestra el código en la entrada del evento. Puedes guardar una captura de pantalla: el
-        pase funciona igual sin conexión.
+        Muéstralo al llegar: con este código entras. Guarda una captura de pantalla si quieres —
+        funciona igual sin conexión.
       </p>
 
       {/*
@@ -178,7 +178,7 @@ export function PaseModulo({ evento, nombreEvento }: { evento: string; nombreEve
       {companeros.length > 0 ? (
         <div className="mt-6 rounded-[var(--radius)] border border-border bg-card p-5">
           <p className="flex items-center gap-1.5 text-sm font-medium">
-            <Users className="size-4 text-primary" /> La compartes con
+            <Users className="size-4 text-primary" /> Tu mesa la compartes con
           </p>
           <ul className="mt-2 flex flex-wrap gap-1.5">
             {companeros.map((nombre) => (
@@ -194,7 +194,7 @@ export function PaseModulo({ evento, nombreEvento }: { evento: string; nombreEve
         href={`/lugar${sufijo}`}
         className="mt-4 flex items-center justify-center gap-1.5 text-sm font-medium text-primary hover:underline"
       >
-        <MapPin className="size-4" /> Ver ubicación y cómo llegar
+        <MapPin className="size-4" /> Cómo llegar
       </Link>
     </div>
   );

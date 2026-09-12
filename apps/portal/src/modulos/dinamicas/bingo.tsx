@@ -54,9 +54,11 @@ export function Bingo({ evento }: { evento: string }) {
     <Card className="p-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-semibold">Bingo de la fiesta</h2>
+          <h2 className="font-[family-name:var(--font-display)] text-xl font-semibold">
+            Bingo de la fiesta
+          </h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Marca cada momento cuando ocurra. ¡Grita “bingo” al hacer una línea!
+            Marca cada momento según vaya pasando. ¡Grita “bingo” en cuanto hagas línea!
           </p>
         </div>
         <button

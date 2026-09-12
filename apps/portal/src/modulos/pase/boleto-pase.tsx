@@ -27,7 +27,7 @@ export function BoletoPase({ pase }: { pase: PaseInvitado }) {
       <div className="px-6 pt-5">
         <div className="flex items-center justify-between gap-3">
           <span className="min-w-0 truncate text-[0.7rem] uppercase tracking-[0.22em] text-muted-foreground">
-            Pase del evento
+            Tu acceso
           </span>
           <span
             className={

@@ -226,9 +226,11 @@ export function PlaylistModulo({
   return (
     <div className="space-y-8">
       <Card className="p-6">
-        <h2 className="text-lg font-semibold">Pide una canción</h2>
+        <h2 className="font-[family-name:var(--font-display)] text-lg font-semibold">
+          La música de esta noche
+        </h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Para el evento {nombreEvento}. ¡La música la elegimos entre todos!
+          Ayúdanos a elegir lo que vamos a bailar en {nombreEvento}.
         </p>
         <form onSubmit={agregar} className="mt-4 space-y-3">
           <input
@@ -269,11 +271,11 @@ export function PlaylistModulo({
               </>
             ) : agregada ? (
               <>
-                <Check className="size-4" /> ¡Agregada! Vota más abajo
+                <Check className="size-4" /> ¡Va en la lista! Vótala aquí abajo
               </>
             ) : (
               <>
-                <Plus className="size-4" /> Agregar a la lista
+                <Plus className="size-4" /> Pedir esta canción
               </>
             )}
           </Button>
@@ -282,7 +284,9 @@ export function PlaylistModulo({
 
       <section>
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Vota por tus favoritas</h2>
+          <h2 className="font-[family-name:var(--font-display)] text-lg font-semibold">
+            Lo que están pidiendo
+          </h2>
           {/* "0 en cola" con la lista todavía en camino contradice al aviso de
               abajo: mientras se siembra, mejor no decir nada. */}
           {pendientes.length === 0 && sembrando ? null : (
@@ -297,11 +301,11 @@ export function PlaylistModulo({
         {!cargado ? null : pendientes.length === 0 ? (
           sembrando ? (
             <p className="flex items-center justify-center gap-2 rounded-[var(--radius)] border border-dashed border-border py-10 text-center text-sm text-muted-foreground">
-              <Loader2 className="size-4 animate-spin" /> Trayendo las canciones…
+              <Loader2 className="size-4 animate-spin" /> Trayendo las peticiones…
             </p>
           ) : (
             <p className="rounded-[var(--radius)] border border-dashed border-border py-10 text-center text-sm text-muted-foreground">
-              Aún no hay canciones. ¡Sé el primero en pedir una!
+              Todavía nadie ha pedido canción. ¡Anímate a abrir la pista!
             </p>
           )
         ) : (

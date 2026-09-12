@@ -171,14 +171,14 @@ export function RsvpModulo({ evento, nombreEvento }: { evento: string; nombreEve
           {confirmo ? <PartyPopper className="size-7" /> : <Check className="size-7" />}
         </div>
         <h2 className="mt-5 text-2xl font-semibold tracking-tight">
-          {confirmo ? "¡Gracias por confirmar!" : "Gracias por avisarnos"}
+          {confirmo ? "Tu lugar está reservado" : "Gracias por avisarnos"}
         </h2>
         <p className="mt-2 text-muted-foreground">
           {confirmo
-            ? `Te esperamos, ${mia.nombre}: ${
+            ? `${mia.nombre}, nos dará mucho gusto tenerte en ${nombreEvento}: ${
                 mia.personas === 1 ? "quedó registrada 1 persona" : `quedaron registradas ${personasTexto(mia.personas)}`
               }.`
-            : `Qué pena que no puedas acompañarnos, ${mia.nombre}. ¡Gracias de todos modos!`}
+            : `Qué pena que no puedas acompañarnos en ${nombreEvento}, ${mia.nombre}. ¡Gracias de todos modos!`}
         </p>
         <Button variant="outline" className="mt-6" onClick={() => setEditando(true)}>
           <Pencil className="size-4" /> Cambiar mi respuesta
@@ -199,8 +199,8 @@ export function RsvpModulo({ evento, nombreEvento }: { evento: string; nombreEve
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
             {invitado
-              ? `Confirma tu lugar en ${nombreEvento}.`
-              : `Dinos si podrás venir a ${nombreEvento} y cuántos serán.`}
+              ? `${nombreEvento} estará feliz de compartir el día contigo. Confirma tu lugar.`
+              : `${nombreEvento} estará feliz de compartir el día contigo. Dinos si podrás venir y cuántos serán.`}
           </p>
         </div>
       </div>
@@ -247,14 +247,20 @@ export function RsvpModulo({ evento, nombreEvento }: { evento: string; nombreEve
                 : "border-border text-muted-foreground hover:text-foreground",
             )}
           >
-            No podré ir
+            No podré acompañarlos
           </button>
         </div>
+
+        {asiste === "si" ? (
+          <p className="text-center text-sm font-medium text-primary">
+            ¡Qué alegría! Ya te estamos esperando.
+          </p>
+        ) : null}
 
         {asiste === "si" && tope > 1 ? (
           <div>
             <label className="mb-1.5 block text-sm font-medium" htmlFor="rsvp-personas">
-              ¿Cuántas personas asistirán?
+              ¿Cuántas personas asistirán contigo?
             </label>
             <select
               id="rsvp-personas"

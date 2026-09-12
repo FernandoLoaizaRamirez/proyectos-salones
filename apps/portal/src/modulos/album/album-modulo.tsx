@@ -53,6 +53,7 @@ import {
   porFecha,
   type Foto,
 } from "./lib";
+import { tiempoRelativo } from "../muro/lib";
 import { usePerfil } from "@/lib/perfil";
 
 export function AlbumModulo({
@@ -383,9 +384,12 @@ export function AlbumModulo({
           deja, para que pueda agregar las fotos del fotógrafo después. */}
       {cerrado && !anfitrion ? (
         <div className="rounded-[var(--radius)] border border-border bg-muted/40 p-6 text-center">
-          <p className="font-medium">Este álbum ya está cerrado</p>
+          <p className="font-[family-name:var(--font-display)] text-lg font-semibold">
+            El álbum de {nombreEvento} ya se cerró
+          </p>
           <p className="mt-1 text-sm text-muted-foreground">
-            Ya no admite fotos nuevas, pero puedes seguir viéndolo y descargando lo que quieras.
+            Ya no se suman fotos nuevas, pero los recuerdos siguen aquí para verlos y descargarlos
+            cuando quieras.
           </p>
         </div>
       ) : (
@@ -405,14 +409,16 @@ export function AlbumModulo({
           arrastrando && "border-primary bg-muted",
         )}
       >
-        <div className="mx-auto flex max-w-sm flex-col items-center gap-3">
+        <div className="mx-auto flex max-w-sm flex-col items-center gap-3 text-center">
           <div className="grid size-12 place-items-center rounded-full bg-muted text-primary">
             <ImagePlus className="size-6" />
           </div>
           <div className="space-y-1">
-            <p className="font-medium">{conVideo ? "Sube tus fotos y videos" : "Sube tus fotos"}</p>
+            <h2 className="font-[family-name:var(--font-display)] text-xl font-semibold tracking-tight">
+              Los recuerdos de {nombreEvento}
+            </h2>
             <p className="text-sm text-muted-foreground">
-              Tus recuerdos de {nombreEvento}, junto a los de todos los invitados.
+              Comparte los momentos que estás viviendo, junto a los de todos los invitados.
             </p>
           </div>
           <Button onClick={() => inputRef.current?.click()} disabled={subiendo > 0}>
@@ -422,7 +428,7 @@ export function AlbumModulo({
               </>
             ) : (
               <>
-                <Camera className="size-4" /> {conVideo ? "Elegir archivos" : "Elegir fotos"}
+                <Camera className="size-4" /> {conVideo ? "Compartir fotos y videos" : "Compartir fotos"}
               </>
             )}
           </Button>
@@ -472,15 +478,15 @@ export function AlbumModulo({
       {mostrando.length === 0 ? (
         <EmptyState
           icon={<Camera className="size-8" />}
-          title="Todavía no hay fotos"
-          description="Sé el primero: sube una y aparecerá aquí, en el álbum de todos."
+          title="Todavía no hay recuerdos"
+          description={`Sé el primero en compartir uno: aparecerá aquí, en el álbum de ${nombreEvento}.`}
         />
       ) : (
         <div className="columns-2 gap-3 sm:columns-3 md:columns-4">
           {mostrando.map((f, i) => (
             <div
               key={f.id}
-              className="group relative mb-3 break-inside-avoid overflow-hidden rounded-[var(--radius)] border border-border"
+              className="group relative mb-3 break-inside-avoid overflow-hidden rounded-[var(--radius)] border border-border bg-card"
             >
               <button
                 type="button"
@@ -507,6 +513,11 @@ export function AlbumModulo({
                   />
                 )}
               </button>
+              {f.autor && f.fecha ? (
+                <p className="truncate px-2 py-1.5 text-xs text-muted-foreground">
+                  {f.autor} · {tiempoRelativo(f.fecha)}
+                </p>
+              ) : null}
               {puedeQuitar(f) ? (
                 <button
                   type="button"

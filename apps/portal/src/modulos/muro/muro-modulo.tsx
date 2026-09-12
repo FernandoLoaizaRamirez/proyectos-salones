@@ -295,9 +295,11 @@ export function MuroModulo({ evento, nombreEvento }: { evento: string; nombreEve
           <div className="mx-auto grid size-14 place-items-center rounded-full bg-green-500/15 text-green-600">
             <Check className="size-7" />
           </div>
-          <h2 className="mt-5 text-2xl font-semibold tracking-tight">¡Gracias, {enviado.nombre}!</h2>
+          <h2 className="mt-5 text-2xl font-semibold tracking-tight font-[family-name:var(--font-display)]">
+            ¡Gracias, {enviado.nombre}!
+          </h2>
           <p className="mt-2 text-muted-foreground">
-            Tu mensaje quedó en el muro de {nombreEvento}.
+            Tus palabras ya quedaron guardadas para {nombreEvento}.
           </p>
           {vistaPrevia ? (
             <img
@@ -320,10 +322,12 @@ export function MuroModulo({ evento, nombreEvento }: { evento: string; nombreEve
       ) : (
         <Card className="mx-auto w-full max-w-md p-6 sm:p-8">
           <div className="text-center">
-            <p className="text-sm text-muted-foreground">{nombreEvento}</p>
-            <h2 className="mt-1 text-2xl font-semibold tracking-tight">Déjales unas palabras</h2>
+            <p className="text-sm text-muted-foreground">Para {nombreEvento}</p>
+            <h2 className="mt-1 text-2xl font-semibold tracking-tight font-[family-name:var(--font-display)]">
+              Déjales unas palabras
+            </h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Firma el libro de recuerdos con tus buenos deseos.
+              Algo que puedan guardar para siempre.
             </p>
           </div>
 
@@ -408,9 +412,9 @@ export function MuroModulo({ evento, nombreEvento }: { evento: string; nombreEve
 
       {/* El muro en vivo */}
       <section>
-        <h3 className="flex items-center gap-2 text-lg font-semibold">
+        <h3 className="flex items-center gap-2 text-lg font-semibold font-[family-name:var(--font-display)]">
           <MessageSquare className="size-5 text-primary" />
-          Mensajes del evento
+          Lo que les están dejando
           {mensajes.length > 0 ? (
             <span className="text-sm font-normal text-muted-foreground">({mensajes.length})</span>
           ) : null}
@@ -423,7 +427,7 @@ export function MuroModulo({ evento, nombreEvento }: { evento: string; nombreEve
             </p>
           ) : (
             <p className="mt-3 text-sm text-muted-foreground">
-              Aún no hay mensajes. ¡Sé el primero en firmar!
+              Todavía no hay nada aquí. Sé el primero en dejarles unas palabras.
             </p>
           )
         ) : (

@@ -30,19 +30,24 @@ export function FaqModulo({ evento }: { evento: string }) {
   }
 
   return (
-    <div className="space-y-3">
-      {preguntas.map((p) => (
-        <details
-          key={p.pregunta}
-          className="group rounded-[var(--radius)] border border-border bg-card open:border-ring/60"
-        >
-          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 font-medium [&::-webkit-details-marker]:hidden">
-            {p.pregunta}
-            <ChevronDown className="size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />
-          </summary>
-          <p className="px-5 pb-5 text-sm leading-relaxed text-muted-foreground">{p.respuesta}</p>
-        </details>
-      ))}
+    <div className="space-y-5">
+      <h2 className="font-[family-name:var(--font-display)] text-2xl text-foreground">
+        Todo lo que quisieras preguntarnos
+      </h2>
+      <div className="space-y-3">
+        {preguntas.map((p) => (
+          <details
+            key={p.pregunta}
+            className="group rounded-[var(--radius)] border border-border bg-card open:border-ring/60"
+          >
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 font-medium [&::-webkit-details-marker]:hidden">
+              {p.pregunta}
+              <ChevronDown className="size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />
+            </summary>
+            <p className="px-5 pb-5 text-sm leading-relaxed text-muted-foreground">{p.respuesta}</p>
+          </details>
+        ))}
+      </div>
     </div>
   );
 }

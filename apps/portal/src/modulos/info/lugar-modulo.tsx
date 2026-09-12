@@ -28,8 +28,8 @@ export function LugarModulo({ evento }: { evento: string }) {
     return (
       <EmptyState
         icon={<MapPin className="size-8" />}
-        title="El lugar del evento se publicará pronto"
-        description="Los organizadores compartirán aquí las direcciones y cómo llegar."
+        title="Muy pronto sabrás dónde encontrarnos"
+        description="Aquí aparecerán la dirección y cómo llegar en cuanto estén listas."
       />
     );
   }
@@ -38,6 +38,7 @@ export function LugarModulo({ evento }: { evento: string }) {
 
   return (
     <div className="space-y-4">
+      <h2 className="font-[family-name:var(--font-display)] text-2xl font-semibold">Nos vemos aquí</h2>
       {sedes.map((sede) => {
         const mapa = enlaceComoLlegar(sede);
         const calendario = inv.fechaISO
@@ -80,7 +81,7 @@ export function LugarModulo({ evento }: { evento: string }) {
         );
       })}
       {inv.ciudad ? (
-        <p className="text-sm text-muted-foreground">La celebración es en {inv.ciudad}.</p>
+        <p className="text-sm text-muted-foreground">Te esperamos en {inv.ciudad}.</p>
       ) : null}
     </div>
   );

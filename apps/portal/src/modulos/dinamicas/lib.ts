@@ -207,6 +207,42 @@ export function puntosDeMesa(
 }
 
 /**
+ * EL PODIO ES POR MESA, NO SOLO POR PERSONA — "🥇 Mesa 8 — 380 puntos".
+ *
+ * Mismo criterio que `puntosDeMesa` (el MEJOR puntaje de cada jugador, para
+ * que repetir la partida no infle el marcador), pero para TODAS las mesas a
+ * la vez: cada mesa compite como equipo. Solo entran mesas con al menos un
+ * jugador reconocido — una mesa sin nadie que haya jugado no aparece.
+ */
+export function rankingPorMesa(
+  ranking: Jugador[],
+  mesas: MesaEvento[],
+  acomodo: InvitadoMesa[],
+): { mesa: string; puntos: number }[] {
+  if (mesas.length === 0 || acomodo.length === 0 || ranking.length === 0) return [];
+
+  // El mejor puntaje de cada jugador reconocido, una sola vez.
+  const mejorPorNombre = new Map<string, number>();
+  for (const j of ranking) {
+    const clave = normalizarNombre(j.nombre);
+    mejorPorNombre.set(clave, Math.max(mejorPorNombre.get(clave) ?? 0, j.aciertos));
+  }
+
+  const puntosPorMesaId = new Map<string, number>();
+  for (const a of acomodo) {
+    if (!a.mesaId) continue;
+    const puntos = mejorPorNombre.get(normalizarNombre(a.nombre));
+    if (puntos === undefined) continue;
+    puntosPorMesaId.set(a.mesaId, (puntosPorMesaId.get(a.mesaId) ?? 0) + puntos);
+  }
+
+  return mesas
+    .filter((m) => puntosPorMesaId.has(m.id))
+    .map((m) => ({ mesa: m.nombre, puntos: puntosPorMesaId.get(m.id) ?? 0 }))
+    .sort((a, b) => b.puntos - a.puntos);
+}
+
+/**
  * Ranking de muestra para que el tablero no se vea vacío en las vitrinas. Solo
  * para el evento "demo": en un evento real jamás se siembran jugadores falsos.
  */

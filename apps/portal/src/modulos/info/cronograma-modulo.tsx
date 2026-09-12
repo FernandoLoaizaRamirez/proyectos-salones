@@ -11,7 +11,7 @@
 import { CalendarClock } from "lucide-react";
 import { EmptyState } from "@salones/ui";
 import { useInvitacion } from "./use-invitacion";
-import { fechaLarga } from "./lib";
+import { fechaLarga, nombresInvitacion } from "./lib";
 
 export function CronogramaModulo({ evento }: { evento: string }) {
   const inv = useInvitacion(evento);
@@ -28,11 +28,17 @@ export function CronogramaModulo({ evento }: { evento: string }) {
   }
 
   const cuando = fechaLarga(inv.fechaISO);
+  const nombres = nombresInvitacion(inv);
 
   return (
     <div>
+      <h2 className="font-[family-name:var(--font-display)] text-2xl font-semibold">El gran día</h2>
+      <p className="mt-1 text-sm text-muted-foreground">
+        {nombres ? `Así se vive, hora por hora, el día de ${nombres}.` : "Así se vive, hora por hora, este día."}
+      </p>
+
       {cuando ? (
-        <p className="text-sm text-muted-foreground">
+        <p className="mt-4 text-sm text-muted-foreground">
           {cuando}
           {inv.ciudad ? ` · ${inv.ciudad}` : ""}
         </p>

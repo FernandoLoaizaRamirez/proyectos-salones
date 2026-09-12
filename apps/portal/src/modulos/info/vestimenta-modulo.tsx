@@ -35,8 +35,11 @@ export function VestimentaModulo({ evento }: { evento: string }) {
   return (
     <Card className="p-8 text-center">
       <Shirt className="mx-auto size-8 text-primary/70" />
+      <p className="mt-4 text-[0.7rem] font-medium uppercase tracking-[0.22em] text-muted-foreground">
+        Cómo vestir
+      </p>
       {inv.vestimenta ? (
-        <h2 className="mt-4 font-[family-name:var(--font-display)] text-3xl font-semibold tracking-tight">
+        <h2 className="mt-2 font-[family-name:var(--font-display)] text-3xl font-semibold tracking-tight">
           {inv.vestimenta}
         </h2>
       ) : null}
@@ -60,6 +63,9 @@ export function VestimentaModulo({ evento }: { evento: string }) {
           </div>
         </div>
       ) : null}
+      <p className="mx-auto mt-8 max-w-md text-sm text-muted-foreground">
+        Queremos que te sientas cómodo y elegante para celebrar con nosotros.
+      </p>
     </Card>
   );
 }

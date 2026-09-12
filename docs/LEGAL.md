@@ -89,25 +89,52 @@ salen es exactamente lo que no puede pasar.
 
 ## 3. Qué tienes que hacer tú
 
-### Ahora (5 minutos)
+### Los datos ya NO se editan en el código (cambió el 29 ago 2026)
 
-Rellenar `apps/catalogo/src/lib/legal.ts`:
+Hasta esa fecha, los datos del responsable vivían escritos en
+`apps/catalogo/src/lib/legal.ts`. Ahí estaba el fallo: el aviso publicado
+nombraba responsable al salón de **demostración** y daba el correo personal y el
+domicilio particular del proveedor. Con un cliente real, sus invitados leerían
+que sus datos los responde otro salón.
 
-```ts
-salon:     "Hacienda Santa Renata",     // el salón, no tú
-contacto:  "PENDIENTE",  // ← correo donde el SALÓN atiende a los invitados
-domicilio: "PENDIENTE",  // ← domicilio del SALÓN. La ley lo exige.
-```
+**Ahora los rellena cada salón, desde el panel:**
 
-Mientras digan `PENDIENTE`, las páginas muestran el aviso ámbar.
+> Panel → **Documentos legales** → razón social, domicilio y correo → **Publicar**
+
+Viven en la tabla `tenant_legal` (migración 0033) y llegan a las páginas por
+`evento-config?...&legal=1`. En el código ya no hay datos de nadie.
+
+Tres cosas que conviene saber:
+
+- **Mientras el salón no publique**, sus invitados leen un aviso correcto pero
+  impersonal: dice *"tu salón anfitrión"*, no inventa domicilio, y les dice a
+  quién acudir. Nunca aparece la palabra `PENDIENTE`.
+- **No se puede publicar a medias.** El CHECK `tl_publicado_completo` de la base
+  rechaza publicar sin razón social, sin domicilio o sin un correo con forma de
+  correo. La regla está en Postgres a propósito: PostgREST es público y un `if`
+  de la pantalla no es una regla (la lección de la 0016).
+- **Queda constancia de quién publicó un borrador**: `acepto_borrador_en` y
+  `acepto_borrador_por`. No dice "un abogado lo revisó" —sería falso, el texto es
+  el mismo para todos los salones—, dice que ESE responsable publicó sabiendo
+  que era un borrador, el día X. Eso es lo que protege al proveedor.
+
+Los datos del **proveedor** (nombre y dirección del sitio) sí siguen en el
+código, y es deliberado: son iguales para todos, y sacarlos de la base
+permitiría que un salón se pusiera a sí mismo como proveedor o se borrara la
+cláusula de encargado.
 
 ### Antes de cobrarle a alguien
 
-1. **Que un abogado revise los tres documentos.**
+1. **Que un abogado revise los tres documentos.** Es lo único de este bloque que
+   no puede hacer el software. Llévale [`PARA-EL-ABOGADO.md`](PARA-EL-ABOGADO.md).
+   Mientras no exista esa revisión, el salón ve el aviso de borrador en tres
+   sitios (la banda de su panel, la casilla obligatoria al publicar, y el
+   apartado 10 de los términos) — y el invitado NO lo ve, a propósito.
 2. **Añadir la cláusula de responsable/encargado** a tu contrato con el salón.
-3. Decidir tu política de conservación: cuántos días guardas el contenido después
-   del evento. Ahora mismo el texto dice *"un periodo razonable"*, que es un
-   marcador de posición: hay que poner un número.
+3. ~~Decidir tu política de conservación.~~ **Resuelto**: es un campo del panel
+   ("días que guardas el material tras el evento"). Si el salón lo rellena, su
+   aviso lo dice como un compromiso suyo; si lo deja vacío, el texto queda como
+   estaba. El sistema no borra nada solo, y el aviso no promete lo contrario.
 
 ## 4. Lo que sigue faltando
 
@@ -115,8 +142,8 @@ Esto cubre lo escrito. Quedan cosas que son **de sistema**, no de texto:
 
 - ~~No hay borrado ni entrega al cerrar un evento.~~ **Resuelto**: ya existe
   *Panel → Cerrar un evento*. Ver [`CIERRE-DE-EVENTO.md`](CIERRE-DE-EVENTO.md).
-  Queda pendiente poner un **número concreto de días** de conservación en el
-  texto del aviso (ahora dice "un periodo razonable").
+  ~~Queda pendiente poner un número concreto de días de conservación.~~
+  **Resuelto** (0033): es un campo por salón en Panel → Documentos legales.
 - **No hay registro de consentimiento.** No se guarda quién vio el aviso ni
   cuándo. Para el nivel de datos actual es defendible, pero si un día hace falta
   probarlo, no se puede.
@@ -134,6 +161,13 @@ Esto cubre lo escrito. Quedan cosas que son **de sistema**, no de texto:
   del responsable. Si alguien edita el texto y se carga una sección, salta.
 - `packages/ui/src/components/aviso-participacion.tsx` — el aviso del formulario.
   La dirección se puede cambiar con `NEXT_PUBLIC_LEGAL_URL`.
-- `apps/catalogo/src/lib/legal.ts` — los datos del salón + `camposPendientes()`
+- `packages/legal/src/salon.ts` — traduce la fila de `tenant_legal` a los datos
+  de los documentos. Ahí vive `MODELO_SALON` ("tu salón anfitrión"), que es el
+  candado contra publicar `PENDIENTE` en el hueco del nombre.
+- `apps/catalogo/src/lib/legal.ts` — de dónde salen los datos (ya NO los datos)
+- `apps/catalogo/src/lib/legal-salon.ts` — leer y guardar desde el panel
+- `apps/catalogo/src/app/panel/legal/page.tsx` — la pantalla del salón
+- `supabase/migrations/0033_legal_por_salon.sql` — la tabla, la RLS y el candado
+- Para dar de alta un salón nuevo: [`ALTA-DE-SALON.md`](ALTA-DE-SALON.md)
 
 Relacionado: [`CANDADO-FOTOS.md`](CANDADO-FOTOS.md), [`LLAVE-ANFITRION.md`](LLAVE-ANFITRION.md).

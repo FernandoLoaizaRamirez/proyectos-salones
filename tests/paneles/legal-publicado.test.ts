@@ -106,3 +106,38 @@ describe("Las páginas legales publicadas no filtran nada interno", () => {
     expect([...DOCUMENTOS].sort()).toEqual(["imagen", "privacidad", "terminos"]);
   });
 });
+
+/**
+ * EL CANDADO CONTRA EL DATO PERSONAL EN EL CÓDIGO.
+ * ---------------------------------------------------------------------------
+ * El 29 ago 2026 se descubrió, MIRANDO LA PÁGINA EN VIVO, que el aviso de
+ * privacidad publicado nombraba responsable del tratamiento al salón de
+ * DEMOSTRACIÓN y daba el correo personal (un gmail) y el DOMICILIO PARTICULAR
+ * de quien mantiene el proyecto — porque `apps/catalogo/src/lib/legal.ts` los
+ * tenía escritos como constante. Con un cliente real, sus invitados habrían
+ * leído que sus datos los responde otro salón.
+ *
+ * Ninguna prueba lo cazaba: la de arriba fija `salon` y solo varía los otros
+ * dos campos. Estas dos leen el archivo y se niegan a dejarlo volver.
+ */
+const LIB_LEGAL = join(__dirname, "..", "..", "apps", "catalogo", "src", "lib", "legal.ts");
+
+describe("En el código no vive el dato personal de nadie", () => {
+  it("`lib/legal.ts` no lleva ninguna dirección de correo escrita a mano", () => {
+    const fuente = readFileSync(LIB_LEGAL, "utf8");
+    // Se permite nombrar la variable del proveedor, pero NO un correo literal:
+    // el del proveedor sale de `vendedor` y el del salón, de la base.
+    const correos = fuente.match(/[\w.+-]+@[\w-]+\.[\w.]+/g) ?? [];
+    expect(correos, `hay correos escritos en el código: ${correos.join(", ")}`).toHaveLength(0);
+  });
+
+  it("`lib/legal.ts` no lleva un domicilio ni un salón escritos a mano", () => {
+    const fuente = readFileSync(LIB_LEGAL, "utf8");
+    // El domicilio que se retiró, y la forma típica de una dirección mexicana.
+    expect(fuente).not.toContain("Blvd. de la Pradera");
+    expect(fuente).not.toMatch(/C\.P\.\s*\d{5}/);
+    // Y la constante que lo empezó todo: los datos del responsable ya no se
+    // declaran aquí, se leen de `tenant_legal` (migración 0033).
+    expect(fuente).not.toMatch(/export\s+const\s+datosLegales\s*:/);
+  });
+});

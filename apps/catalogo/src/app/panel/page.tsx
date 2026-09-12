@@ -22,16 +22,15 @@ import {
   PackageCheck,
   Stethoscope,
   Users,
+  Scale,
 } from "lucide-react";
 import { Button, Card } from "@salones/ui";
 import { obtenerSupabase } from "@/lib/supabase";
 import { leerIdentidad, type Identidad } from "@/lib/sesion";
 import { TarjetaPersonalizacion } from "./tarjeta-personalizacion";
-import { camposPendientes } from "@/lib/legal";
+import { obtenerLegalSalon } from "@/lib/legal-salon";
+import { estadoLegal } from "@salones/legal";
 import { AvisoPendiente } from "../legal/aviso-pendiente";
-
-/** Qué datos legales del salón siguen sin rellenar. Vacío = listo. */
-const pendientesLegales = camposPendientes();
 
 /** Nombre bonito del rol para mostrar (los roles internos son owner/admin/staff). */
 function etiquetaRol(rol: Identidad["rol"]): string {
@@ -44,6 +43,15 @@ export default function Panel() {
   const [identidad, setIdentidad] = React.useState<Identidad | null>(null);
   const [salon, setSalon] = React.useState<string | null>(null);
   const [cargando, setCargando] = React.useState(true);
+  /*
+   * Qué datos legales le faltan A ESTE SALÓN.
+   *
+   * ⚠️ Antes esto era una constante de módulo (`camposPendientes()` sin
+   * argumentos) que miraba los datos QUEMADOS del salón de demostración: el
+   * panel de cualquier cliente enseñaba el estado de Hacienda Santa Renata.
+   * Ahora sale de `tenant_legal` con la sesión del staff (migración 0033).
+   */
+  const [pendientesLegales, setPendientesLegales] = React.useState<string[]>([]);
 
   React.useEffect(() => {
     const supabase = obtenerSupabase();
@@ -72,6 +80,21 @@ export default function Panel() {
           .eq("id", id.tenantId)
           .maybeSingle();
         setSalon((t as { nombre: string } | null)?.nombre ?? null);
+
+        const legal = await obtenerLegalSalon(id.tenantId);
+        // "fallo" (no se pudo leer) NO enciende el aviso: decirle a un salón
+        // que le faltan datos porque la red tropezó sería mentirle.
+        if (legal !== "fallo") {
+          setPendientesLegales(
+            legal?.publicado
+              ? []
+              : estadoLegal({
+                  salon: legal?.razonSocial,
+                  domicilio: legal?.domicilio,
+                  contacto: legal?.contacto,
+                }).pendientes,
+          );
+        }
       }
     });
   }, [router]);
@@ -169,6 +192,21 @@ export default function Panel() {
           </p>
         </div>
         <Link href="/panel/reportes">
+          <Button size="sm">Abrir</Button>
+        </Link>
+      </Card>
+
+      <Card className="mt-4 flex items-center gap-4 p-6">
+        <Scale className="size-8 shrink-0 text-primary" />
+        <div className="min-w-0 flex-1">
+          <h2 className="font-semibold">Documentos legales</h2>
+          <p className="text-sm text-muted-foreground">
+            {pendientesLegales.length > 0
+              ? "Tus invitados leen el aviso de privacidad de TU salón. Todavía le faltan datos."
+              : "El aviso de privacidad de tu salón, publicado con tus datos."}
+          </p>
+        </div>
+        <Link href="/panel/legal">
           <Button size="sm">Abrir</Button>
         </Link>
       </Card>

@@ -58,6 +58,10 @@ function resolverDeConfig(config: ConfigEventoCruda): Resuelto {
       datosEvento: {
         nombre: config.evento.nombre,
         fechaISO: config.evento.fecha ?? undefined,
+        // El codigo viaja dentro del tema para que el pie legal enlace al aviso
+        // de ESTE salon. Con esta linea quedan resueltas las 10 apps sueltas,
+        // porque todas pasan por CascaraEvento -> AppShell.
+        codigo: config.evento.codigo,
       },
     }),
     entitlements: resolveEntitlements(

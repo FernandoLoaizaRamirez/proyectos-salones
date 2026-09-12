@@ -21,11 +21,21 @@ import { cn } from "../lib/cn";
  */
 export function PieLegal({
   urlLegal,
+  evento,
   className,
   incluirTerminos = false,
 }: {
   /** Dónde viven los documentos. Por defecto, los del catálogo. */
   urlLegal?: string;
+  /**
+   * El código del evento. Con él, los enlaces llevan al aviso DEL SALÓN de
+   * este evento (`?e=<codigo>`); sin él, al documento de muestra.
+   *
+   * Hasta el 29 ago 2026 estos enlaces eran fijos, así que TODOS los invitados
+   * de TODOS los salones acababan en un aviso que nombraba responsable al
+   * salón de demostración. Cada salón publica los suyos (migración 0033).
+   */
+  evento?: string;
   className?: string;
   /**
    * Los términos son un contrato entre el salón y el proveedor: al invitado no
@@ -36,9 +46,14 @@ export function PieLegal({
 }) {
   const base = urlLegal ?? process.env.NEXT_PUBLIC_LEGAL_URL ?? "https://suite-salones.vercel.app/legal";
 
+  // Se valida con el mismo formato de código de la suite. Es un adorno de
+  // enlace, no un candado —quien decide qué se puede leer es el servidor—,
+  // pero no hay razón para dejar pasar cualquier cosa a una URL.
+  const cola = evento && /^[a-z0-9-]{1,60}$/i.test(evento) ? `?e=${encodeURIComponent(evento)}` : "";
+
   const enlace = (ruta: string, texto: string) => (
     <a
-      href={`${base}${ruta}`}
+      href={`${base}${ruta}${cola}`}
       target="_blank"
       rel="noopener noreferrer"
       /* `inline-block py-1.5`: con la letra chica del pie, estos enlaces medían

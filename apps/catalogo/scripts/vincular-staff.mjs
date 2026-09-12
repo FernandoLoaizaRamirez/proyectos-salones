@@ -15,19 +15,28 @@
  *
  * Es idempotente: correrlo dos veces deja el mismo resultado.
  *
+ * ⚠️ PARA DAR DE ALTA UN SALÓN NUEVO, usa `alta-salon.mjs`: hace esto y además
+ * crea el salón y la cuenta. Este script se queda como puerta de atrás para
+ * reparar altas viejas o cambiarle el rol a alguien.
+ *
  * ── Cómo correrlo ────────────────────────────────────────────────────────────
- *   SUPABASE_URL=...                (o NEXT_PUBLIC_SUPABASE_URL)
- *   SUPABASE_SERVICE_ROLE_KEY=...   (llave secreta; Project Settings → API)
- *   node apps/catalogo/scripts/vincular-staff.mjs --user=<uuid-del-usuario>
+ *   Lo más cómodo (funciona IGUAL en PowerShell y en bash), con las dos llaves
+ *   en el .env.local de la raíz:
+ *
+ *     node --env-file=.env.local apps/catalogo/scripts/vincular-staff.mjs --user=<uuid>
+ *
+ *   Si prefieres pasarlas a mano, OJO que la sintaxis cambia según la consola:
+ *     PowerShell : $env:SUPABASE_URL="..."; $env:SUPABASE_SERVICE_ROLE_KEY="..."; node ...
+ *     bash       : SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=... node ...
  *
  *   Opcionales:
  *     --tenant=<uuid>   salón (por defecto: el salón demo)
  *     --rol=owner       owner | admin | staff (por defecto: owner)
  */
 import { createClient } from "@supabase/supabase-js";
+import { ROLES, vincularStaff } from "./lib/vincular.mjs";
 
 const TENANT_DEMO = "d0000000-0000-4000-8000-000000000001";
-const ROLES = ["owner", "admin", "staff"];
 
 /** Lee un argumento --nombre=valor de la línea de comandos. */
 const arg = (nombre) => {
@@ -66,11 +75,6 @@ console.log(`   Usuario : ${USER_ID}`);
 console.log(`   Salón   : ${TENANT_ID}`);
 console.log(`   Rol     : ${ROL}\n`);
 
-// 0) El usuario debe existir en Supabase Auth.
-const { data: cuenta, error: eUser } = await admin.auth.admin.getUserById(USER_ID);
-if (eUser || !cuenta?.user)
-  abortar(`No encontré ese usuario en Supabase Auth: ${eUser?.message ?? "no existe"}.`);
-
 // 1) El salón (tenant) debe existir (migración 0002).
 const { data: salon, error: eTenant } = await admin
   .from("tenants")
@@ -80,24 +84,15 @@ const { data: salon, error: eTenant } = await admin
 if (eTenant) abortar(`Error consultando el salón: ${eTenant.message}`);
 if (!salon) abortar(`Ese salón (tenant) no existe: ${TENANT_ID}. ¿Aplicaste la migración 0002?`);
 
-// 2) Ligar usuario ↔ salón en tenant_members (idempotente por su llave primaria).
-const { error: eMember } = await admin
-  .from("tenant_members")
-  .upsert({ tenant_id: TENANT_ID, user_id: USER_ID, rol: ROL }, { onConflict: "tenant_id,user_id" });
-if (eMember) abortar(`No pude escribir en tenant_members: ${eMember.message}`);
+// 2) Ligarlo. El cuerpo vive en ./lib/vincular.mjs porque lo comparte con
+//    alta-salon.mjs: es el mismo código probado, no una copia.
+const r = await vincularStaff({ admin, userId: USER_ID, tenantId: TENANT_ID, rol: ROL });
+if (!r.ok) abortar(r.error);
 console.log("✅ tenant_members: usuario ligado al salón.");
-
-// 3) Grabar la identidad en app_metadata (viaja firmada dentro del token).
-//    Se preserva lo que ya hubiera (p. ej. datos del proveedor de login).
-const metaPrevio = cuenta.user.app_metadata ?? {};
-const { data: actualizado, error: eMeta } = await admin.auth.admin.updateUserById(USER_ID, {
-  app_metadata: { ...metaPrevio, tenant_id: TENANT_ID, rol: ROL },
-});
-if (eMeta) abortar(`No pude actualizar app_metadata: ${eMeta.message}`);
 console.log("✅ app_metadata: identidad grabada en el token.");
 
-// 4) Leer de vuelta y mostrar la prueba.
-const am = actualizado.user.app_metadata ?? {};
+// 3) Leer de vuelta y mostrar la prueba.
+const am = r.appMetadata;
 console.log("\n🔎 Comprobación (app_metadata del usuario):");
 console.log(`   tenant_id = ${am.tenant_id}`);
 console.log(`   rol       = ${am.rol}`);

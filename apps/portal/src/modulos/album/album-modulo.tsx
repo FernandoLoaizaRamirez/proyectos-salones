@@ -433,7 +433,7 @@ export function AlbumModulo({
             La app suelta `album-fotos` ya lo hacía; el portal —que es el
             enlace que de verdad se reparte por WhatsApp— no lo tenía.
           */}
-          <AvisoParticipacion accion="subir tus fotos" imagen className="max-w-md text-center" />
+          <AvisoParticipacion accion="subir tus fotos" imagen evento={evento} className="max-w-md text-center" />
           <input
             ref={inputRef}
             type="file"

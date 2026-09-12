@@ -20,6 +20,7 @@ export function AvisoParticipacion({
   accion = "participar",
   imagen = false,
   urlLegal,
+  evento,
   className,
 }: {
   /** Qué está a punto de hacer la persona: "subir tus fotos", "firmar", … */
@@ -38,6 +39,15 @@ export function AvisoParticipacion({
   imagen?: boolean;
   /** Dónde viven los documentos. Por defecto, los del catálogo. */
   urlLegal?: string;
+  /**
+   * El código del evento, para que el aviso que se abre sea el DEL SALÓN de
+   * este evento y no el documento de muestra (migración 0033).
+   *
+   * Importa más aquí que en el pie: este es el enlace que alguien abre JUSTO
+   * ANTES de entregar sus datos. Si ahí lee el nombre de otro salón, el
+   * consentimiento se apoya en un documento que no es el suyo.
+   */
+  evento?: string;
   className?: string;
 }) {
   const base =
@@ -45,11 +55,13 @@ export function AvisoParticipacion({
     process.env.NEXT_PUBLIC_LEGAL_URL ??
     "https://suite-salones.vercel.app/legal";
 
+  const cola = evento && /^[a-z0-9-]{1,60}$/i.test(evento) ? `?e=${encodeURIComponent(evento)}` : "";
+
   return (
     <p className={cn("text-xs leading-relaxed text-muted-foreground", className)}>
       Al {accion} aceptas el{" "}
       <a
-        href={`${base}/privacidad`}
+        href={`${base}/privacidad${cola}`}
         target="_blank"
         rel="noopener noreferrer"
         /* `inline-block py-1.5 -my-1.5`: estos enlaces median 16 px de alto y
@@ -65,7 +77,7 @@ export function AvisoParticipacion({
           {" "}
           y el{" "}
           <a
-            href={`${base}/imagen`}
+            href={`${base}/imagen${cola}`}
             target="_blank"
             rel="noopener noreferrer"
             /* `inline-block py-1.5 -my-1.5`: estos enlaces median 16 px de alto y

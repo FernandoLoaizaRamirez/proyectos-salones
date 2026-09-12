@@ -260,7 +260,7 @@ export function PlaylistModulo({
             maxLength={40}
           />
           {error ? <p className="text-sm text-red-600 dark:text-red-400">{error}</p> : null}
-          <AvisoParticipacion accion="pedir tu canción" className="text-center" />
+          <AvisoParticipacion accion="pedir tu canción" evento={evento} className="text-center" />
 
           <Button type="submit" className="w-full" disabled={enviando}>
             {enviando ? (

@@ -18,6 +18,7 @@ import {
 import { AvisoParticipacion, Button, Card, cn } from "@salones/ui";
 import {
   estaConectado,
+  eventoActual,
   huellaDeAutor,
   mensajeDeSubida,
   obtenerSync,
@@ -44,6 +45,24 @@ type Modo = "inicio" | "camara" | "resultado";
 type EstadoGuardar = "nada" | "guardando" | "guardada";
 
 export function PhotoboothCliente() {
+  /*
+   * El codigo del evento, SOLO para que el enlace del aviso de privacidad
+   * lleve al documento de ESTE salon (migracion 0033).
+   *
+   * `useSyncExternalStore` y no un efecto con setState: `eventoActual()` lee la
+   * direccion del navegador, que en el servidor no existe. Con la tercera
+   * funcion (la instantanea del servidor) el HTML sale vacio en los dos lados
+   * —sin desajuste de hidratacion— y en el navegador queda el codigo, sin el
+   * render en cascada que provoca poner el estado dentro de un efecto. El
+   * codigo no cambia mientras la pagina vive, asi que no hay a que suscribirse.
+   * Vacio = documento de muestra, que es correcto aunque sea impersonal.
+   */
+  const codigoEvento = React.useSyncExternalStore(
+    () => () => {},
+    () => eventoActual(),
+    () => "",
+  );
+
   // De qué evento es el booth y quién es este invitado (si llegó con su
   // enlace personal). En la vitrina, los dos caen a la muestra sin más.
   const { codigo, textos } = useEventoReal();
@@ -356,7 +375,7 @@ export function PhotoboothCliente() {
               consentimiento valga, la persona tiene que poder enterarse justo
               cuando entrega su foto — igual que en el álbum del portal.
             */}
-            <AvisoParticipacion accion="subir tu foto al álbum" imagen className="text-center" />
+            <AvisoParticipacion accion="subir tu foto al álbum" imagen evento={codigoEvento} className="text-center" />
             <Button
               onClick={() => void alGuardarEnAlbum()}
               variant="outline"

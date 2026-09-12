@@ -34,6 +34,12 @@ const TABLAS_SOLO_STAFF = [
   "tenant_entitlements",
   "event_overrides",
   "subscriptions",
+  // 0033. NO es una tabla más: aquí viven el domicilio fiscal y el correo ARCO
+  // de cada salón. Abierta a la llave pública sería la libreta de direcciones
+  // de todos los clientes — y delataría qué salones aún no cumplen. Por eso NO
+  // lleva `grant ... to anon`, a diferencia de `tenant_branding` (un logo sí es
+  // público). El invitado la recibe ya resuelta por `evento-config`.
+  "tenant_legal",
 ] as const;
 
 suite("RLS por tenant/rol: sigue cerrado al público (anon)", () => {

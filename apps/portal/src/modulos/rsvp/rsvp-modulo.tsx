@@ -281,7 +281,7 @@ export function RsvpModulo({ evento, nombreEvento }: { evento: string; nombreEve
         {/* Confirmar dice con quién vive y cuántos son: también es un dato suyo.
             Va ENCIMA del botón, no a su lado: metido en la misma fila se
             espachurraba en una columnita de tres palabras por renglón. */}
-        <AvisoParticipacion accion="confirmar tu asistencia" className="text-center" />
+        <AvisoParticipacion accion="confirmar tu asistencia" evento={evento} className="text-center" />
 
         <div className="flex gap-2">
           <Button type="submit" className="flex-1" disabled={guardando}>

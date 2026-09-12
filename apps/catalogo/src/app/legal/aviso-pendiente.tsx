@@ -28,9 +28,12 @@ export function AvisoPendiente({ campos, interno = false }: { campos: string[]; 
       </p>
       {interno ? (
         <p className="mt-2 text-sm text-amber-700/90 dark:text-amber-400/90">
-          Faltan por rellenar: {campos.join(", ")}. Se editan en{" "}
-          <code className="rounded bg-amber-500/15 px-1 py-0.5">src/lib/legal.ts</code>. Además, un
-          abogado debe revisar los textos antes de usarlos con un cliente real.
+          Faltan por rellenar: {campos.join(", ")}. Se capturan en{" "}
+          <a href="/panel/legal" className="underline underline-offset-2">
+            Panel → Documentos legales
+          </a>
+          , y hay que apretar Publicar. Además, un abogado debe revisar los textos antes de usarlos
+          con un cliente real.
         </p>
       ) : (
         <p className="mt-2 text-sm text-amber-700/90 dark:text-amber-400/90">

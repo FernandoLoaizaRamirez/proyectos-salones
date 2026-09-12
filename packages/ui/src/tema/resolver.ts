@@ -76,7 +76,7 @@ export function resolverTema(
   evento?: TemaEvento | null,
   opciones?: {
     origen?: "servidor" | "demo";
-    datosEvento?: { nombre?: string; fechaISO?: string };
+    datosEvento?: { nombre?: string; fechaISO?: string; codigo?: string };
   },
 ): TemaResuelto {
   const primarioDelEvento = limpiaColor(evento?.primario);
@@ -123,6 +123,7 @@ export function resolverTema(
         ? {
             nombre: opciones?.datosEvento?.nombre,
             fechaISO: opciones?.datosEvento?.fechaISO,
+            codigo: opciones?.datosEvento?.codigo,
             monograma: evento?.monograma,
             frase: evento?.frase,
             portadaUrl: limpiaUrl(evento?.portadaUrl),

@@ -389,7 +389,7 @@ export function MuroModulo({ evento, nombreEvento }: { evento: string; nombreEve
             {error ? <p className="text-sm text-red-600 dark:text-red-400">{error}</p> : null}
 
             {/* Lo que se escribe aquí se PROYECTA en el salón, con su nombre. */}
-            <AvisoParticipacion accion="dejar tu mensaje" imagen className="text-center" />
+            <AvisoParticipacion accion="dejar tu mensaje" imagen evento={evento} className="text-center" />
 
             <Button type="submit" className="w-full" disabled={procesandoFoto || enviando}>
               {enviando ? (

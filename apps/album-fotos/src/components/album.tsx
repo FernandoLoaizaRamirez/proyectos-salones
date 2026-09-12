@@ -53,6 +53,23 @@ export function Album() {
     estaConectado() && !esVitrina() ? [] : fotosEjemplo,
   );
   const [arrastrando, setArrastrando] = React.useState(false);
+  /*
+   * El codigo del evento, SOLO para que el enlace del aviso de privacidad
+   * lleve al documento de ESTE salon (migracion 0033).
+   *
+   * `useSyncExternalStore` y no un efecto con setState: `eventoActual()` lee la
+   * direccion del navegador, que en el servidor no existe. Con la tercera
+   * funcion (la instantanea del servidor) el HTML sale vacio en los dos lados
+   * —sin desajuste de hidratacion— y en el navegador queda el codigo, sin el
+   * render en cascada que provoca poner el estado dentro de un efecto. El
+   * codigo no cambia mientras la pagina vive, asi que no hay a que suscribirse.
+   * Vacio = documento de muestra, que es correcto aunque sea impersonal.
+   */
+  const codigoEvento = React.useSyncExternalStore(
+    () => () => {},
+    () => eventoActual(),
+    () => "",
+  );
   const [subiendo, setSubiendo] = React.useState(0);
   const [errorSubida, setErrorSubida] = React.useState("");
   const [porQuitar, setPorQuitar] = React.useState<Archivo | null>(null);
@@ -374,7 +391,12 @@ export function Album() {
             className="hidden"
             onChange={(e) => agregar(e.target.files)}
           />
-          <AvisoParticipacion accion="subir tus fotos" imagen className="max-w-md text-center" />
+          <AvisoParticipacion
+            accion="subir tus fotos"
+            imagen
+            evento={codigoEvento}
+            className="max-w-md text-center"
+          />
           {cerrado && anfitrion ? (
             <p className="text-xs text-muted-foreground">
               El álbum está cerrado para los invitados. Tú sí puedes seguir subiendo.

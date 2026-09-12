@@ -58,7 +58,10 @@ export function PieExperiencia({
         </p>
 
         <div className="mt-4">
-          <PieLegal />
+          {/* El código sale del tema ya resuelto: así el aviso de privacidad es
+              el DEL SALÓN de este evento sin que ninguna de las 13 apps tenga
+              que enterarse ni pasar una prop nueva. */}
+          <PieLegal evento={tema.evento?.codigo} />
         </div>
       </div>
     </footer>

@@ -102,6 +102,16 @@ export type DatosEventoTema = Pick<TemaEvento, "monograma" | "frase" | "portadaU
   nombre?: string;
   /** Fecha ISO (yyyy-mm-dd) si se conoce. */
   fechaISO?: string;
+  /**
+   * El código del evento (el del enlace del invitado).
+   *
+   * Viaja DENTRO del tema —y no como una prop nueva enhebrada por media
+   * docena de componentes— porque el tema ya llega resuelto a `AppShell` en
+   * las 13 apps. Con eso, el pie legal puede enlazar al aviso de privacidad
+   * DE ESTE salón (`/legal/privacidad?e=<codigo>`) sin tocar ni una de las
+   * apps. No se usa para nada más: es un adorno de enlace, no una llave.
+   */
+  codigo?: string;
 };
 
 /**

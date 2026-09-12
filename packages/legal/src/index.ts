@@ -37,6 +37,14 @@ export type DatosLegales = {
   sitio: string;
   /** Fecha de la última actualización, en formato legible (ej. "20 de julio de 2026"). */
   actualizado: string;
+  /**
+   * Cuántos días guarda el salón el material después del evento. OPCIONAL: sin
+   * él, el apartado 4 queda EXACTAMENTE como estaba (el contenido se borra al
+   * cerrar el evento, y el salón decide cuándo). Con él, el aviso añade el
+   * plazo máximo — que es lo que docs/LEGAL.md §3 llevaba anotado como
+   * pendiente.
+   */
+  diasConservacion?: number;
 };
 
 export type Seccion = { titulo: string; parrafos: string[] };
@@ -71,6 +79,21 @@ export const AVISO_BORRADOR =
   "Borrador de trabajo. Describe con honestidad cómo funciona el servicio, " +
   "pero todavía no lo ha revisado un abogado. No lo publiques como definitivo " +
   "sin esa revisión.";
+
+/**
+ * ¿Un abogado ya revisó estos textos?
+ *
+ * Vive aquí, junto a los textos, y NO por salón: el texto es EL MISMO para
+ * todos, así que un salón no podría "declarar revisado" lo que para otro sigue
+ * sin revisar. El día que un abogado firme, esto es UNA línea — y con ella
+ * desaparece solo el apartado 10 de los términos.
+ *
+ * ⚠️ Este aviso NO lo ve el invitado (ni en el aviso de privacidad ni en el de
+ * imagen): decirle a quien va a subir una foto que el documento no lo ha visto
+ * un abogado no le da ninguna herramienta y desacredita el texto que necesita
+ * creer. Lo ve el SALÓN, que es quien publica y quien responde.
+ */
+export const REVISADO_POR_ABOGADO = false;
 
 /** Las claves de los tres documentos, para las rutas y los enlaces. */
 export const DOCUMENTOS = ["privacidad", "terminos", "imagen"] as const;
@@ -135,6 +158,16 @@ export function avisoPrivacidad(d: DatosLegales): Documento {
         parrafos: [
           `El contenido de un evento se conserva mientras el evento sigue abierto. No se borra solo al cabo de un tiempo: se borra cuando ${d.salon} cierra el evento, y es ${d.salon} quien decide cuándo. Si te importa que no siga ahí, pídeselo.`,
           `Al cerrar el evento se entrega todo el material a ${d.salon} y a los anfitriones, y se elimina de nuestros sistemas: tanto los archivos como los registros.`,
+          // El plazo solo aparece si el salón lo declaró. Sin él, este apartado
+          // queda palabra por palabra como estaba, que es lo que las pruebas
+          // vivas fijan. Y se redacta como COMPROMISO DEL SALÓN, no como un
+          // borrado automático, porque el sistema no borra nada por su cuenta:
+          // decir lo contrario sería prometer en el aviso algo que no ocurre.
+          ...(typeof d.diasConservacion === "number" && d.diasConservacion > 0
+            ? [
+                `${d.salon} se ha fijado un plazo máximo de ${d.diasConservacion} días desde la fecha del evento para cerrarlo y borrar el material. Ese plazo es un compromiso del salón: el sistema no borra nada solo.`,
+              ]
+            : []),
           "Si pides que se retire una foto o un mensaje concreto durante el evento, deja de verse en el momento en todas las pantallas. El archivo en sí se termina de eliminar cuando se cierra el evento, en el borrado general.",
         ],
       },
@@ -270,6 +303,22 @@ export function terminosYCondiciones(d: DatosLegales): Documento {
             : `Última actualización: ${d.actualizado}. Contacto: ${d.contacto}.`,
         ],
       },
+      // El estado "sin abogado" va AQUÍ y en ningún otro documento: los
+      // términos son el contrato entre el salón y el proveedor —el documento
+      // del SALÓN—, y `PieLegal` ya los excluye del pie del invitado
+      // (`incluirTerminos = false` por defecto). Es a quien publica a quien hay
+      // que advertirle, no a quien sube una foto.
+      ...(REVISADO_POR_ABOGADO
+        ? []
+        : [
+            {
+              titulo: "10. Sobre estos textos",
+              parrafos: [
+                AVISO_BORRADOR,
+                "Están escritos para describir con honestidad lo que el sistema hace de verdad, y se pueden usar como punto de partida con un abogado. Cuando esa revisión exista, este apartado desaparece.",
+              ],
+            },
+          ]),
     ],
   };
 }
@@ -352,3 +401,17 @@ export function documento(clave: string, d: DatosLegales): Documento | null {
 export function todosLosDocumentos(d: DatosLegales): Documento[] {
   return [avisoPrivacidad(d), terminosYCondiciones(d), consentimientoImagen(d)];
 }
+
+/* ================================================================== */
+/* Los datos de UN salón concreto (migración 0033)                     */
+/* ================================================================== */
+
+/**
+ * `datosDelSalon`, `MODELO_SALON`, `estadoLegal`, `fechaLegible`…
+ *
+ * Viven en su propio archivo porque son la FRONTERA con la base (traducen una
+ * fila de `tenant_legal` a los `DatosLegales` que comen los tres documentos),
+ * mientras que este archivo son los TEXTOS. Se reexportan para que
+ * `@salones/legal` siga teniendo una sola puerta.
+ */
+export * from "./salon";

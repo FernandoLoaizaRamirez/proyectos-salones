@@ -92,6 +92,21 @@ responsabilidad que le corresponde a mi cliente.
 10. **¿Tengo que registrarme** ante alguna autoridad o hacer algún trámite formal
     para operar esto legalmente?
 
+11. **La casilla de "publico un borrador".** Mientras usted no revise estos
+    textos, cada salón solo puede publicarlos marcando una casilla que dice
+    *"entiendo que estos textos son un borrador que todavía no ha revisado un
+    abogado, y los publico bajo mi responsabilidad"*. El sistema guarda quién la
+    marcó y cuándo. **¿Es suficiente eso** para que la publicación sea del salón
+    y no mía? ¿Debería decir algo distinto?
+
+12. **Qué lee el invitado mientras su salón está incompleto.** Si un salón aún
+    no ha puesto su domicilio o su correo, el aviso no los inventa: dice que el
+    salón es el responsable, que el domicilio se añadirá en cuanto lo facilite,
+    y que mientras tanto se lo pida al personal. **¿Ese aviso incompleto es
+    válido**, o es preferible no publicar nada hasta tenerlo todo? (Hoy el
+    sistema impide *marcar como publicado* un aviso sin razón social, domicilio
+    y correo válido.)
+
 ---
 
 ## 4. Los documentos ya redactados (para revisar)

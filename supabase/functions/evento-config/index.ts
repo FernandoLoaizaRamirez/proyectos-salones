@@ -64,8 +64,19 @@ Deno.serve(async (req: Request) => {
   if (req.method !== "GET") return json({ error: "método no permitido" }, 405);
   if (!URL_SUPABASE || !SERVICE_ROLE) return json({ error: "función sin configurar" }, 500);
 
-  const codigo = new URL(req.url).searchParams.get("e") ?? "";
+  const parametros = new URL(req.url).searchParams;
+  const codigo = parametros.get("e") ?? "";
   if (!CODIGO_VALIDO.test(codigo)) return json({ error: "código inválido" }, 400);
+
+  // El bloque legal SOLO se sirve a quien lo pide con `&legal=1`, y el único
+  // que lo pide es el servidor del catálogo, que es el único que lo imprime.
+  //
+  // POR QUÉ LA BANDERA Y NO DEVOLVERLO SIEMPRE: `configEventoCruda`
+  // (packages/sync) devuelve este JSON CRUDO y `use-tema-evento` lo guarda
+  // ENTERO en el localStorage de cada invitado 10 minutos. Un campo nuevo aquí
+  // acabaría en cientos de teléfonos aunque nadie lo pinte — y el domicilio
+  // fiscal del salón no tiene nada que hacer ahí.
+  const quiereLegal = parametros.get("legal") === "1";
 
   try {
     // 1) El evento. El código del enlace es la llave.
@@ -121,7 +132,16 @@ Deno.serve(async (req: Request) => {
       fuentes?: string | null;
     };
 
-    const [tenants, ovSalon, ovEvento, brandings, be] = await Promise.all([
+    type FilaLegal = {
+      razon_social?: string | null;
+      domicilio?: string | null;
+      contacto?: string | null;
+      dias_conservacion?: number | null;
+      publicado?: boolean | null;
+      actualizado?: string | null;
+    };
+
+    const [tenants, ovSalon, ovEvento, brandings, be, tl] = await Promise.all([
       rest<{ nombre: string; plan_id: string | null }>(
         `tenants?id=eq.${evento.tenant_id}&select=nombre,plan_id&limit=1`,
       ),
@@ -135,6 +155,14 @@ Deno.serve(async (req: Request) => {
       rest<FilaBrandingEvento>(`event_branding?event_id=eq.${evento.id}&select=*&limit=1`)
         .then((filas) => filas[0] ?? null)
         .catch(() => null),
+      // Va DENTRO del Promise.all para no sumar un salto de latencia, y con el
+      // mismo `select=*` + `.catch` que `event_branding`: la función tiene que
+      // poder desplegarse ANTES o DESPUÉS de correr la 0033 sin tumbar nada.
+      quiereLegal
+        ? rest<FilaLegal>(`tenant_legal?tenant_id=eq.${evento.tenant_id}&select=*&limit=1`)
+            .then((filas) => filas[0] ?? null)
+            .catch(() => null)
+        : Promise.resolve(null),
     ]);
 
     const salon = tenants[0];
@@ -192,6 +220,51 @@ Deno.serve(async (req: Request) => {
             fuentes: be.fuentes ?? undefined,
           }
         : null,
+      // Solo con `&legal=1`. LAS REGLAS, y esta vez dicen lo que el código hace:
+      //
+      // 1) NINGÚN dato que el salón capturó sale hasta que él PUBLICA. Eso
+      //    incluye la RAZÓN SOCIAL, que al principio se dejó fuera del candado
+      //    y era el peor sitio para hacerlo: es el dato que nombra al
+      //    responsable, y en un salón que sea persona física es el nombre
+      //    completo de una persona. Mientras no publique, el nombre sale de la
+      //    marca comercial (`tenant_branding`, que YA es pública) o del nombre
+      //    del evento — nunca de un borrador a medias.
+      //
+      // 2) El TELÉFONO no sale nunca: ningún documento lo imprime. Se captura
+      //    en el panel porque el salón lo pide, pero publicar por un endpoint
+      //    sin llave un dato que nadie pinta es regalar superficie.
+      //
+      // 3) NUNCA salen `acepto_borrador_en` ni `acepto_borrador_por` (la
+      //    constancia interna del cliente).
+      //
+      // 4) SÍ sale `estado`, y hay que decirlo en voz alta en vez de fingir lo
+      //    contrario: la página lo necesita para elegir entre el documento de
+      //    muestra y el aviso de datos incompletos. Revela un bit —si ese salón
+      //    ya publicó o no—, el mismo bit que la regla 1 ya deja ver, y se
+      //    acepta a conciencia. `actualizado` sí se guarda hasta publicar: sin
+      //    publicación, la fecha honesta es la de los textos, no la del último
+      //    borrador que tocó el salón.
+      //
+      // La cadena de respaldo del nombre termina en `evento.nombre`, que
+      // SIEMPRE existe: por ahí no se puede colar un hueco.
+      ...(quiereLegal
+        ? {
+            legal: {
+              salon:
+                (tl?.publicado === true ? tl?.razon_social?.trim() : "") ||
+                b?.nombre ||
+                salon?.nombre ||
+                evento.nombre,
+              ...(tl?.publicado === true && tl?.domicilio ? { domicilio: tl.domicilio } : {}),
+              ...(tl?.publicado === true && tl?.contacto ? { contacto: tl.contacto } : {}),
+              ...(tl?.publicado === true && tl?.dias_conservacion
+                ? { diasConservacion: tl.dias_conservacion }
+                : {}),
+              actualizado: tl?.publicado === true ? (tl.actualizado ?? null) : null,
+              estado: tl?.publicado === true ? "publicado" : "incompleto",
+            },
+          }
+        : {}),
     });
   } catch {
     return json({ error: "no se pudo resolver la configuración" }, 502);

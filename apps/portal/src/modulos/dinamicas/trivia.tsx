@@ -93,7 +93,7 @@ export function Trivia({ evento }: { evento: string }) {
            * dato: el nombre es obligatorio para jugar y acaba escrito en el
            * marcador que se proyecta en el salón, a la vista de todos.
            */}
-          <AvisoParticipacion accion="jugar" className="text-center" />
+          <AvisoParticipacion accion="jugar" evento={evento} className="text-center" />
         </form>
       </Card>
     );

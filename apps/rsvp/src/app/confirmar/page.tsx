@@ -23,6 +23,24 @@ const RESPALDO = {
 
 export default function ConfirmarPage() {
   /*
+   * El codigo del evento, SOLO para que el enlace del aviso de privacidad
+   * lleve al documento de ESTE salon (migracion 0033).
+   *
+   * `useSyncExternalStore` y no un efecto con setState: `eventoActual()` lee la
+   * direccion del navegador, que en el servidor no existe. Con la tercera
+   * funcion (la instantanea del servidor) el HTML sale vacio en los dos lados
+   * —sin desajuste de hidratacion— y en el navegador queda el codigo, sin el
+   * render en cascada que provoca poner el estado dentro de un efecto. El
+   * codigo no cambia mientras la pagina vive, asi que no hay a que suscribirse.
+   * Vacio = documento de muestra, que es correcto aunque sea impersonal.
+   */
+  const codigoEvento = React.useSyncExternalStore(
+    () => () => {},
+    () => eventoActual(),
+    () => "",
+  );
+
+  /*
    * De QUIÉN es la boda y a QUIÉN le llega la confirmación. Antes esto salía
    * de la muestra quemada en el código: en un evento real, el invitado que
    * pulsaba "Confirmar" le escribía por WhatsApp al proveedor del software en
@@ -154,7 +172,7 @@ export default function ConfirmarPage() {
             <MessageCircle className="size-4" /> Confirmar
           </Button>
 
-          <AvisoParticipacion accion="confirmar" className="mt-3" />
+          <AvisoParticipacion accion="confirmar" evento={codigoEvento} className="mt-3" />
           <p className="mt-3 text-xs text-muted-foreground">
             Tu respuesta se enviará a los organizadores. Confirma antes del {evento.fechaLimite}.
           </p>

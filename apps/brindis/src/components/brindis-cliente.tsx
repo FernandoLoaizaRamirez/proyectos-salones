@@ -81,6 +81,24 @@ function dibujarCoverVideo(
 }
 
 export function BrindisCliente() {
+  /*
+   * El codigo del evento, SOLO para que el enlace del aviso de privacidad
+   * lleve al documento de ESTE salon (migracion 0033).
+   *
+   * `useSyncExternalStore` y no un efecto con setState: `eventoActual()` lee la
+   * direccion del navegador, que en el servidor no existe. Con la tercera
+   * funcion (la instantanea del servidor) el HTML sale vacio en los dos lados
+   * —sin desajuste de hidratacion— y en el navegador queda el codigo, sin el
+   * render en cascada que provoca poner el estado dentro de un efecto. El
+   * codigo no cambia mientras la pagina vive, asi que no hay a que suscribirse.
+   * Vacio = documento de muestra, que es correcto aunque sea impersonal.
+   */
+  const codigoEvento = React.useSyncExternalStore(
+    () => () => {},
+    () => eventoActual(),
+    () => "",
+  );
+
   // Con el Servicio gestionado el brindis viaja a la galería del anfitrión; sin
   // él se queda en este teléfono y se comparte por WhatsApp (ver src/lib/nube.ts).
   const conectado = estaConectado();
@@ -629,7 +647,7 @@ export function BrindisCliente() {
               ? `Al enviarlo, tu brindis se guarda junto con los de todos para que ${evento.nombre} los vea en un solo lugar.`
               : `Tu brindis se quedó en este teléfono. Compártelo para que llegue a ${evento.nombre}.`}
           </p>
-          <AvisoParticipacion accion="enviar tu brindis" imagen className="mt-2 text-center" />
+          <AvisoParticipacion accion="enviar tu brindis" imagen evento={codigoEvento} className="mt-2 text-center" />
         </div>
       ) : null}
 

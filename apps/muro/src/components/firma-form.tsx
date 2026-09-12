@@ -24,6 +24,24 @@ const campo =
 
 export function FirmaForm() {
   /*
+   * El codigo del evento, SOLO para que el enlace del aviso de privacidad
+   * lleve al documento de ESTE salon (migracion 0033).
+   *
+   * `useSyncExternalStore` y no un efecto con setState: `eventoActual()` lee la
+   * direccion del navegador, que en el servidor no existe. Con la tercera
+   * funcion (la instantanea del servidor) el HTML sale vacio en los dos lados
+   * —sin desajuste de hidratacion— y en el navegador queda el codigo, sin el
+   * render en cascada que provoca poner el estado dentro de un efecto. El
+   * codigo no cambia mientras la pagina vive, asi que no hay a que suscribirse.
+   * Vacio = documento de muestra, que es correcto aunque sea impersonal.
+   */
+  const codigoEvento = React.useSyncExternalStore(
+    () => () => {},
+    () => eventoActual(),
+    () => "",
+  );
+
+  /*
    * A QUIEN le llega el mensaje. Antes salia de la muestra quemada: en una
    * boda real, el invitado le escribia por WhatsApp al proveedor del
    * software en vez de a los novios.
@@ -286,7 +304,7 @@ export function FirmaForm() {
           )}
         </Button>
 
-        <AvisoParticipacion accion="dejar tu mensaje" imagen />
+        <AvisoParticipacion accion="dejar tu mensaje" imagen evento={codigoEvento} />
       </form>
     </Card>
   );

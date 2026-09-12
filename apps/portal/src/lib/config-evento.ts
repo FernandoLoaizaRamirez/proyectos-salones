@@ -197,7 +197,11 @@ export async function resolverConfigEvento(codigo: string): Promise<ConfigEvento
       // salón sin marca, el tema base — y todo pasa por el saneo.
       tema: resolverTema(datos.branding ?? { nombre: datos.evento.nombre }, datos.brandingEvento, {
         origen: "servidor",
-        datosEvento: { nombre: datos.evento.nombre, fechaISO: datos.evento.fecha ?? undefined },
+        datosEvento: {
+          nombre: datos.evento.nombre,
+          fechaISO: datos.evento.fecha ?? undefined,
+          codigo: datos.evento.codigo,
+        },
       }),
       estado: "ok",
     };

@@ -58,6 +58,11 @@ export const EVENTO_DEMO: TemaEvento = {
 export const DATOS_EVENTO_DEMO = {
   nombre: "Boda Ana & Rodrigo",
   fechaISO: "2027-03-20",
+  // El codigo del evento demo, para que el pie legal de una vitrina lleve al
+  // aviso de la hacienda de ficcion (que es lo que se ensena) y no al modelo
+  // generico. Las vitrinas por visitante (demo-xxxxxx) no viven en `events`,
+  // asi que la pagina legal las traduce a este mismo codigo.
+  codigo: "demo",
 };
 
 /** El tema demo YA fusionado, listo para pintar (vitrinas y modo local). */

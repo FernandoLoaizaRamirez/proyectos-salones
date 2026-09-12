@@ -19,6 +19,9 @@ allowBuilds:
 # Next publique versión es forzarlas desde aquí:
 #   · sharp   → 0.34.5 hereda 4 fallos de libvips (aviso ALTO; CVE-2026-33327,
 #               -33328, -35590 y -35591). Corregido en 0.35.0.
+#               12 sep 2026: Dependabot abrió otro aviso ALTO sobre libheif
+#               (GHSA-g89c-p67h-r497 y GHSA-2jg2-4ch7-h545) en todo lo anterior
+#               a 0.35.4. El tope sube de 0.35.0 a 0.35.4.
 #   · postcss → 8.4.31 permite XSS al no escapar "</style>" al escribir el CSS
 #               (aviso medio). Corregido en 8.5.10. Otra copia del árbol ya iba
 #               en 8.5.16; esto deja una sola versión, la sana.
@@ -32,14 +35,29 @@ allowBuilds:
 #               Van por separado y con la versión EXACTA a propósito: con ">="
 #               pnpm sube a la más nueva que cumpla y le mete la rama 5 a quien
 #               pide la 1, que es un cambio de major y puede romper el lint.
+#   · browserslist / baseline-browser-mapping → los arrastra @babel/core (vía
+#               eslint-plugin-react-hooks / eslint-config-next). 12 sep 2026,
+#               dos avisos de Dependabot:
+#                 - browserslist@4.28.6: escritura de prototipo con un
+#                   browserslist-stats.json manipulado (ALTO) y crecimiento de
+#                   memoria sin límite por consultas repetidas (ALTO).
+#                 - baseline-browser-mapping@2.10.44: el proceso se cae con una
+#                   entrada inválida (moderado).
+#               EXACTAS y no ">=": la 4.28.9 (la más nueva al momento de
+#               arreglar esto) pedía caniuse-lite@^1.0.30001810, que el
+#               registro de npm aún no tenía publicado — dejar el tope abierto
+#               habría hecho que la instalación fallara sola el día que salga
+#               una versión más nueva con el mismo problema.
 # Se fijan con ">=" para que un Next futuro que ya traiga versión sana no quede
 # frenado por este candado.
 overrides:
   typescript-eslint: 8.63.0
-  sharp: ">=0.35.0"
+  sharp: ">=0.35.4"
   postcss: ">=8.5.23"
   "brace-expansion@1": "1.1.18"
   "brace-expansion@5": "5.0.9"
+  browserslist: "4.28.7"
+  baseline-browser-mapping: "2.11.0"
 
 # Paquetes autorizados a correr su script de instalación (build). pnpm los bloquea
 # por defecto como medida de seguridad; aquí se permiten solo los de confianza:

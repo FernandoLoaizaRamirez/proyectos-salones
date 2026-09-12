@@ -17,6 +17,13 @@
  * escriba sus propias preguntas es un incremento posterior (vendrían en la
  * config del evento, igual que el branding).
  */
+import {
+  buscarEnAcomodo,
+  mesaDe,
+  normalizarNombre,
+  type InvitadoMesa,
+  type MesaEvento,
+} from "@salones/core";
 
 /** Colección compartida en el lugar central (la misma que usa `apps/dinamicas`). */
 export const COLECCION_RANKING = "ranking";
@@ -156,6 +163,47 @@ export function porPuntaje(a: Jugador, b: Jugador): number {
 /** Genera un id corto para un jugador nuevo. */
 export function nuevoIdJugador(): string {
   return "J-" + Math.random().toString(36).slice(2, 8).toUpperCase();
+}
+
+/**
+ * "TU MESA LLEVA N PUNTOS" — la trivia deja de ser un juego solo del
+ * individuo: junta al jugador con su mesa (por nombre, el mismo cruce que ya
+ * hace `PaseModulo`) y suma el mejor puntaje de cada compañero de mesa que
+ * también haya jugado.
+ *
+ * Por qué el MEJOR y no la suma de todas sus partidas: cada "Jugar otra vez"
+ * agrega una fila nueva al ranking (mismo nombre, otro id) — sumar todo
+ * premiaría a quien más veces repitió, no a quien mejor conoce a los novios.
+ *
+ * `null` cuando el jugador no tiene una mesa que se pueda afirmar sin duda
+ * (mismo criterio de `PaseModulo`: sin acomodo contratado, o nombre ambiguo).
+ */
+export function puntosDeMesa(
+  nombreJugador: string,
+  ranking: Jugador[],
+  mesas: MesaEvento[],
+  acomodo: InvitadoMesa[],
+): { mesa: string; puntos: number } | null {
+  if (!nombreJugador.trim() || mesas.length === 0 || acomodo.length === 0) return null;
+
+  const candidatos = buscarEnAcomodo(nombreJugador, acomodo);
+  const exacto = candidatos.find((c) => normalizarNombre(c.nombre) === normalizarNombre(nombreJugador));
+  const mio = exacto ?? candidatos[0] ?? null;
+  if (!mio?.mesaId) return null;
+  const mesa = mesaDe(mio, mesas);
+  if (!mesa) return null;
+
+  const nombresDeLaMesa = new Set(
+    acomodo.filter((a) => a.mesaId === mio.mesaId).map((a) => normalizarNombre(a.nombre)),
+  );
+  const mejorPorJugador = new Map<string, number>();
+  for (const j of ranking) {
+    const clave = normalizarNombre(j.nombre);
+    if (!nombresDeLaMesa.has(clave)) continue;
+    mejorPorJugador.set(clave, Math.max(mejorPorJugador.get(clave) ?? 0, j.aciertos));
+  }
+  const puntos = [...mejorPorJugador.values()].reduce((a, b) => a + b, 0);
+  return { mesa: mesa.nombre, puntos };
 }
 
 /**

@@ -5,10 +5,11 @@
  * compartido del evento; al terminar ve su lugar y el podio en vivo.
  */
 import * as React from "react";
-import { ArrowRight, Check, RefreshCw, Trophy, X } from "lucide-react";
+import { ArrowRight, Armchair, Check, RefreshCw, Trophy, X } from "lucide-react";
 import { Button, Card, cn, AvisoParticipacion } from "@salones/ui";
-import { TRIVIA_PREGUNTAS, porPuntaje } from "./lib";
+import { TRIVIA_PREGUNTAS, porPuntaje, puntosDeMesa } from "./lib";
 import { useRanking } from "./use-ranking";
+import { acomodoDelEvento, type InvitadoMesa, type MesaEvento } from "@/modulos/mesas/lib";
 import { guardarPerfil, usePerfil } from "@/lib/perfil";
 
 const campo =
@@ -30,6 +31,26 @@ export function Trivia({ evento }: { evento: string }) {
   const [elegida, setElegida] = React.useState<number | null>(null);
   const [aciertos, setAciertos] = React.useState(0);
   const [miId, setMiId] = React.useState<string | null>(null);
+  // Cuándo terminé de jugar — en estado, no en un ref: leerlo durante el
+  // render (como abajo, para armar `rankingConMiJugada`) es impuro con un
+  // ref, y `Date.now()` calculado en cada repintado también lo es.
+  const [finEn, setFinEn] = React.useState(0);
+  // La mesa y el acomodo: una lectura al abrir, igual que en `PaseModulo` — solo
+  // para calcular "tu mesa lleva N puntos" al terminar de jugar.
+  const [mesas, setMesas] = React.useState<MesaEvento[]>([]);
+  const [acomodo, setAcomodo] = React.useState<InvitadoMesa[]>([]);
+  React.useEffect(() => {
+    let vivo = true;
+    void acomodoDelEvento(evento).then((r) => {
+      if (vivo) {
+        setMesas(r.mesas);
+        setAcomodo(r.acomodo);
+      }
+    });
+    return () => {
+      vivo = false;
+    };
+  }, [evento]);
 
   const total = TRIVIA_PREGUNTAS.length;
   const pregunta = TRIVIA_PREGUNTAS[idx];
@@ -55,6 +76,7 @@ export function Trivia({ evento }: { evento: string }) {
       return;
     }
     setMiId(agregar(nombre.trim(), aciertos, total));
+    setFinEn(Date.now());
     setFase("fin");
   };
 
@@ -100,9 +122,23 @@ export function Trivia({ evento }: { evento: string }) {
   }
 
   if (fase === "fin") {
-    const ordenado = [...ranking].sort(porPuntaje);
+    /*
+     * `ranking` viene del sondeo (`useRanking`) y `agregar()` no lo actualiza
+     * local: mi propia partida tarda su vuelta al servidor y de regreso antes
+     * de aparecer aquí. Sin esto, "Vas en el lugar" y "tu mesa lleva N
+     * puntos" se calculaban SIN mi resultado recién jugado — mismo defecto
+     * que ya se arregló en el muro y la playlist (pintar ya, no esperar).
+     */
+    const yaLlego = ranking.some((j) => j.id === miId);
+    const rankingConMiJugada =
+      miId && !yaLlego
+        ? [...ranking, { id: miId, nombre, aciertos, total, fecha: finEn }]
+        : ranking;
+
+    const ordenado = [...rankingConMiJugada].sort(porPuntaje);
     const posicion = ordenado.findIndex((j) => j.id === miId) + 1;
     const podio = ordenado.slice(0, 5);
+    const miMesa = puntosDeMesa(nombre, rankingConMiJugada, mesas, acomodo);
     return (
       <Card className="p-6 text-center">
         <div className="mx-auto grid size-14 place-items-center rounded-full bg-primary/10 text-primary">
@@ -122,6 +158,15 @@ export function Trivia({ evento }: { evento: string }) {
           <p className="mt-3 text-sm">
             Vas en el lugar <span className="font-semibold text-primary">#{posicion}</span> del
             ranking.
+          </p>
+        ) : null}
+
+        {miMesa ? (
+          <p className="mt-2 flex items-center justify-center gap-1.5 text-sm">
+            <Armchair className="size-4 text-primary" />
+            Tu mesa (<span className="font-medium">{miMesa.mesa}</span>) lleva{" "}
+            <span className="font-semibold text-primary">{miMesa.puntos}</span>{" "}
+            {miMesa.puntos === 1 ? "punto" : "puntos"}.
           </p>
         ) : null}
 

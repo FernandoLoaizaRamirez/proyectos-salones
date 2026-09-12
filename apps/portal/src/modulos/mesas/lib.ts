@@ -8,6 +8,13 @@
  * igual que los demás módulos del portal.
  */
 import type { InvitadoMesa, MesaEvento } from "@salones/core";
+import {
+  COLECCION_ACOMODO,
+  COLECCION_MESAS,
+  normalizarAcomodoCrudo,
+  normalizarMesasCrudas,
+} from "@salones/core";
+import { obtenerSync, esVitrina } from "@salones/sync";
 
 export {
   COLECCION_ACOMODO,
@@ -78,4 +85,32 @@ export const SEMILLA_ACOMODO: InvitadoMesa[] = [
 /** Texto amable de lugares: "1 lugar" / "4 lugares". */
 export function lugaresTexto(n: number): string {
   return n === 1 ? "1 lugar" : `${n} lugares`;
+}
+
+/**
+ * LAS MESAS Y EL ACOMODO DE UN EVENTO — una lectura, con la semilla de
+ * muestra de respaldo en la vitrina. Es el mismo bloque que repetían por
+ * separado `LoTuyo`, `PaseModulo` y `MesasModulo`; ahora también lo usa la
+ * trivia (Ejemplo 6: "tu mesa lleva N puntos"), así que se centraliza aquí en
+ * vez de copiarlo por cuarta vez.
+ */
+export async function acomodoDelEvento(
+  evento: string,
+): Promise<{ mesas: MesaEvento[]; acomodo: InvitadoMesa[] }> {
+  try {
+    const sync = obtenerSync();
+    const [mesasCrudas, acomodoCrudo] = await Promise.all([
+      sync.listar(evento, COLECCION_MESAS),
+      sync.listar(evento, COLECCION_ACOMODO),
+    ]);
+    let mesas = normalizarMesasCrudas(mesasCrudas);
+    let acomodo = normalizarAcomodoCrudo(acomodoCrudo);
+    if (esVitrina(evento) && mesas.length === 0 && acomodo.length === 0) {
+      mesas = SEMILLA_MESAS;
+      acomodo = SEMILLA_ACOMODO;
+    }
+    return { mesas, acomodo };
+  } catch {
+    return { mesas: [], acomodo: [] };
+  }
 }

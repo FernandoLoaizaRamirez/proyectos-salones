@@ -3,7 +3,7 @@
 import * as React from "react";
 import { Check, X, MessageCircle } from "lucide-react";
 import { Button, Card, cn, AvisoParticipacion } from "@salones/ui";
-import { obtenerSync, eventoActual } from "@salones/sync";
+import { obtenerSync, eventoActual, idDeEjemplo } from "@salones/sync";
 import { CascaraEvento, useEventoReal } from "@salones/experiencia";
 import {
   decodificar,
@@ -67,8 +67,13 @@ export default function ConfirmarPage() {
     // este dispositivo; con el servicio gestionado llega solo al tablero del
     // anfitrión, junto con las de todos los demás invitados.
     try {
-      await obtenerSync().guardar(eventoActual(), COLECCION_RESPUESTAS, {
-        id: inv.id,
+      const evt = eventoActual();
+      // El enlace que comparte el organizador lleva el id TAL CUAL (ver
+      // `compartir` en RsvpCliente) — aquí se le pega el mismo sufijo de
+      // vitrina que usa su tablero, para que la respuesta caiga en la fila que
+      // él está mirando y no en la de otra vitrina con el mismo id de muestra.
+      await obtenerSync().guardar(evt, COLECCION_RESPUESTAS, {
+        id: idDeEjemplo(inv.id, evt),
         estado,
         personas: p,
       });

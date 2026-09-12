@@ -195,6 +195,19 @@ export function PasesCliente() {
       setFormError("No pudimos guardar. Revisa tu conexión e inténtalo de nuevo.");
       return;
     }
+    /*
+     * Se pinta YA, sin esperar al sondeo — mismo arreglo que ya llevan el muro
+     * y la playlist. El sondeo del servidor tarda hasta 3 s (15 s si la
+     * pestaña no está al frente): sin esto, quien agrega un invitado en plena
+     * fiesta ve el formulario limpiarse y la lista SIN CAMBIOS durante ese
+     * rato, y no hay forma de saber si de verdad se guardó o hay que
+     * repetirlo. El sondeo, cuando llegue, trae exactamente esta misma fila.
+     */
+    setInvitados((prev) =>
+      anterior
+        ? prev.map((i) => (i.id === inv.id ? inv : i))
+        : [inv, ...prev.filter((i) => i.id !== inv.id)],
+    );
     setForm({ nombre: "", mesa: "", personas: "2", tipo: "General" });
     setEditId(null);
   };

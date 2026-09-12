@@ -48,6 +48,25 @@ export function RsvpCliente() {
   const estadosRef = React.useRef<Record<string, Respuesta>>({});
   estadosRef.current = estados;
 
+  // El código de ESTE visitante (su vitrina propia, o el evento real si llegó
+  // con `?e=`). Empieza en null y se fija tras montar — el servidor no conoce
+  // la URL del navegador, y usarla antes desincronizaría la hidratación.
+  const [eventoId, setEventoId] = React.useState<string | null>(null);
+  /**
+   * El id con el que ESTE invitado vive en el sync, para ESTE evento.
+   *
+   * Los 8 invitados de muestra (`invitadosIniciales`) traen ids FIJOS
+   * ("IN-1042"…) — los mismos para cualquiera que abra la app. La llave
+   * primaria de la base es GLOBAL (no por evento), así que sin esto dos
+   * vitrinas distintas leerían y sobrescribirían la MISMA fila de Ana Herrera
+   * Medina. `idDeEjemplo` le pega el sufijo de la vitrina — y no hace nada en
+   * un evento real (no empieza con "demo-").
+   */
+  const idSync = React.useCallback(
+    (id: string) => (eventoId ? idDeEjemplo(id, eventoId) : id),
+    [eventoId],
+  );
+
   const [form, setForm] = React.useState({ nombre: "", cupos: "2" });
   const [editId, setEditId] = React.useState<string | null>(null);
   const [formError, setFormError] = React.useState("");
@@ -88,6 +107,7 @@ export function RsvpCliente() {
     // navegador, que en el servidor todavía no existen.
     setAnfitrion(esAnfitrion());
     const eventoId = eventoActual();
+    setEventoId(eventoId);
     const sync = obtenerSync();
     const cancelar = sync.suscribir<RespuestaItem>(eventoId, COLECCION_RESPUESTAS, setRespuestas);
     /*
@@ -111,12 +131,12 @@ export function RsvpCliente() {
     return cancelar;
   }, []);
 
-  const estadoDe = (id: string): Estado => estados[id]?.estado ?? EstadoRSVP.Pendiente;
+  const estadoDe = (id: string): Estado => estados[idSync(id)]?.estado ?? EstadoRSVP.Pendiente;
 
   // Confirmaciones que llegaron por el enlace GENERAL del evento (el portal del
   // invitado), de gente que no estaba en esta lista: no tienen renglón propio,
   // así que se muestran aparte para que no se pierdan.
-  const idsEnLista = new Set(invitados.map((i) => i.id));
+  const idsEnLista = new Set(invitados.map((i) => idSync(i.id)));
   const sueltas = respuestas.filter((r) => !idsEnLista.has(r.id));
   const personasSueltas = sueltas
     .filter((r) => r.estado === EstadoRSVP.Confirmado)
@@ -139,7 +159,7 @@ export function RsvpCliente() {
   const confirmados = invitados.filter((i) => estadoDe(i.id) === EstadoRSVP.Confirmado);
   const rechazados = invitados.filter((i) => estadoDe(i.id) === EstadoRSVP.Rechazado);
   const pendientes = invitados.length - confirmados.length - rechazados.length;
-  const personasConfirmadas = confirmados.reduce((s, i) => s + (estados[i.id]?.personas ?? 0), 0);
+  const personasConfirmadas = confirmados.reduce((s, i) => s + (estados[idSync(i.id)]?.personas ?? 0), 0);
   const progreso = invitados.length ? Math.round((confirmados.length / invitados.length) * 100) : 0;
 
   // --- Organizador: alta / edición / borrado ---
@@ -169,7 +189,7 @@ export function RsvpCliente() {
   const eliminar = async (inv: Invitado) => {
     setInvitados((l) => l.filter((i) => i.id !== inv.id));
     try {
-      await obtenerSync().eliminar(eventoActual(), COLECCION_RESPUESTAS, inv.id);
+      await obtenerSync().eliminar(eventoActual(), COLECCION_RESPUESTAS, idSync(inv.id));
       setErrorQuitar("");
     } catch {
       setErrorQuitar(
@@ -179,17 +199,14 @@ export function RsvpCliente() {
   };
 
   const marcar = (inv: Invitado, estado: Estado) => {
+    const id = idSync(inv.id);
     const personas =
-      estado === EstadoRSVP.Confirmado ? estadosRef.current[inv.id]?.personas || inv.cupos : 0;
-    void obtenerSync().guardar(eventoActual(), COLECCION_RESPUESTAS, {
-      id: inv.id,
-      estado,
-      personas,
-    });
+      estado === EstadoRSVP.Confirmado ? estadosRef.current[id]?.personas || inv.cupos : 0;
+    void obtenerSync().guardar(eventoActual(), COLECCION_RESPUESTAS, { id, estado, personas });
   };
   const cambiarPersonas = (id: string, personas: number) => {
     void obtenerSync().guardar(eventoActual(), COLECCION_RESPUESTAS, {
-      id,
+      id: idSync(id),
       estado: EstadoRSVP.Confirmado,
       personas,
     });
@@ -323,7 +340,7 @@ export function RsvpCliente() {
                       </div>
                       <div className="text-sm text-muted-foreground">
                         {conf
-                          ? `${estados[inv.id]?.personas ?? 0} de ${inv.cupos} personas`
+                          ? `${estados[idSync(inv.id)]?.personas ?? 0} de ${inv.cupos} personas`
                           : `Hasta ${inv.cupos} personas`}
                       </div>
                     </div>
@@ -332,7 +349,7 @@ export function RsvpCliente() {
                         <select
                           aria-label="Personas que asistirán"
                           className="min-h-10 rounded-[var(--radius)] border border-border bg-background px-2 py-1.5 text-sm"
-                          value={String(estados[inv.id]?.personas ?? inv.cupos)}
+                          value={String(estados[idSync(inv.id)]?.personas ?? inv.cupos)}
                           onChange={(e) => cambiarPersonas(inv.id, parseInt(e.target.value, 10))}
                         >
                           {Array.from({ length: inv.cupos }, (_, i) => String(i + 1)).map((n) => (

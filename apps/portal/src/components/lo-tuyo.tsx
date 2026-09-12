@@ -1,27 +1,31 @@
 "use client";
 
 /**
- * LO TUYO — la franja personal de la portada del evento.
+ * LO TUYO — tu lugar en esta fiesta, no una lista de apps.
  *
- * La portada dejaba al invitado en la puerta: nombre del evento, cuenta
- * regresiva y tarjetas, pero nada SUYO. Aquí se junta lo que los módulos ya
- * saben de este teléfono: qué contestó en el RSVP (su recordatorio local), en
- * qué mesa va (el acomodo del organizador) y qué sigue en la fiesta (el
- * itinerario de la invitación). Nada se pregunta de nuevo: son las mismas
- * fuentes de los módulos, pintadas en la entrada.
+ * Antes esto era una rejilla de hasta 3 tarjetas sueltas (asistencia, mesa,
+ * cronograma) — cada una su propio icono, su propia frase, su propio enlace:
+ * exactamente la sensación de "3 mini-aplicaciones" que el rediseño vino a
+ * quitar. Ahora es la MISMA historia de un invitado real:
  *
- * Cada pieza aparece SOLO si su experiencia está contratada (el mismo filtro
- * de las tarjetas); sin ninguna, la franja entera no se pinta. Y sin datos
- * personales todavía, cada pieza invita en vez de fingir: "¿Nos acompañas?".
+ *   ¿confirmaste?  →  si no, es lo único que se pregunta.
+ *   ya confirmaste  →  entonces lo que sigue es UNA cosa: tu pase (con tu
+ *                       mesa adentro — ver `PaseModulo`, que ya los junta).
+ *
+ * El cronograma se movió a su propia sección ("El gran día", en
+ * `PortalHome`): merece más que una tarjetita, y no es "lo tuyo" — es de
+ * todos. Cada pieza aparece SOLO si su experiencia está contratada (el mismo
+ * filtro de siempre); sin ninguna, la franja entera no se pinta.
  */
 import * as React from "react";
 import Link from "next/link";
-import { Armchair, CalendarCheck, CalendarClock, ChevronRight } from "lucide-react";
+import { Armchair, CalendarCheck, PartyPopper, QrCode } from "lucide-react";
 import {
   COLECCION_ACOMODO,
   COLECCION_MESAS,
   FEATURES_CONOCIDAS as F,
   buscarEnAcomodo,
+  fechaLarga,
   mesaDe,
   normalizarAcomodoCrudo,
   normalizarMesasCrudas,
@@ -32,18 +36,7 @@ import { obtenerSync, esVitrina } from "@salones/sync";
 import { usePerfil } from "@/lib/perfil";
 import { claveMiRespuesta, EstadoRSVP, type RespuestaItem } from "@/modulos/rsvp/lib";
 import { SEMILLA_ACOMODO, SEMILLA_MESAS } from "@/modulos/mesas/lib";
-import { cargarInvitacion, loQueSigue, type Invitacion } from "@/modulos/info/lib";
 import type { ConfigEvento } from "@/lib/config-evento";
-
-type Pieza = {
-  clave: string;
-  href: string;
-  icono: React.ComponentType<{ className?: string }>;
-  etiqueta: string;
-  valor: string;
-  /** Sin dato personal todavía: se pinta como invitación, no como hecho. */
-  invita?: boolean;
-};
 
 export function LoTuyo({ config }: { config: ConfigEvento }) {
   const evento = config.codigo;
@@ -51,9 +44,6 @@ export function LoTuyo({ config }: { config: ConfigEvento }) {
   const [lista, setLista] = React.useState(false);
   const [mia, setMia] = React.useState<RespuestaItem | null>(null);
   const [mesa, setMesa] = React.useState<string | null | "sin-asignar">(null);
-  const [inv, setInv] = React.useState<Invitacion | null>(null);
-  /** El reloj se enciende tras montar (mismo motivo que la cuenta regresiva). */
-  const [ahora, setAhora] = React.useState<Date | null>(null);
 
   // Mi respuesta del RSVP: el recordatorio local que guarda el módulo.
   React.useEffect(() => {
@@ -63,7 +53,6 @@ export function LoTuyo({ config }: { config: ConfigEvento }) {
     } catch {
       setMia(null);
     }
-    setAhora(new Date());
     setLista(true);
   }, [evento]);
 
@@ -107,101 +96,72 @@ export function LoTuyo({ config }: { config: ConfigEvento }) {
     };
   }, [evento, perfil]);
 
-  // Lo que sigue: el itinerario de la invitación (o el de la muestra).
-  React.useEffect(() => {
-    let vivo = true;
-    cargarInvitacion(evento).then((resultado) => {
-      if (vivo) setInv(resultado);
-    });
-    return () => {
-      vivo = false;
-    };
-  }, [evento]);
-
   if (!lista) return null;
 
   const sufijo = evento && evento !== "demo" ? `?e=${encodeURIComponent(evento)}` : "";
-  const piezas: Pieza[] = [];
+  const tieneRsvp = tieneFuncion(config.entitlements, F.Rsvp);
+  const tienePaseOMesa =
+    tieneFuncion(config.entitlements, F.Pase) || tieneFuncion(config.entitlements, F.Mesas);
 
-  if (tieneFuncion(config.entitlements, F.Rsvp)) {
-    const confirmada = mia?.estado === EstadoRSVP.Confirmado;
-    const rechazada = mia?.estado === EstadoRSVP.Rechazado;
-    piezas.push({
-      clave: "rsvp",
-      href: `/rsvp${sufijo}`,
-      icono: CalendarCheck,
-      etiqueta: "Tu asistencia",
-      valor: confirmada
-        ? `Confirmada · ${mia!.personas} ${mia!.personas === 1 ? "persona" : "personas"}`
-        : rechazada
-          ? "Avisaste que no irás"
-          : "¿Nos acompañas?",
-      invita: !confirmada && !rechazada,
-    });
-  }
+  const confirmada = mia?.estado === EstadoRSVP.Confirmado;
+  const rechazada = mia?.estado === EstadoRSVP.Rechazado;
+  // Sin RSVP contratado no hay nada que confirmar: el pase se enseña directo.
+  const puedeVerPase = tienePaseOMesa && (!tieneRsvp || confirmada);
 
-  if (tieneFuncion(config.entitlements, F.Mesas)) {
-    piezas.push({
-      clave: "mesas",
-      href: `/mesas${sufijo}`,
-      icono: Armchair,
-      etiqueta: "Tu mesa",
-      valor:
-        mesa && mesa !== "sin-asignar"
-          ? mesa
-          : mesa === "sin-asignar"
-            ? "Aún sin asignar"
-            : "Encuéntrala aquí",
-      invita: !mesa || mesa === "sin-asignar",
-    });
-  }
-
-  if (tieneFuncion(config.entitlements, F.Cronograma) && inv && ahora) {
-    const sigue = loQueSigue(inv, ahora);
-    if (sigue) {
-      piezas.push({
-        clave: "cronograma",
-        href: `/cronograma${sufijo}`,
-        icono: CalendarClock,
-        etiqueta: sigue.yaEmpezo ? "Ahora sigue" : "La celebración empieza con",
-        valor: [sigue.momento.titulo, sigue.momento.hora].filter(Boolean).join(" · "),
-      });
-    }
-  }
-
-  if (piezas.length === 0) return null;
+  if (!tieneRsvp && !puedeVerPase) return null;
 
   return (
-    // `grid-cols-1` EXPLÍCITO: sin columna declarada, el track implícito se
-    // dimensiona al min-content del texto con `truncate` (nowrap) y una mesa
-    // de nombre largo ENSANCHA la página en el teléfono — el fallo móvil nº1
-    // de la casa. Con minmax(0,1fr) el track topa y la elipsis trabaja.
-    <div className="mb-12 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-      {piezas.map((p) => (
+    <div className="mb-12">
+      {tieneRsvp && !confirmada ? (
         <Link
-          key={p.clave}
-          href={p.href}
-          className="group flex items-center gap-3 rounded-[var(--radius)] border border-border bg-card px-4 py-3 transition hover:border-ring hover:shadow-sm"
+          href={`/rsvp${sufijo}`}
+          className="group flex items-center gap-4 rounded-[var(--radius)] border border-border bg-card p-5 transition hover:border-ring hover:shadow-sm"
         >
-          <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-            <p.icono className="size-4" />
+          <span className="inline-flex size-11 shrink-0 items-center justify-center rounded-[var(--radius)] bg-primary/10 text-primary ring-1 ring-primary/15">
+            <CalendarCheck className="size-5" />
           </span>
           <span className="min-w-0 flex-1">
-            <span className="block text-[0.65rem] font-medium uppercase tracking-[0.18em] text-muted-foreground">
-              {p.etiqueta}
+            <span className="block font-medium">
+              {rechazada ? "Avisaste que no vienes" : "¿Nos acompañas?"}
             </span>
-            <span
-              className={[
-                "block truncate text-sm",
-                p.invita ? "text-muted-foreground" : "font-medium",
-              ].join(" ")}
-            >
-              {p.valor}
+            <span className="block text-sm text-muted-foreground">
+              {rechazada ? "¿Cambiaste de opinión? Puedes actualizar tu respuesta." : "Confirma tu lugar en la fiesta."}
             </span>
           </span>
-          <ChevronRight className="size-4 shrink-0 text-muted-foreground transition group-hover:text-foreground" />
         </Link>
-      ))}
+      ) : null}
+
+      {puedeVerPase ? (
+        <div className={tieneRsvp && !confirmada ? "mt-3" : undefined}>
+          {confirmada && config.fecha ? (
+            <p className="mb-3 flex items-center gap-1.5 text-sm font-medium text-primary">
+              <PartyPopper className="size-4" /> ¡Nos vemos el {fechaLarga(config.fecha)}!
+            </p>
+          ) : null}
+          <Link
+            href={`/pase${sufijo}`}
+            className="group flex items-center gap-4 rounded-[var(--radius)] border border-border bg-card p-5 transition hover:border-ring hover:shadow-sm"
+          >
+            <span className="inline-flex size-11 shrink-0 items-center justify-center rounded-[var(--radius)] bg-primary/10 text-primary ring-1 ring-primary/15">
+              {mesa && mesa !== "sin-asignar" ? (
+                <Armchair className="size-5" />
+              ) : (
+                <QrCode className="size-5" />
+              )}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block font-medium">Tu lugar en la fiesta</span>
+              <span className="block text-sm text-muted-foreground">
+                {mesa && mesa !== "sin-asignar"
+                  ? `Tu pase y tu mesa: ${mesa}`
+                  : mesa === "sin-asignar"
+                    ? "Tu pase — tu mesa se asignará pronto"
+                    : "Tu pase con tu código QR"}
+              </span>
+            </span>
+          </Link>
+        </div>
+      ) : null}
     </div>
   );
 }

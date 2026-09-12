@@ -157,15 +157,21 @@ export function CintaExperiencia({
                 onClick={() => setAbierto((v) => !v)}
                 aria-expanded={abierto}
                 aria-haspopup="menu"
-                aria-label="Experiencias"
+                aria-label="Explorar"
                 /*
                  * En el celular esta palabra se llevaba 119 px de los 342 y el
                  * nombre del salón —lo que se le está vendiendo— salía como
                  * "Hacienda Sa…" en TODAS las pantallas. Aquí queda en icono.
+                 *
+                 * Y ya no dice "Experiencias": ese nombre sonaba a menú de
+                 * aplicaciones ("¿cuál abro?"). "Explorar" es lo que de verdad
+                 * es — un atajo para saltar a otra parte de ESTA fiesta sin
+                 * volver a la portada — y no compite con la narrativa de la
+                 * portada como la entrada principal.
                  */
                 className="inline-flex min-h-9 items-center gap-1 rounded-full px-2 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:px-3"
               >
-                <span className="hidden sm:inline">Experiencias</span>
+                <span className="hidden sm:inline">Explorar</span>
                 <ChevronDown className={cn("size-4 transition-transform", abierto && "rotate-180")} />
               </button>
               {abierto ? (

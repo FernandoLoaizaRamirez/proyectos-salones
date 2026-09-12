@@ -16,12 +16,14 @@
  * letras: así el salón ve el boleto aunque nadie se haya presentado.
  */
 import * as React from "react";
-import { QrCode } from "lucide-react";
+import Link from "next/link";
+import { MapPin, QrCode, Users } from "lucide-react";
 import { EmptyState } from "@salones/ui";
 import {
   COLECCION_ACOMODO,
   COLECCION_MESAS,
   buscarEnAcomodo,
+  companerosDe,
   mesaDe,
   normalizarAcomodoCrudo,
   normalizarMesasCrudas,
@@ -46,6 +48,9 @@ export function PaseModulo({ evento, nombreEvento }: { evento: string; nombreEve
   const [pases, setPases] = React.useState<PaseInvitado[] | "cargando">("cargando");
   /** La mesa según el acomodo real, si se encontró sin duda. */
   const [mesaViva, setMesaViva] = React.useState<string | null>(null);
+  /** Con quién la comparte — el pase, la mesa y la compañía son una sola cosa. */
+  const [companeros, setCompaneros] = React.useState<string[]>([]);
+  const sufijo = evento && evento !== "demo" ? `?e=${encodeURIComponent(evento)}` : "";
 
   // La lista de la puerta: una lectura al abrir. En la vitrina vacía, la
   // muestra; jamás se escribe nada al almacén.
@@ -84,6 +89,7 @@ export function PaseModulo({ evento, nombreEvento }: { evento: string; nombreEve
   // La mesa del acomodo real corrige la congelada en el pase (solo el propio).
   React.useEffect(() => {
     setMesaViva(null);
+    setCompaneros([]);
     if (!mio) return;
     let vivo = true;
     (async () => {
@@ -111,7 +117,10 @@ export function PaseModulo({ evento, nombreEvento }: { evento: string; nombreEve
           candidatos.length === 1 ? candidatos[0] : exactos.length === 1 ? exactos[0] : null;
         if (!unico) return;
         const mesa = unico.mesaId ? mesaDe(unico, mesas) : null;
-        if (mesa) setMesaViva(mesa.nombre);
+        if (mesa) {
+          setMesaViva(mesa.nombre);
+          setCompaneros(companerosDe(unico, acomodo).map((c) => c.nombre));
+        }
       } catch {
         /* sin red: el boleto se queda con la mesa que traía el pase */
       }
@@ -159,6 +168,34 @@ export function PaseModulo({ evento, nombreEvento }: { evento: string; nombreEve
         Muestra el código en la entrada del evento. Puedes guardar una captura de pantalla: el
         pase funciona igual sin conexión.
       </p>
+
+      {/*
+       * EL PASE, LA MESA Y LA UBICACIÓN SON UNA SOLA HISTORIA — no tres
+       * pantallas sueltas. Quien ya vio su boleto sigue de largo a con quién se
+       * sienta y a cómo llegar, sin tener que ir a buscar "la app de mesas" o
+       * "la app del lugar" por su cuenta.
+       */}
+      {companeros.length > 0 ? (
+        <div className="mt-6 rounded-[var(--radius)] border border-border bg-card p-5">
+          <p className="flex items-center gap-1.5 text-sm font-medium">
+            <Users className="size-4 text-primary" /> La compartes con
+          </p>
+          <ul className="mt-2 flex flex-wrap gap-1.5">
+            {companeros.map((nombre) => (
+              <li key={nombre} className="rounded-full bg-muted px-3 py-1 text-sm">
+                {nombre}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      <Link
+        href={`/lugar${sufijo}`}
+        className="mt-4 flex items-center justify-center gap-1.5 text-sm font-medium text-primary hover:underline"
+      >
+        <MapPin className="size-4" /> Ver ubicación y cómo llegar
+      </Link>
     </div>
   );
 }

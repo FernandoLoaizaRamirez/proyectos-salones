@@ -24,6 +24,7 @@ import {
   nombresInvitacion,
 } from "@salones/core";
 import { obtenerSync, esVitrina } from "@salones/sync";
+import type { FaseEvento } from "@salones/core";
 import type { TemaResuelto } from "@salones/ui";
 import { olvidarPerfil, usePerfil } from "@/lib/perfil";
 
@@ -65,7 +66,20 @@ function monogramaDe(nombres: string): string {
   return iniciales.length >= 2 ? iniciales.slice(0, 2).join("·") : iniciales.join("");
 }
 
-export function HeroEvento({ evento, tema }: { evento: string; tema: TemaResuelto }) {
+export function HeroEvento({
+  evento,
+  tema,
+  fase,
+}: {
+  evento: string;
+  tema: TemaResuelto;
+  /**
+   * La fase del evento (antes/cerca/hoy/después — ver `faseDeEvento`).
+   * Cambia el saludo: "hoy" y "después" son celebraciones distintas de "faltan
+   * X días", no la misma portada con un número distinto.
+   */
+  fase?: FaseEvento;
+}) {
   const perfil = usePerfil(evento);
   const [datos, setDatos] = React.useState<DatosEvento | null>(null);
   /**
@@ -171,7 +185,13 @@ export function HeroEvento({ evento, tema }: { evento: string; tema: TemaResuelt
         ) : null}
 
         <p className={["mt-6 text-[0.7rem] uppercase tracking-[0.3em]", suave].join(" ")}>
-          {nombres ? "Celebramos a" : "Te damos la bienvenida a"}
+          {fase === "despues"
+            ? "Gracias por acompañarnos a"
+            : fase === "hoy"
+              ? "Hoy celebramos a"
+              : nombres
+                ? "Celebramos a"
+                : "Te damos la bienvenida a"}
         </p>
 
         <h1 className="mx-auto mt-3 max-w-2xl text-balance font-[family-name:var(--font-display)] text-4xl leading-tight font-semibold tracking-tight sm:text-5xl">
@@ -210,6 +230,18 @@ export function HeroEvento({ evento, tema }: { evento: string; tema: TemaResuelt
               </div>
             ))}
           </div>
+        ) : fase === "hoy" ? (
+          // El reloj ya llegó a cero (la ceremonia ya empezó o pasó), pero
+          // sigue siendo HOY: un hueco en blanco donde antes había una cuenta
+          // regresiva se lee como un error, no como una fiesta en curso.
+          <p
+            className={[
+              "mx-auto mt-8 inline-block rounded-full px-4 py-1.5 text-xs font-medium uppercase tracking-[0.2em]",
+              sobreFoto ? "bg-white/15 text-white" : "bg-primary/10 text-primary",
+            ].join(" ")}
+          >
+            Hoy
+          </p>
         ) : null}
 
         {perfil?.nombre ? (

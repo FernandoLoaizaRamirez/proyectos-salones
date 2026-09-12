@@ -66,6 +66,20 @@ export function RsvpCliente() {
     (id: string) => (eventoId ? idDeEjemplo(id, eventoId) : id),
     [eventoId],
   );
+  /**
+   * La respuesta de un invitado — primero por su id CON sufijo (lo que
+   * escriben las marcas de hoy en adelante); si no hay, por el id SIN sufijo.
+   *
+   * Por qué el respaldo: una vitrina que YA tenía marcas de antes de este
+   * arreglo las guardó sin sufijo (el código viejo nunca lo aplicaba). Sin
+   * este respaldo, esas marcas viejas se volverían invisibles de golpe —el
+   * invitado se vería "Pendiente" aunque de verdad ya hubiera contestado— en
+   * vez de solo dejar de escribirse así hacia adelante.
+   */
+  const respuestaDe = React.useCallback(
+    (id: string): Respuesta | undefined => estados[idSync(id)] ?? estados[id],
+    [estados, idSync],
+  );
 
   const [form, setForm] = React.useState({ nombre: "", cupos: "2" });
   const [editId, setEditId] = React.useState<string | null>(null);
@@ -131,12 +145,13 @@ export function RsvpCliente() {
     return cancelar;
   }, []);
 
-  const estadoDe = (id: string): Estado => estados[idSync(id)]?.estado ?? EstadoRSVP.Pendiente;
+  const estadoDe = (id: string): Estado => respuestaDe(id)?.estado ?? EstadoRSVP.Pendiente;
 
   // Confirmaciones que llegaron por el enlace GENERAL del evento (el portal del
   // invitado), de gente que no estaba en esta lista: no tienen renglón propio,
-  // así que se muestran aparte para que no se pierdan.
-  const idsEnLista = new Set(invitados.map((i) => idSync(i.id)));
+  // así que se muestran aparte para que no se pierdan. Con y sin sufijo, por el
+  // mismo respaldo que `respuestaDe`.
+  const idsEnLista = new Set(invitados.flatMap((i) => [idSync(i.id), i.id]));
   const sueltas = respuestas.filter((r) => !idsEnLista.has(r.id));
   const personasSueltas = sueltas
     .filter((r) => r.estado === EstadoRSVP.Confirmado)
@@ -159,7 +174,7 @@ export function RsvpCliente() {
   const confirmados = invitados.filter((i) => estadoDe(i.id) === EstadoRSVP.Confirmado);
   const rechazados = invitados.filter((i) => estadoDe(i.id) === EstadoRSVP.Rechazado);
   const pendientes = invitados.length - confirmados.length - rechazados.length;
-  const personasConfirmadas = confirmados.reduce((s, i) => s + (estados[idSync(i.id)]?.personas ?? 0), 0);
+  const personasConfirmadas = confirmados.reduce((s, i) => s + (respuestaDe(i.id)?.personas ?? 0), 0);
   const progreso = invitados.length ? Math.round((confirmados.length / invitados.length) * 100) : 0;
 
   // --- Organizador: alta / edición / borrado ---
@@ -340,7 +355,7 @@ export function RsvpCliente() {
                       </div>
                       <div className="text-sm text-muted-foreground">
                         {conf
-                          ? `${estados[idSync(inv.id)]?.personas ?? 0} de ${inv.cupos} personas`
+                          ? `${respuestaDe(inv.id)?.personas ?? 0} de ${inv.cupos} personas`
                           : `Hasta ${inv.cupos} personas`}
                       </div>
                     </div>
@@ -349,7 +364,7 @@ export function RsvpCliente() {
                         <select
                           aria-label="Personas que asistirán"
                           className="min-h-10 rounded-[var(--radius)] border border-border bg-background px-2 py-1.5 text-sm"
-                          value={String(estados[idSync(inv.id)]?.personas ?? inv.cupos)}
+                          value={String(respuestaDe(inv.id)?.personas ?? inv.cupos)}
                           onChange={(e) => cambiarPersonas(inv.id, parseInt(e.target.value, 10))}
                         >
                           {Array.from({ length: inv.cupos }, (_, i) => String(i + 1)).map((n) => (

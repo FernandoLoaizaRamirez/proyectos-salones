@@ -2,10 +2,12 @@ import { ThemeToggle } from "@salones/ui";
 import { estaConectado } from "@salones/sync";
 import { evento } from "@/lib/mesas";
 import { AcomodoCliente } from "@/components/acomodo-cliente";
+import { EstrenaVitrina } from "@/components/estrena-vitrina";
 
 export default function Page() {
   return (
     <main className="min-h-screen">
+      <EstrenaVitrina />
       <header className="sticky top-0 z-30 border-b border-border bg-background/85 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-3">
           <div className="flex items-center gap-3">

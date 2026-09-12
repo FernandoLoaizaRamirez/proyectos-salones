@@ -131,33 +131,72 @@ export function PortalHome({ config }: { config: ConfigEvento }) {
         <div className="mx-auto w-full max-w-3xl px-6 py-14">
           <LoTuyo config={config} />
 
-          <BloqueElGranDia evento={evento} sufijo={sufijo} mostrar={fase !== "despues" && tiene(F.Cronograma)} />
+          {/*
+           * EL DÍA DEL EVENTO EL ORDEN SE INVIERTE. El resto de la semana, el
+           * cronograma manda (es lo que se está preparando); el día de la
+           * fiesta, lo que manda es "¿qué hago ahora mismo": foto, canción,
+           * trivia, mensaje" — el itinerario completo pierde su lugar de honor
+           * y se vuelve una referencia compacta ("ahora sigue: X"), no una
+           * lista para leer de arriba abajo.
+           */}
+          {fase === "hoy" ? (
+            <>
+              <BloqueComparteMomentos
+                mostrar
+                tieneAlbum={tiene(F.Album)}
+                tienePhotobooth={tiene(F.Photobooth)}
+                hrefAlbum={`/album${sufijo}`}
+                hrefPhotobooth={enlaceDe(F.Photobooth, evento, hashPerfil)}
+              />
+              <BloqueViveLaFiesta
+                mostrar
+                tienePlaylist={tiene(F.Playlist)}
+                tieneDinamicas={tiene(F.Dinamicas)}
+                hrefPlaylist={`/playlist${sufijo}`}
+                hrefDinamicas={`/dinamicas${sufijo}`}
+              />
+              <BloqueDejaAlgo
+                fase={fase}
+                tieneMuro={tiene(F.Muro)}
+                tieneBrindis={tiene(F.Brindis)}
+                tieneAlbum={tiene(F.Album)}
+                hrefMuro={`/muro${sufijo}`}
+                hrefBrindis={enlaceDe(F.Brindis, evento, hashPerfil)}
+                hrefAlbum={`/album${sufijo}`}
+              />
+              <BloqueElGranDia evento={evento} sufijo={sufijo} mostrar={tiene(F.Cronograma)} compacto />
+            </>
+          ) : (
+            <>
+              <BloqueElGranDia evento={evento} sufijo={sufijo} mostrar={fase !== "despues" && tiene(F.Cronograma)} />
 
-          <BloqueComparteMomentos
-            mostrar={fase !== "despues"}
-            tieneAlbum={tiene(F.Album)}
-            tienePhotobooth={tiene(F.Photobooth)}
-            hrefAlbum={`/album${sufijo}`}
-            hrefPhotobooth={enlaceDe(F.Photobooth, evento, hashPerfil)}
-          />
+              <BloqueComparteMomentos
+                mostrar={fase !== "despues"}
+                tieneAlbum={tiene(F.Album)}
+                tienePhotobooth={tiene(F.Photobooth)}
+                hrefAlbum={`/album${sufijo}`}
+                hrefPhotobooth={enlaceDe(F.Photobooth, evento, hashPerfil)}
+              />
 
-          <BloqueViveLaFiesta
-            mostrar={fase === "hoy" || fase === "cerca"}
-            tienePlaylist={tiene(F.Playlist)}
-            tieneDinamicas={tiene(F.Dinamicas)}
-            hrefPlaylist={`/playlist${sufijo}`}
-            hrefDinamicas={`/dinamicas${sufijo}`}
-          />
+              <BloqueViveLaFiesta
+                mostrar={fase === "cerca"}
+                tienePlaylist={tiene(F.Playlist)}
+                tieneDinamicas={tiene(F.Dinamicas)}
+                hrefPlaylist={`/playlist${sufijo}`}
+                hrefDinamicas={`/dinamicas${sufijo}`}
+              />
 
-          <BloqueDejaAlgo
-            fase={fase}
-            tieneMuro={tiene(F.Muro)}
-            tieneBrindis={tiene(F.Brindis)}
-            tieneAlbum={tiene(F.Album)}
-            hrefMuro={`/muro${sufijo}`}
-            hrefBrindis={enlaceDe(F.Brindis, evento, hashPerfil)}
-            hrefAlbum={`/album${sufijo}`}
-          />
+              <BloqueDejaAlgo
+                fase={fase}
+                tieneMuro={tiene(F.Muro)}
+                tieneBrindis={tiene(F.Brindis)}
+                tieneAlbum={tiene(F.Album)}
+                hrefMuro={`/muro${sufijo}`}
+                hrefBrindis={enlaceDe(F.Brindis, evento, hashPerfil)}
+                hrefAlbum={`/album${sufijo}`}
+              />
+            </>
+          )}
 
           <BloqueAntesDeVenir
             evento={evento}
@@ -219,7 +258,18 @@ function BotonAccion({
  * app de "Cronograma" aislada. Cruza con la ubicación: el próximo momento
  * enlaza a cómo llegar, en vez de obligar a buscar esa información aparte.
  */
-function BloqueElGranDia({ evento, sufijo, mostrar }: { evento: string; sufijo: string; mostrar: boolean }) {
+function BloqueElGranDia({
+  evento,
+  sufijo,
+  mostrar,
+  compacto = false,
+}: {
+  evento: string;
+  sufijo: string;
+  mostrar: boolean;
+  /** El día de la fiesta: sin la lista completa, solo "ahora sigue" y los enlaces. */
+  compacto?: boolean;
+}) {
   const inv = useInvitacion(evento);
   const [ahora, setAhora] = React.useState<Date | null>(null);
   React.useEffect(() => setAhora(new Date()), []);
@@ -239,14 +289,16 @@ function BloqueElGranDia({ evento, sufijo, mostrar }: { evento: string; sufijo: 
         </p>
       ) : null}
 
-      <ol className="mt-5 space-y-3">
-        {proximos.map((m) => (
-          <li key={`${m.hora}-${m.titulo}`} className="flex items-baseline gap-4 text-sm">
-            <span className="w-16 shrink-0 font-medium tabular-nums text-primary">{m.hora}</span>
-            <span className="min-w-0 flex-1">{m.titulo}</span>
-          </li>
-        ))}
-      </ol>
+      {compacto ? null : (
+        <ol className="mt-5 space-y-3">
+          {proximos.map((m) => (
+            <li key={`${m.hora}-${m.titulo}`} className="flex items-baseline gap-4 text-sm">
+              <span className="w-16 shrink-0 font-medium tabular-nums text-primary">{m.hora}</span>
+              <span className="min-w-0 flex-1">{m.titulo}</span>
+            </li>
+          ))}
+        </ol>
+      )}
 
       <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
         <Link href={`/cronograma${sufijo}`} className="font-medium text-primary hover:underline">

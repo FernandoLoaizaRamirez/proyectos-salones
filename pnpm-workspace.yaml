@@ -48,6 +48,14 @@ allowBuilds:
 #               registro de npm aún no tenía publicado — dejar el tope abierto
 #               habría hecho que la instalación fallara sola el día que salga
 #               una versión más nueva con el mismo problema.
+#   · js-yaml → lo arrastra eslint (vía @eslint/eslintrc). 12 sep 2026:
+#               maxTotalMergeKeys no limita el CPU con fuentes de merge vacías
+#               (aviso ALTO). Corregido en 4.3.2 — la ÚLTIMA versión de la
+#               rama 4.x (`npm dist-tag ls js-yaml` la marca `v4-legacy`; la
+#               5.x es la que trae `latest` y puede romper algo que dependa de
+#               la API de la 4). EXACTA por lo mismo que browserslist: dejarla
+#               abierta con ">=" la subiría sola a la 5 el día que salga otro
+#               aviso, sin haberla probado.
 # Se fijan con ">=" para que un Next futuro que ya traiga versión sana no quede
 # frenado por este candado.
 overrides:
@@ -58,6 +66,7 @@ overrides:
   "brace-expansion@5": "5.0.9"
   browserslist: "4.28.7"
   baseline-browser-mapping: "2.11.0"
+  js-yaml: "4.3.2"
 
 # Paquetes autorizados a correr su script de instalación (build). pnpm los bloquea
 # por defecto como medida de seguridad; aquí se permiten solo los de confianza:

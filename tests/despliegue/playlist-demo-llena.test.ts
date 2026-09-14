@@ -56,7 +56,7 @@ describe("La playlist del portal en la demo", () => {
   it("no dice 'aún no hay canciones' mientras las está trayendo", () => {
     // El parpadeo también vende mal: con la siembra en camino, la lista vacía
     // significa "todavía no sabemos", no "nadie ha pedido nada".
-    expect(modulo).toMatch(/sembrando \?[\s\S]{0,400}Trayendo las canciones/);
+    expect(modulo).toMatch(/sembrando \?[\s\S]{0,400}Trayendo las peticiones/);
   });
 
   it("toca la misma fiesta que la app suelta de playlist", () => {
